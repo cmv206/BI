@@ -107,9 +107,9 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const DB_NAME = 'ExecAI_DB';
+    const DB_NAME = 'ExecAI_PersistentDB';
     const DB_VERSION = 1;
-    const STORE_NAME = 'session_data';
+    const STORE_NAME = 'session_store';
 
     const initDB = () => {
       return new Promise((resolve, reject) => {
@@ -127,11 +127,13 @@
 
     const saveToDB = async (key, data) => {
       try {
+        // Sanitize data into plain serializable JSON objects to prevent DataCloneError
+        const cleanData = JSON.parse(JSON.stringify(data));
         const db = await initDB();
         return new Promise((resolve, reject) => {
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const store = tx.objectStore(STORE_NAME);
-          const req = store.put(data, key);
+          const req = store.put(cleanData, key);
           req.onsuccess = () => resolve(true);
           req.onerror = (e) => reject(e.target.error);
         });
@@ -312,7 +314,7 @@
       const [uploadedFileKeys, setUploadedFileKeys] = useState(new Set());
       const [activeTab, setActiveTab] = useState('DASHBOARD');
       const [toast, setToast] = useState(null);
-      const [isInitialLoaded, setIsInitialLoaded] = useState(false);
+      const [isRestoring, setIsRestoring] = useState(true);
 
       const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -333,7 +335,9 @@
 
       const [apiKey, setApiKey] = useState('');
 
+      // Restore stored session on mount
       useEffect(() => {
+        let isMounted = true;
         const restoreSession = async () => {
           try {
             const savedKey = localStorage.getItem('EXEC_AI_API_KEY');
@@ -346,10 +350,11 @@
             const savedOrig = await getFromDB('EXEC_AI_ORIG_DATA');
             const savedKeysArr = await getFromDB('EXEC_AI_FILE_KEYS');
 
-            if (savedRaw && savedRaw.length > 0) {
+            if (isMounted && savedRaw && Array.isArray(savedRaw) && savedRaw.length > 0) {
               setRawData(savedRaw);
               setOriginalRawData(savedOrig || savedRaw);
-              setUploadedFileKeys(savedKeysArr ? new Set(savedKeysArr) : new Set());
+              if (savedKeysArr) setUploadedFileKeys(new Set(savedKeysArr));
+
               setTimeout(() => {
                 showToast(`이전 데이터 세션 ${savedRaw.length.toLocaleString()}건 및 맞춤 필드 매핑이 성공적으로 복원되었습니다.`);
               }, 400);
@@ -357,39 +362,37 @@
           } catch (err) {
             console.error('저장 세션 복원 중 오류:', err);
           } finally {
-            setIsInitialLoaded(true);
+            if (isMounted) setIsRestoring(false);
           }
         };
 
         restoreSession();
+        return () => { isMounted = false; };
       }, []);
 
+      // Auto-save session when rawData changes (ONLY after initial restoration finishes)
       useEffect(() => {
-        if (!isInitialLoaded) return;
+        if (isRestoring) return; // Prevent overwriting DB during restoration phase
         const syncDB = async () => {
           try {
-            if (rawData.length > 0) {
+            if (rawData && rawData.length > 0) {
               await saveToDB('EXEC_AI_RAW_DATA', rawData);
               await saveToDB('EXEC_AI_ORIG_DATA', originalRawData);
               await saveToDB('EXEC_AI_FILE_KEYS', Array.from(uploadedFileKeys));
-            } else {
-              await removeFromDB('EXEC_AI_RAW_DATA');
-              await removeFromDB('EXEC_AI_ORIG_DATA');
-              await removeFromDB('EXEC_AI_FILE_KEYS');
             }
           } catch (err) {
-            console.warn('IndexedDB 저장 오차:', err);
+            console.warn('IndexedDB 동기화 오차:', err);
           }
         };
         syncDB();
-      }, [rawData, originalRawData, uploadedFileKeys, isInitialLoaded]);
+      }, [rawData, originalRawData, uploadedFileKeys, isRestoring]);
 
       useEffect(() => {
-        if (!isInitialLoaded) return;
+        if (isRestoring) return;
         try {
           localStorage.setItem('EXEC_AI_MAPPING', JSON.stringify(mapping));
         } catch (e) {}
-      }, [mapping, isInitialLoaded]);
+      }, [mapping, isRestoring]);
 
       const handleSaveApiKey = () => {
         try {
@@ -1070,6 +1073,16 @@ ${topChannelsList}
         return b.qty - a.qty;
       }) : [];
 
+      if (isRestoring) {
+        return (
+          <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 font-sans">
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h2 className="text-base font-bold tracking-wide">이전 분석 세션 불러오는 중...</h2>
+            <p className="text-xs text-slate-400 mt-1">IndexedDB에 보관된 로우데이터 및 필드 매핑 설정을 복원하고 있습니다.</p>
+          </div>
+        );
+      }
+
       return (
         <div className="min-h-screen pb-20 font-sans bg-slate-50 text-slate-900">
           
@@ -1114,7 +1127,7 @@ ${topChannelsList}
                 ) : (
                   <button onClick={handleLoadSampleData} className="pl-3 pr-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-md transition border border-slate-200 whitespace-nowrap btn-flex-center gap-1.5 text-center">
                     <Icon name="sparkles" className="w-3.5 h-3.5 text-amber-500" />
-                    <span>샘플 데이터 로드</span>
+                    <span>체험용 샘플 데이터 로드</span>
                   </button>
                 )}
 
@@ -1166,6 +1179,7 @@ ${topChannelsList}
             </div>
           )}
 
+          {}
           <main className="max-w-7xl mx-auto px-6 pt-6 space-y-6">
             
             {rawData.length === 0 ? (
@@ -1191,7 +1205,7 @@ ${topChannelsList}
               </div>
             ) : (
               <>
-                {}
+                {/* DASHBOARD TAB */}
                 {activeTab === 'DASHBOARD' && analytics && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1403,7 +1417,7 @@ ${topChannelsList}
                   </>
                 )}
 
-                {}
+                {/* SIMULATOR TAB */}
                 {activeTab === 'SIMULATOR' && analytics && (
                   <div className="exec-card p-6">
                     <h3 className="text-base font-bold text-slate-900 mb-6">경영 시나리오 시뮬레이션</h3>
@@ -1446,6 +1460,7 @@ ${topChannelsList}
                   </div>
                 )}
 
+                {}
                 {activeTab === 'REPORT' && analytics && (
                   <div className="exec-card p-6 min-h-[500px] flex flex-col">
                     <div className="flex flex-wrap items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
