@@ -252,6 +252,95 @@
       const [uploadedFileKeys, setUploadedFileKeys] = useState(new Set());
       const [activeTab, setActiveTab] = useState('DASHBOARD');
       const [toast, setToast] = useState(null);
+      const [isInitialLoaded, setIsInitialLoaded] = useState(false);
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3200);
+      };
+
+      useEffect(() => {
+        try {
+          const savedRaw = localStorage.getItem('EXEC_AI_RAW_DATA');
+          const savedOrig = localStorage.getItem('EXEC_AI_ORIG_DATA');
+          const savedKeys = localStorage.getItem('EXEC_AI_FILE_KEYS');
+          const savedMap = localStorage.getItem('EXEC_AI_MAPPING');
+          const savedKey = localStorage.getItem('EXEC_AI_API_KEY');
+
+          if (savedKey) setApiKey(savedKey);
+          if (savedMap) setMapping(JSON.parse(savedMap));
+
+          if (savedRaw && savedOrig) {
+            const parsedRaw = JSON.parse(savedRaw);
+            const parsedOrig = JSON.parse(savedOrig);
+            const parsedKeys = savedKeys ? new Set(JSON.parse(savedKeys)) : new Set();
+
+            if (parsedRaw.length > 0) {
+              setRawData(parsedRaw);
+              setOriginalRawData(parsedOrig);
+              setUploadedFileKeys(parsedKeys);
+              setTimeout(() => {
+                showToast(`이전에 업로드된 ${parsedRaw.length.toLocaleString()}건의 데이터 세션이 자동으로 복원되었습니다.`);
+              }, 300);
+            }
+          }
+        } catch (err) {
+          console.error('저장 세션 복원 중 오류:', err);
+        } finally {
+          setIsInitialLoaded(true);
+        }
+      }, []);
+
+      useEffect(() => {
+        if (!isInitialLoaded) return;
+        try {
+          if (rawData.length > 0) {
+            localStorage.setItem('EXEC_AI_RAW_DATA', JSON.stringify(rawData));
+            localStorage.setItem('EXEC_AI_ORIG_DATA', JSON.stringify(originalRawData));
+            localStorage.setItem('EXEC_AI_FILE_KEYS', JSON.stringify(Array.from(uploadedFileKeys)));
+          } else {
+            localStorage.removeItem('EXEC_AI_RAW_DATA');
+            localStorage.removeItem('EXEC_AI_ORIG_DATA');
+            localStorage.removeItem('EXEC_AI_FILE_KEYS');
+          }
+        } catch (err) {
+          console.warn('저장 공간 한도 초과 (대용량 파일 시 메모리 분석은 유지됩니다):', err);
+        }
+      }, [rawData, originalRawData, uploadedFileKeys, isInitialLoaded]);
+
+      const [mapping, setMapping] = useState({
+        dateCol: '거래일자',
+        revenueCol: '매출액',
+        productCol: '상품명',
+        brandCol: '브랜드',
+        colorCol: '컬러',
+        sizeCol: '사이즈',
+        branchCol: '지점',
+        channelCol: '판매채널',
+        quantityCol: '수량'
+      });
+
+      useEffect(() => {
+        if (!isInitialLoaded) return;
+        try {
+          localStorage.setItem('EXEC_AI_MAPPING', JSON.stringify(mapping));
+        } catch (e) {}
+      }, [mapping, isInitialLoaded]);
+
+      const [apiKey, setApiKey] = useState('');
+      
+      const handleSaveApiKey = () => {
+        try {
+          if (apiKey.trim()) {
+            localStorage.setItem('EXEC_AI_API_KEY', apiKey.trim());
+            showToast('Gemini API 키가 안전하게 저장되었습니다.');
+          } else {
+            localStorage.removeItem('EXEC_AI_API_KEY');
+            showToast('API 키가 삭제되었습니다.');
+          }
+        } catch (e) {}
+        setIsApiModalOpen(false);
+      };
 
       const [activeCleanings, setActiveCleanings] = useState({
         winsorizeAnomalies: false,
@@ -259,7 +348,6 @@
         fixZeroRevenues: false
       });
 
-      const [apiKey, setApiKey] = useState('');
       const [isApiModalOpen, setIsApiModalOpen] = useState(false);
       const [isChatOpen, setIsChatOpen] = useState(false);
       const [chatMessages, setChatMessages] = useState([
@@ -273,17 +361,6 @@
 
       const [productSortBy, setProductSortBy] = useState('revenue');
       const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
-      const [mapping, setMapping] = useState({
-        dateCol: '거래일자',
-        revenueCol: '매출액',
-        productCol: '상품명',
-        brandCol: '브랜드',
-        colorCol: '컬러',
-        sizeCol: '사이즈',
-        branchCol: '지점',
-        channelCol: '판매채널',
-        quantityCol: '수량'
-      });
       const [simParams, setSimParams] = useState({ price: 0, marketing: 10, demand: 5 });
 
       const handleSaveInsight = (userQuestion, assistantAnswer) => {
@@ -295,11 +372,6 @@
         };
         setSavedChatInsights(prev => [...prev, newInsight]);
         showToast('유의미한 대화 인사이트가 경영 보고서에 성공적으로 추가되었습니다.');
-      };
-
-      const showToast = (message, type = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3200);
       };
 
       const autoDetectMapping = (sampleRow, force = false) => {
@@ -392,7 +464,14 @@
         setUploadedFileKeys(new Set());
         setAiReport(null);
         setActiveCleanings({ winsorizeAnomalies: false, removeNulls: false, fixZeroRevenues: false });
-        showToast('업로드된 데이터 및 파일 이력이 모두 초기화되었습니다.');
+        
+        try {
+          localStorage.removeItem('EXEC_AI_RAW_DATA');
+          localStorage.removeItem('EXEC_AI_ORIG_DATA');
+          localStorage.removeItem('EXEC_AI_FILE_KEYS');
+        } catch (e) {}
+
+        showToast('업로드된 데이터 및 파일 이력이 완전히 초기화되었습니다.');
       };
 
       const handleLoadSampleData = () => {
@@ -884,6 +963,12 @@ ${topChannelsList}
                 <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">
                   Executive Business AI
                 </h1>
+                {rawData.length > 0 && (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-semibold">
+                    <Icon name="database" className="w-3 h-3 text-blue-600" />
+                    <span>{rawData.length.toLocaleString()}건 복원됨</span>
+                  </span>
+                )}
               </div>
 
               {/* Centered Header Action Toolbar */}
@@ -911,9 +996,12 @@ ${topChannelsList}
                   <span>필드 매핑</span>
                 </button>
                 
-                <button onClick={() => setIsApiModalOpen(true)} className="pl-3 pr-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md transition whitespace-nowrap btn-flex-center gap-1.5 text-center">
+                <button onClick={() => setIsApiModalOpen(true)} className="pl-3 pr-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md transition whitespace-nowrap btn-flex-center gap-1.5 text-center relative">
                   <Icon name="key" className="w-3.5 h-3.5 text-slate-300" />
                   <span>API 키 설정</span>
+                  {apiKey && (
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full shrink-0"></span>
+                  )}
                 </button>
               </div>
             </div>
@@ -977,7 +1065,7 @@ ${topChannelsList}
               </div>
             ) : (
               <>
-                {/* DASHBOARD TAB */}
+                {}
                 {activeTab === 'DASHBOARD' && analytics && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1075,7 +1163,7 @@ ${topChannelsList}
                   </>
                 )}
 
-                {/* ANALYTICS TAB */}
+                {}
                 {activeTab === 'ANALYTICS' && analytics && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1189,7 +1277,7 @@ ${topChannelsList}
                   </>
                 )}
 
-                {/* SIMULATOR TAB */}
+                {}
                 {activeTab === 'SIMULATOR' && analytics && (
                   <div className="exec-card p-6">
                     <h3 className="text-base font-bold text-slate-900 mb-6">경영 시나리오 시뮬레이션</h3>
@@ -1232,7 +1320,7 @@ ${topChannelsList}
                   </div>
                 )}
 
-                {/* REPORT TAB */}
+                {}
                 {activeTab === 'REPORT' && analytics && (
                   <div className="exec-card p-6 min-h-[500px] flex flex-col">
                     <div className="flex flex-wrap items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
@@ -1307,7 +1395,7 @@ ${topChannelsList}
                   </div>
                 )}
 
-                {/* SANITY TAB */}
+                {}
                 {activeTab === 'SANITY' && analytics && (
                   <div className="space-y-6">
                     <div className="exec-card p-6">
@@ -1407,7 +1495,7 @@ ${topChannelsList}
             )}
           </main>
 
-          {/* Floating AI Chat Consultant */}
+          {}
           {rawData.length > 0 && (
             <div className="fixed bottom-6 right-6 z-40">
               {isChatOpen ? (
@@ -1459,20 +1547,33 @@ ${topChannelsList}
             </div>
           )}
 
-          {/* Modals */}
+          {}
           {/* API Key Modal */}
           {isApiModalOpen && (
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setIsApiModalOpen(false)}>
               <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl relative">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-slate-900 text-sm">Gemini API 키 설정</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm">Gemini API 키 설정</h3>
+                    {apiKey && (
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold inline-flex items-center gap-1">
+                        <Icon name="check-circle" className="w-3 h-3 text-emerald-600" /> 등록됨
+                      </span>
+                    )}
+                  </div>
                   <button onClick={() => setIsApiModalOpen(false)} title="창 닫기" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg btn-flex-center transition text-center justify-center">
                     <Icon name="x" className="w-4 h-4" />
                   </button>
                 </div>
-                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="API Key 입력" className="w-full p-2.5 text-xs border border-slate-300 rounded-lg mb-4 outline-none focus:border-blue-600" />
+                
+                <p className="text-xs text-slate-500 mb-3">
+                  {apiKey ? '현재 저장된 API 키가 있습니다. 변경하거나 비운 후 저장하실 수 있습니다.' : 'Google AI Studio에서 발급받은 Gemini API 키를 입력해 주세요.'}
+                </p>
+
+                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="API Key (AIzaSy...)" className="w-full p-2.5 text-xs border border-slate-300 rounded-lg mb-4 outline-none focus:border-blue-600" />
+                
                 <div className="flex gap-2">
-                  <button onClick={() => setIsApiModalOpen(false)} className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs text-center btn-flex-center justify-center">저장하기</button>
+                  <button onClick={handleSaveApiKey} className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs text-center btn-flex-center justify-center">저장하기</button>
                 </div>
               </div>
             </div>
