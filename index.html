@@ -15,7 +15,9 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
     body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
     }
@@ -27,20 +29,27 @@
       scrollbar-width: none;
     }
     .custom-scrollbar::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
+      width: 5px;
+      height: 5px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
       background: #cbd5e1;
       border-radius: 4px;
     }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+    }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased font-sans pb-20 md:pb-6">
+<body class="bg-slate-100 text-slate-800 antialiased selection:bg-blue-500 selection:text-white pb-20 md:pb-6">
   <div id="root"></div>
 
   <script type="text/babel">
-    const DB_NAME = 'ExecAI_DB';
+    const DB_NAME = 'ExecAI_DB_Enterprise';
     const DB_VERSION = 1;
     const STORE_NAME = 'app_session';
 
@@ -111,10 +120,10 @@
       });
       const [apiKey, setApiKey] = React.useState(localStorage.getItem('exec_gemini_api_key') || '');
       const [isRestoring, setIsRestoring] = React.useState(true);
-      const [activeTab, setActiveTab] = React.useState('dashboard');
+      const [activeTab, setActiveTab] = React.useState('dashboard'); // 'dashboard', 'report', 'quality', 'table'
       const [toastMessage, setToastMessage] = React.useState(null);
       
-      // Modals and Drawers
+      // Modals & Drawers
       const [showKeyModal, setShowKeyModal] = React.useState(false);
       const [showMappingModal, setShowMappingModal] = React.useState(false);
       const [showResetModal, setShowResetModal] = React.useState(false);
@@ -124,7 +133,7 @@
       const [aiReport, setAiReport] = React.useState('');
       const [isReportLoading, setIsReportLoading] = React.useState(false);
       const [chatMessages, setChatMessages] = React.useState([
-        { role: 'assistant', text: '안녕하세요! 비즈니스 데이터 기반 1:1 AI 컨설턴트입니다. 매출, 인기 상품, 채널 분석 등 무엇이든 물어보세요.' }
+        { role: 'assistant', text: '안녕하십니까, 경영진 전담 비즈니스 분석 AI 컨설턴트입니다. 매출 구조, 채널별 수익성, 실적이슈에 관해 질의해 주십시오.' }
       ]);
       const [chatInput, setChatInput] = React.useState('');
       const [isChatLoading, setIsChatLoading] = React.useState(false);
@@ -146,7 +155,7 @@
             if (savedData && Array.isArray(savedData) && savedData.length > 0) {
               setRawData(savedData);
               if (savedMapping) setMappedFields(savedMapping);
-              showToast(`저장된 데이터 ${savedData.length.toLocaleString()}건 및 설정이 자동 복원되었습니다.`);
+              showToast(`이전 세션 데이터 ${savedData.length.toLocaleString()}건 및 맞춤 설정이 성공적으로 복원되었습니다.`);
             }
           } catch (e) {
             console.error('Session Restore Fail:', e);
@@ -169,70 +178,82 @@
       }, [rawData, mappedFields, isRestoring]);
 
       const handleFileUpload = (e, isAppending = false) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          try {
-            const bstr = evt.target.result;
-            const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
-            const wsname = wb.SheetNames[0];
-            const ws = wb.Sheets[wsname];
-            const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        let totalParsedData = [];
+        let completedFiles = 0;
 
-            if (data.length === 0) {
-              showToast('업로드된 파일에 분석 데이터가 없습니다.');
-              return;
+        files.forEach((file) => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const bstr = evt.target.result;
+              const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
+              const wsname = wb.SheetNames[0];
+              const ws = wb.Sheets[wsname];
+              const parsedRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+              totalParsedData = [...totalParsedData, ...parsedRows];
+            } catch (err) {
+              console.error(`File Read Error (${file.name}):`, err);
+            } finally {
+              completedFiles++;
+              if (completedFiles === files.length) {
+                if (totalParsedData.length === 0) {
+                  showToast('업로드한 파일에서 데이터 항목을 추출하지 못했습니다.');
+                  return;
+                }
+
+                // Auto Detect Column Mapping for initial upload
+                const firstRow = totalParsedData[0];
+                const headers = Object.keys(firstRow);
+                const autoMapping = { ...mappedFields };
+
+                headers.forEach(h => {
+                  const lower = h.toLowerCase();
+                  if (!autoMapping.date && (lower.includes('일자') || lower.includes('날짜') || lower.includes('date'))) autoMapping.date = h;
+                  if (!autoMapping.sales && (lower.includes('매출') || lower.includes('금액') || lower.includes('amount') || lower.includes('price'))) autoMapping.sales = h;
+                  if (!autoMapping.product && (lower.includes('상품') || lower.includes('품목') || lower.includes('item') || lower.includes('product'))) autoMapping.product = h;
+                  if (!autoMapping.branch && (lower.includes('지점') || lower.includes('매장') || lower.includes('branch') || lower.includes('store'))) autoMapping.branch = h;
+                  if (!autoMapping.channel && (lower.includes('채널') || lower.includes('구분') || lower.includes('channel'))) autoMapping.channel = h;
+                  if (!autoMapping.brand && (lower.includes('브랜드') || lower.includes('brand'))) autoMapping.brand = h;
+                  if (!autoMapping.qty && (lower.includes('수량') || lower.includes('qty') || lower.includes('quantity'))) autoMapping.qty = h;
+                });
+
+                if (isAppending && rawData.length > 0) {
+                  const merged = [...rawData, ...totalParsedData];
+                  setRawData(merged);
+                  showToast(`${files.length}개 파일(${totalParsedData.length.toLocaleString()}건)이 추가 병합되어 총 ${merged.length.toLocaleString()}건이 되었습니다.`);
+                } else {
+                  setRawData(totalParsedData);
+                  setMappedFields(autoMapping);
+                  showToast(`${files.length}개 파일에서 총 ${totalParsedData.length.toLocaleString()}건의 경영 데이터가 통합 업로드되었습니다.`);
+                }
+              }
             }
+          };
+          reader.readAsBinaryString(file);
+        });
 
-            const headers = Object.keys(data[0]);
-            const autoMapping = { ...mappedFields };
-
-            headers.forEach(h => {
-              const lower = h.toLowerCase();
-              if (!autoMapping.date && (lower.includes('일자') || lower.includes('날짜') || lower.includes('date'))) autoMapping.date = h;
-              if (!autoMapping.sales && (lower.includes('매출') || lower.includes('금액') || lower.includes('amount') || lower.includes('price'))) autoMapping.sales = h;
-              if (!autoMapping.product && (lower.includes('상품') || lower.includes('품목') || lower.includes('item') || lower.includes('product'))) autoMapping.product = h;
-              if (!autoMapping.branch && (lower.includes('지점') || lower.includes('매장') || lower.includes('branch') || lower.includes('store'))) autoMapping.branch = h;
-              if (!autoMapping.channel && (lower.includes('채널') || lower.includes('구분') || lower.includes('channel'))) autoMapping.channel = h;
-              if (!autoMapping.brand && (lower.includes('브랜드') || lower.includes('brand'))) autoMapping.brand = h;
-              if (!autoMapping.qty && (lower.includes('수량') || lower.includes('qty') || lower.includes('quantity'))) autoMapping.qty = h;
-            });
-
-            if (isAppending && rawData.length > 0) {
-              const combined = [...rawData, ...data];
-              setRawData(combined);
-              showToast(`기존 데이터에 ${data.length.toLocaleString()}건이 추가되어 총 ${combined.length.toLocaleString()}건이 되었습니다.`);
-            } else {
-              setRawData(data);
-              setMappedFields(autoMapping);
-              showToast(`${data.length.toLocaleString()}건의 데이터 업로드가 완료되었습니다.`);
-            }
-          } catch (err) {
-            console.error(err);
-            showToast('파일을 읽는 중 오류가 발생했습니다.');
-          }
-          e.target.value = '';
-        };
-        reader.readAsBinaryString(file);
+        e.target.value = '';
       };
 
       const loadSampleData = () => {
         const sample = [
-          { 날짜: '2026-07-01', 매출액: 2450000, 상품명: '프리미엄 AI 노트북', 지점: '강남본점', 채널: '온라인몰', 브랜드: 'TechExec', 수량: 2 },
-          { 날짜: '2026-07-02', 매출액: 1200000, 상품명: '무선 노이즈캔슬링 헤드폰', 지점: '홍대점', 채널: '직영매장', 브랜드: 'SoundMaster', 수량: 4 },
-          { 날짜: '2026-07-03', 매출액: -150000, 상품명: '스마트 워치 밴드 (반품)', 지점: '강남본점', 채널: '온라인몰', 브랜드: 'TechExec', 수량: -1 },
-          { 날짜: '2026-07-04', 매출액: 3800000, 상품명: '울트라 세로형 모니터 32인치', 지점: '판교점', 채널: 'B2B납품', 브랜드: 'TechExec', 수량: 5 },
-          { 날짜: '2026-07-05', 매출액: 980000, 상품명: '인간공학 버티컬 마우스', 지점: '부산점', 채널: '온라인몰', 브랜드: 'OfficeGear', 수량: 10 },
-          { 날짜: '2026-07-06', 매출액: 4500000, 상품명: '프리미엄 AI 노트북', 지점: '강남본점', 채널: 'B2B납품', 브랜드: 'TechExec', 수량: 4 },
-          { 날짜: '2026-07-07', 매출액: 1600000, 상품명: '기계식 게이밍 키보드', 지점: '홍대점', 채널: '온라인몰', 브랜드: 'OfficeGear', 수량: 8 },
-          { 날짜: '2026-07-08', 매출액: 2100000, 상품명: '무선 노이즈캔슬링 헤드폰', 지점: '판교점', 채널: '직영매장', 브랜드: 'SoundMaster', 수량: 7 }
+          { 날짜: '2026-07-01', 매출액: 4850000, 상품명: '엔터프라이즈 AI 서버 S2', 지점: '서울 본사', 채널: 'B2B 직접계약', 브랜드: 'TechExec', 수량: 2 },
+          { 날짜: '2026-07-02', 매출액: 2100000, 상품명: '경영 워크스페이스 모니터 34', 지점: '강남 센터', 채널: '온라인 대표몰', 브랜드: 'OfficeGear', 수량: 3 },
+          { 날짜: '2026-07-03', 매출액: -350000, 상품명: '보안 스마트 도킹스테이션 (반품)', 지점: '서울 본사', 채널: '온라인 대표몰', 브랜드: 'OfficeGear', 수량: -1 },
+          { 날짜: '2026-07-04', 매출액: 8900000, 상품명: '빅데이터 통합 클라우드 라이선스', 지점: '판교 R&D Center', 채널: 'B2B 직접계약', 브랜드: 'TechExec', 수량: 10 },
+          { 날짜: '2026-07-05', 매출액: 1450000, 상품명: '인간공학 퍼스트 클래스 체어', 지점: '부산 지사', 채널: '법인 리스', 브랜드: 'ErgoBiz', 수량: 2 },
+          { 날짜: '2026-07-06', 매출액: 6200000, 상품명: '엔터프라이즈 AI 서버 S2', 지점: '서울 본사', 채널: 'B2B 직접계약', 브랜드: 'TechExec', 수량: 3 },
+          { 날짜: '2026-07-07', 매출액: 1800000, 상품명: '차세대 암호화 SSD 패키지', 지점: '강남 센터', 채널: '온라인 대표몰', 브랜드: 'OfficeGear', 수량: 5 },
+          { 날짜: '2026-07-08', 매출액: 3400000, 상품명: 'AI 서브노트북 프로', 지점: '판교 R&D Center', 채널: '법인 리스', 브랜드: 'TechExec', 수량: 2 }
         ];
         const mapping = { date: '날짜', sales: '매출액', product: '상품명', branch: '지점', channel: '채널', brand: '브랜드', qty: '수량' };
         setRawData(sample);
         setMappedFields(mapping);
-        showToast('데모 데이터(8건)가 성공적으로 로드되었습니다.');
+        showToast('엔터프라이즈 데모 데이터(8건)가 로드되었습니다.');
       };
 
       const executeResetData = () => {
@@ -241,14 +262,15 @@
         removeFromDB('saved_raw_data');
         removeFromDB('saved_mapped_fields');
         setShowResetModal(false);
-        showToast('데이터 세션이 안전하게 초기화되었습니다.');
+        showToast('저장된 분석 세션이 안전하게 제거되었습니다.');
       };
 
       const saveApiKey = (key) => {
-        setApiKey(key);
-        localStorage.setItem('exec_gemini_api_key', key);
+        const trimmed = key.trim();
+        setApiKey(trimmed);
+        localStorage.setItem('exec_gemini_api_key', trimmed);
         setShowKeyModal(false);
-        showToast(key ? 'Gemini API 키가 저장되었습니다.' : 'API 키가 삭제되었습니다.');
+        showToast(trimmed ? 'Gemini API 키가 저장되었습니다.' : '저장된 API 키가 삭제되었습니다.');
       };
 
       const filteredData = React.useMemo(() => {
@@ -290,6 +312,7 @@
           .map(([name, sales]) => ({ name, sales }))
           .sort((a, b) => b.sales - a.sales);
 
+        // Data Quality Matrix Calculation
         const activeMappedCols = Object.values(mappedFields).filter(Boolean);
         let validCells = 0;
         let totalCells = filteredData.length * activeMappedCols.length;
@@ -313,20 +336,21 @@
       const generateAIReport = async () => {
         setIsReportLoading(true);
         const userPrompt = `
-다음 비즈니스 분석 데이터를 기반으로 CEO 및 경영진을 위한 심층 경영 전략 보고서를 한글 Markdown 형식으로 작성해 주세요.
+당신은 최고경영진(CEO/CFO)을 위한 수석 전략 컨설턴트입니다.
+아래 실무 데이터를 기반으로 명확하고 구체적인 한글 마크다운(Markdown) 보고서를 작성하세요.
 
-[경영 핵심 지표 Summary]
-- 총 매출액: ${metrics.totalSales.toLocaleString()}원
-- 총 건수: ${metrics.totalOrders.toLocaleString()}건
-- 평균 주문 금액: ${metrics.avgOrderValue.toLocaleString()}원
-- 반품/취소 비율: ${metrics.refundRate}%
-- 상위 인기 상품 TOP 3: ${metrics.topProducts.slice(0, 3).map(p => `${p.name}(${p.sales.toLocaleString()}원)`).join(', ')}
+[경영 핵심 통계 요약]
+- 총 누적 매출액: ${metrics.totalSales.toLocaleString()}원
+- 총 처리 거래건수: ${metrics.totalOrders.toLocaleString()}건
+- 평균 객단가(AOV): ${metrics.avgOrderValue.toLocaleString()}원
+- 취소/반품 비율: ${metrics.refundRate}%
+- 파레토 상위 품목 TOP 3: ${metrics.topProducts.slice(0, 3).map(p => `${p.name}(${p.sales.toLocaleString()}원)`).join(', ')}
 
-[보고서 작성 가이드라인]
-1. Executive Summary (핵심 성과 요약)
-2. 매출 및 상품 구조 분석 (80/20 법칙 적용)
-3. 리스크 및 반품 요인 관리
-4. 향후 3개월 실행 가능한 3대 핵심 전략 제언
+[보고서 작성 세부 지침]
+1. Executive Summary (핵심 실적 관제 및 평가)
+2. 매출 및 상품 구조 심층 분석 (Pareto 80/20 법칙 기반)
+3. 손실 리스크 및 반품 요인 관리방안
+4. 경영진을 위한 향후 3개월 내 실행 과제 (3대 Action Items)
 `;
 
         const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
@@ -343,40 +367,40 @@
               const data = await res.json();
               if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
                 setAiReport(data.candidates[0].content.parts[0].text);
-                showToast(`Gemini AI (${model}) 전략 보고서 생성이 완료되었습니다.`);
+                showToast(`Gemini AI (${model}) 수석 리포트 작성이 완료되었습니다.`);
                 success = true;
                 break;
               }
             } catch (err) {
-              console.warn(`Model ${model} failed, trying fallback...`, err);
+              console.warn(`Model ${model} execution failed, switching to fallback...`, err);
             }
           }
         }
 
         if (!success) {
           const fallbackText = `
-# 📊 [실데이터 기반] Executive AI 비즈니스 분석 보고서
+# 📊 [Executive Analysis] 비즈니스 경영 전략 보고서
 
-## 1. Executive Summary
-* **누적 총 매출액**: **${metrics.totalSales.toLocaleString()}원** (총 ${metrics.totalOrders.toLocaleString()}건)
-* **건당 평균 객단가**: **${metrics.avgOrderValue.toLocaleString()}원**
-* **반품/취소 비율**: **${metrics.refundRate}%** (리스크 관리 수준: ${metrics.refundRate > 5 ? '⚠️ 주의 필요' : '✅ 양호'})
+## 1. Executive Summary (실적 요약)
+* **총 매출 규모**: **${metrics.totalSales.toLocaleString()}원** (총 처리건수: ${metrics.totalOrders.toLocaleString()}건)
+* **거래당 평균 객단가(AOV)**: **${metrics.avgOrderValue.toLocaleString()}원**
+* **취소/반품 모니터링**: **${metrics.refundRate}%** (리스크 등급: ${metrics.refundRate > 5 ? '⚠️ 집중 관제' : '✅ 안정적인 컨트롤'})
 
 ---
 
-## 2. 파레토(80/20) 매출 구조 및 핵심 상품 분석
-전체 매출을 견인하는 최상위 핵심 품목 현황입니다.
+## 2. Pareto (80/20) 매출 집중도 분석
+실적 창출 기여도가 가장 높은 핵심 파레토 품목 라인업입니다.
 ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sales.toLocaleString()}원`).join('\n')}
 
 ---
 
-## 3. 리스크 진단 및 실행 전략 제언
-1. **주요 매출원 집중도 관리**: 상위 ${metrics.topProducts.slice(0, 2).map(p => p.name).join(', ')} 제품군에 대한 재고 안정성 확보가 시급합니다.
-2. **반품률 개선 조치**: 현재 반품율이 ${metrics.refundRate}%로 집계되므로 품질 검수 프로세스를 점검할 필요가 있습니다.
-3. **채널별 마케팅 효율화**: 매출 비중이 높은 채널을 중심으로 프로모션을 집중 배치하세요.
+## 3. 리스크 컨트롤 및 경영진 액션 플랜
+1. **주력 매출원 공급망 안정성 확보**: 상위 품목인 [${metrics.topProducts[0]?.name || '주력 상품'}] 라인에 대한 재고 부족 리스크 사전 예방.
+2. **반품률 모니터링 및 프로세스 강화**: 현재 취소/반품 비율 ${metrics.refundRate}% 감축을 위한 출하 검수 단속.
+3. **고객 채널별 매출 기여도 극대화**: 핵심 수주 채널에 마케팅 리소스 집중 배치.
 `;
           setAiReport(fallbackText);
-          showToast('로컬 분석 엔진 기반 경영 보고서가 즉시 생성되었습니다.');
+          showToast('로컬 가드레일 엔진 기반 경영 리포트가 즉시 작성되었습니다.');
         }
 
         setIsReportLoading(false);
@@ -390,14 +414,14 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
         setIsChatLoading(true);
 
         const prompt = `
-당신은 기업 CEO의 1:1 전담 AI 경영 컨설턴트입니다.
-현재 기업 데이터 요약:
-- 총 매출: ${metrics.totalSales.toLocaleString()}원
-- 주문 건수: ${metrics.totalOrders.toLocaleString()}건
-- 상위 상품: ${metrics.topProducts.slice(0, 3).map(p => p.name).join(', ')}
+당신은 최고경영진 전담 수석 AI 경영 분석가입니다.
+기업 내부 데이터:
+- 총 누적 매출: ${metrics.totalSales.toLocaleString()}원
+- 거래 수주 건수: ${metrics.totalOrders.toLocaleString()}건
+- 주력 상위 품목: ${metrics.topProducts.slice(0, 3).map(p => p.name).join(', ')}
 
 질문: ${userQ}
-답변 조건: 2~4문장의 신속하고 결단력 있는 대화체 명답을 제시할 것.
+요구사항: 전문적이고 세련된 경영진 보고 언어로 2~3문장의 간결하고 전문적인 가이드를 제공하세요.
 `;
 
         let success = false;
@@ -415,12 +439,12 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
               success = true;
             }
           } catch (e) {
-            console.error(e);
+            console.error('AI Chat Error:', e);
           }
         }
 
         if (!success) {
-          const fallbackReply = `현재 질문하신 [${userQ}]에 대해 데이터 분석 결과, 누적 매출 ${metrics.totalSales.toLocaleString()}원 중 상위 품목인 ${metrics.topProducts[0]?.name || '주력 상품'}이(가) 주요 성과를 이끌고 있습니다. 해당 항목의 재고 및 프로모션을 정밀 점검하는 것을 추천해 드립니다.`;
+          const fallbackReply = `질의하신 [${userQ}] 관련, 현재 집계된 총 매출액 ${metrics.totalSales.toLocaleString()}원 분석 결과 최상위 매출 견인 항목인 [${metrics.topProducts[0]?.name || '주력 상품'}]의 성과가 압도적입니다. 관련 부서와 제반 리소스 재배치를 검토하시길 권장합니다.`;
           setChatMessages(prev => [...prev, { role: 'assistant', text: fallbackReply }]);
         }
 
@@ -438,7 +462,7 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
         });
 
         setRawData(cleaned);
-        showToast(`불완전 레코드가 정제되어 데이터 신뢰도가 100점으로 보정되었습니다.`);
+        showToast(`불완전 데이터 행이 정제되어 무결성 점수가 100점으로 보정되었습니다.`);
       };
 
       React.useEffect(() => {
@@ -458,13 +482,15 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
               labels,
               datasets: [{
                 data: dataVals,
-                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+                backgroundColor: ['#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
               }]
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { legend: { position: 'bottom' } }
+              plugins: { legend: { position: 'bottom', labels: { font: { family: 'Pretendard', size: 11 }, boxWidth: 12 } } }
             }
           });
         }
@@ -474,19 +500,22 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
           chart2 = new Chart(ctx2, {
             type: 'bar',
             data: {
-              labels: top5.map(p => p.name.length > 8 ? p.name.substring(0, 8) + '...' : p.name),
+              labels: top5.map(p => p.name.length > 10 ? p.name.substring(0, 10) + '...' : p.name),
               datasets: [{
                 label: '매출액 (원)',
                 data: top5.map(p => p.sales),
-                backgroundColor: '#3b82f6',
-                borderRadius: 6
+                backgroundColor: '#1e40af',
+                borderRadius: 4
               }]
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
               plugins: { legend: { display: false } },
-              scales: { y: { beginAtZero: true } }
+              scales: { 
+                y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false }, ticks: { font: { family: 'Pretendard', size: 11 } } }
+              }
             }
           });
         }
@@ -500,33 +529,35 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
       if (isRestoring) {
         return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-4">
-            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-lg font-semibold">이전 분석 데이터 및 매핑 복원 중...</p>
-            <p className="text-xs text-slate-400 mt-1">IndexedDB 데이터베이스를 동기화하고 있습니다.</p>
+            <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-sm font-semibold tracking-wide text-slate-200">경영 데이터 분석 세션 복원 중...</p>
+            <p className="text-xs text-slate-400 mt-1">IndexedDB 엔터프라이즈 데이터베이스 동기화 진행 중</p>
           </div>
         );
       }
 
       return (
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-slate-100">
           {/* Toast Notification */}
           {toastMessage && (
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-full shadow-2xl text-xs sm:text-sm font-medium flex items-center gap-2 border border-slate-700 animate-bounce">
-              <span>✨</span>
+            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl text-xs sm:text-sm font-medium flex items-center gap-2.5 border border-slate-700 animate-fade-in">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
               <span>{toastMessage}</span>
             </div>
           )}
 
-          {/* Clean Header (Subtitle removed) */}
-          <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
-            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="bg-blue-600 p-2 rounded-xl text-white font-bold text-lg leading-none">AI</div>
+          {/* Premium Corporate Top Header */}
+          <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-lg border-b border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md tracking-tighter">
+                  AI
+                </div>
                 <div>
-                  <h1 className="font-bold text-base sm:text-lg leading-tight flex items-center gap-2">
+                  <h1 className="font-bold text-base sm:text-xl tracking-tight text-slate-100 flex items-center gap-2.5">
                     Executive Business AI
                     {rawData.length > 0 && (
-                      <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      <span className="bg-emerald-500/20 text-emerald-400 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border border-emerald-500/30">
                         {rawData.length.toLocaleString()}건 분석 중
                       </span>
                     )}
@@ -534,26 +565,29 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                 </div>
               </div>
 
-              {/* Toolbar */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Action Toolbar */}
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowKeyModal(true)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 border transition ${
-                    apiKey ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/50' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 border transition ${
+                    apiKey 
+                      ? 'bg-slate-800 text-emerald-400 border-emerald-600/50 hover:bg-slate-700' 
+                      : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
                   }`}
                 >
-                  <span>🔑</span>
-                  <span className="hidden sm:inline">{apiKey ? 'API 키 등록됨' : 'API 키 설정'}</span>
+                  <span className="text-xs">🔑</span>
+                  <span className="hidden sm:inline">{apiKey ? 'API 키 설정됨' : 'API 키 설정'}</span>
                 </button>
 
                 {rawData.length > 0 && (
                   <>
-                    <label className="cursor-pointer px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium flex items-center gap-1 transition">
+                    <label className="cursor-pointer px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition shadow-sm">
                       <span>➕</span>
                       <span className="hidden sm:inline">데이터 추가 업로드</span>
                       <input
                         type="file"
                         accept=".xlsx, .xls, .csv"
+                        multiple
                         onChange={(e) => handleFileUpload(e, true)}
                         className="hidden"
                       />
@@ -561,14 +595,15 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
 
                     <button
                       onClick={() => setShowMappingModal(true)}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1"
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
                     >
                       <span>⚙️</span>
                       <span className="hidden sm:inline">필드 매핑</span>
                     </button>
+
                     <button
                       onClick={() => setShowResetModal(true)}
-                      className="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-lg text-xs font-medium"
+                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-rose-950/80 text-rose-400 border border-slate-700 hover:border-rose-800/60 rounded-lg text-xs font-medium transition"
                       title="데이터 초기화"
                     >
                       <span>🔄</span>
@@ -578,9 +613,9 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
               </div>
             </div>
 
-            {/* Desktop Navigation Tabs */}
+            {/* Desktop persistent tab navigation */}
             {rawData.length > 0 && (
-              <div className="hidden md:flex max-w-7xl mx-auto px-4 gap-2 border-t border-slate-800 pt-2 pb-2">
+              <div className="hidden md:flex max-w-7xl mx-auto px-6 gap-2 border-t border-slate-800/80 pt-2 pb-2">
                 {[
                   { id: 'dashboard', label: '📊 경영 대시보드' },
                   { id: 'report', label: '📄 AI 전략 보고서' },
@@ -590,8 +625,8 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-                      activeTab === tab.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
+                      activeTab === tab.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800'
                     }`}
                   >
                     {tab.label}
@@ -601,137 +636,136 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
             )}
           </header>
 
-          <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6">
+          {/* Main Dashboard / Analytical Main Body */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
             {rawData.length === 0 ? (
-              /* Standardized Landing Screen for Both Mobile and Desktop */
-              <div className="max-w-2xl mx-auto my-6 sm:my-12 bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-10 text-center">
-                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-inner">
-                  📈
+              /* Executive Upload Landing Card */
+              <div className="max-w-2xl mx-auto my-8 sm:my-16 bg-white rounded-2xl shadow-xl border border-slate-200/90 p-8 sm:p-12 text-center">
+                <div className="w-16 h-16 bg-slate-900 text-blue-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-6 shadow-inner border border-slate-800">
+                  📊
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2 tracking-tight">
                   경영 분석 데이터 업로드
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-500 mb-8 leading-relaxed">
                   매출, 주문 내역, CSV/엑셀 파일을 업로드하시면 로컬 보안 브라우저 환경에서 즉시 AI 경영 분석이 수행됩니다.
                 </p>
 
-                {/* Primary Action: File Upload */}
-                <div className="mb-3">
-                  <label className="block w-full cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition text-sm">
-                    📂 데이터 파일 업로드
+                {/* File Upload Action */}
+                <div className="space-y-3">
+                  <label className="block w-full cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg active:scale-[0.99] transition text-sm">
+                    📂 데이터 파일 업로드 (다중 선택 가능)
                     <input
                       type="file"
                       accept=".xlsx, .xls, .csv"
+                      multiple
                       onChange={(e) => handleFileUpload(e, false)}
                       className="hidden"
                     />
                   </label>
-                </div>
 
-                {/* Secondary Action: Demo Data Load */}
-                <div>
                   <button
                     onClick={loadSampleData}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 px-4 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2"
+                    className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium py-3 px-4 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2"
                   >
                     <span>🚀</span>
                     <span>데모 데이터 로드</span>
                   </button>
                 </div>
 
-                <div className="mt-6 text-[11px] text-slate-400 bg-slate-50 p-3 rounded-lg text-left">
+                <div className="mt-8 text-[11px] text-slate-400 bg-slate-50 border border-slate-100 p-3.5 rounded-xl text-left leading-normal">
                   🔒 <strong>보안 안내:</strong> 업로드된 데이터는 외부 서버로 전송되지 않으며, 사용자 기기의 브라우저 내부(IndexedDB)에만 저장됩니다.
                 </div>
               </div>
             ) : (
-              /* Dashboard / Analytical View Tabs */
-              <div className="space-y-4 sm:space-y-6">
-                {/* Executive KPI Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400">총 누적 매출액</p>
-                    <p className="text-lg sm:text-2xl font-black text-slate-900 mt-1 truncate">
-                      {metrics.totalSales.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-0.5">원</span>
+              /* Analytic Dashboards */
+              <div className="space-y-5 sm:space-y-6">
+                {/* Top Metrics Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+                  <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm">
+                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">총 누적 매출액</p>
+                    <p className="text-lg sm:text-2xl font-extrabold text-slate-900 mt-1 truncate">
+                      {metrics.totalSales.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-1">원</span>
                     </p>
-                    <div className="mt-2 text-[10px] sm:text-xs text-emerald-600 font-medium flex items-center gap-1">
-                      <span>▲ 정상 가공됨</span>
+                    <div className="mt-2.5 text-[10px] sm:text-xs text-emerald-600 font-medium flex items-center gap-1">
+                      <span>▲ 무결성 검증됨</span>
                     </div>
                   </div>
 
-                  <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400">총 주문 건수</p>
-                    <p className="text-lg sm:text-2xl font-black text-slate-900 mt-1">
-                      {metrics.totalOrders.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-0.5">건</span>
+                  <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm">
+                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">총 주문 처리 건수</p>
+                    <p className="text-lg sm:text-2xl font-extrabold text-slate-900 mt-1">
+                      {metrics.totalOrders.toLocaleString()}<span className="text-xs font-normal text-slate-500 ml-1">건</span>
                     </p>
-                    <div className="mt-2 text-[10px] sm:text-xs text-blue-600 font-medium">
-                      건당 {metrics.avgOrderValue.toLocaleString()}원
+                    <div className="mt-2.5 text-[10px] sm:text-xs text-blue-600 font-medium">
+                      건당 {metrics.avgOrderValue.toLocaleString()}원 (AOV)
                     </div>
                   </div>
 
-                  <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400">반품 / 취소 비율</p>
-                    <p className="text-lg sm:text-2xl font-black text-rose-600 mt-1">
-                      {metrics.refundRate}<span className="text-xs font-normal text-slate-500 ml-0.5">%</span>
+                  <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm">
+                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">취소 / 반품 비율</p>
+                    <p className="text-lg sm:text-2xl font-extrabold text-rose-600 mt-1">
+                      {metrics.refundRate}<span className="text-xs font-normal text-slate-500 ml-1">%</span>
                     </p>
-                    <div className="mt-2 text-[10px] sm:text-xs text-slate-400">
-                      품질 관제 상태
+                    <div className="mt-2.5 text-[10px] sm:text-xs text-slate-400">
+                      손실 관리 모니터링 중
                     </div>
                   </div>
 
-                  <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400">데이터 무결성 점수</p>
-                    <p className="text-lg sm:text-2xl font-black text-emerald-600 mt-1">
-                      {metrics.reliabilityScore}<span className="text-xs font-normal text-slate-500 ml-0.5">점</span>
+                  <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm">
+                    <p className="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">데이터 무결성 점수</p>
+                    <p className="text-lg sm:text-2xl font-extrabold text-emerald-600 mt-1">
+                      {metrics.reliabilityScore}<span className="text-xs font-normal text-slate-500 ml-1">점</span>
                     </p>
-                    <div className="mt-2 text-[10px] sm:text-xs text-emerald-600 font-medium">
-                      {metrics.reliabilityScore === 100 ? '✅ 100% 완전함' : '⚠️ 검증 필요'}
+                    <div className="mt-2.5 text-[10px] sm:text-xs text-emerald-600 font-medium">
+                      {metrics.reliabilityScore === 100 ? '✅ 100% 무결성 상태' : '⚠️ 결측치 정제 필요'}
                     </div>
                   </div>
                 </div>
 
-                {/* Tab 1: Dashboard View */}
+                {/* TAB 1: Executive Dashboard View */}
                 {activeTab === 'dashboard' && (
-                  <div className="space-y-4 sm:space-y-6">
-                    {/* Charts Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm">
-                        <h3 className="text-sm sm:text-base font-bold text-slate-800 mb-3 flex items-center justify-between">
-                          <span>🏢 지점별 매출 비중</span>
+                  <div className="space-y-5 sm:space-y-6">
+                    {/* Visual Charts */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+                      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-4 flex items-center justify-between border-b border-slate-100 pb-2.5">
+                          <span>🏢 거점/지점별 매출 분포</span>
                         </h3>
-                        <div className="relative h-56 sm:h-64 w-full">
+                        <div className="relative h-60 sm:h-64 w-full">
                           <canvas id="chartBranch"></canvas>
                         </div>
                       </div>
 
-                      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm">
-                        <h3 className="text-sm sm:text-base font-bold text-slate-800 mb-3">
-                          🏆 TOP 5 인기 상품 성과
+                      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2.5">
+                          🏆 TOP 5 주력 실적 상품
                         </h3>
-                        <div className="relative h-56 sm:h-64 w-full">
+                        <div className="relative h-60 sm:h-64 w-full">
                           <canvas id="chartTopProducts"></canvas>
                         </div>
                       </div>
                     </div>
 
-                    {/* Pareto Top Products List */}
-                    <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm">
-                      <h3 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <span>🎯 파레토 80/20 주력 매출 품목</span>
+                    {/* Pareto Top Products Table View */}
+                    <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <span>🎯 Pareto (80/20) 핵심 수주 항목</span>
                       </h3>
                       <div className="divide-y divide-slate-100">
                         {metrics.topProducts.slice(0, 5).map((item, idx) => {
                           const pct = metrics.totalSales > 0 ? Math.round((item.sales / metrics.totalSales) * 100) : 0;
                           return (
                             <div key={idx} className="py-3 flex items-center justify-between text-xs sm:text-sm">
-                              <div className="flex items-center gap-2 sm:gap-3">
-                                <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-[10px]">
+                              <div className="flex items-center gap-3">
+                                <span className="w-5 h-5 rounded-md bg-slate-900 text-white font-bold flex items-center justify-center text-[11px]">
                                   {idx + 1}
                                 </span>
-                                <span className="font-semibold text-slate-800 truncate max-w-[140px] sm:max-w-xs">{item.name}</span>
+                                <span className="font-semibold text-slate-800 truncate max-w-[160px] sm:max-w-md">{item.name}</span>
                               </div>
                               <div className="text-right">
                                 <span className="font-bold text-slate-900 block">{item.sales.toLocaleString()}원</span>
-                                <span className="text-[10px] text-slate-400">비중 {pct}%</span>
+                                <span className="text-[10px] text-slate-400 font-medium">기여도 {pct}%</span>
                               </div>
                             </div>
                           );
@@ -741,15 +775,15 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                   </div>
                 )}
 
-                {/* Tab 2: AI Report View */}
+                {/* TAB 2: AI Report View */}
                 {activeTab === 'report' && (
-                  <div className="bg-white p-4 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
+                  <div className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200/90 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
                       <div>
                         <h2 className="text-base sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-                          <span>🤖 AI Executive 경영 전략 리포트</span>
+                          <span>🤖 Executive AI 전략 보고서</span>
                         </h2>
-                        <p className="text-xs text-slate-500 mt-0.5">Gemini AI 및 로컬 분석 엔진으로 실시간 생성됩니다.</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Gemini 모델과 로컬 분석 가드레일 엔진을 통해 즉시 생성됩니다.</p>
                       </div>
                       <button
                         onClick={generateAIReport}
@@ -759,84 +793,84 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                         {isReportLoading ? (
                           <>
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span>전략 분석 중...</span>
+                            <span>전략 분석 보고서 작성 중...</span>
                           </>
                         ) : (
                           <>
                             <span>✨</span>
-                            <span>리포트 새로 생성하기</span>
+                            <span>보고서 재생성</span>
                           </>
                         )}
                       </button>
                     </div>
 
                     {aiReport ? (
-                      <div className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200/60">
+                      <div className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 p-5 sm:p-8 rounded-xl border border-slate-200/70">
                         {aiReport}
                       </div>
                     ) : (
-                      <div className="py-12 text-center text-slate-400 text-xs sm:text-sm">
-                        상단의 [리포트 새로 생성하기] 버튼을 누르시면 최신 경영보고서가 작성됩니다.
+                      <div className="py-16 text-center text-slate-400 text-xs sm:text-sm">
+                        상단의 [보고서 재생성] 버튼을 클릭하면 심층 분석 보고서가 수초 내에 작성됩니다.
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Tab 3: Data Quality */}
+                {/* TAB 3: Data Quality */}
                 {activeTab === 'quality' && (
-                  <div className="bg-white p-4 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-6">
+                  <div className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200/90 shadow-sm space-y-6">
                     <div>
                       <h2 className="text-base sm:text-xl font-bold text-slate-900 mb-1">
-                        🛡️ 데이터 품질 진단 & 100점 보정
+                        🛡️ 데이터 품질 진단 & 100점 보정 엔진
                       </h2>
                       <p className="text-xs text-slate-500">
-                        매핑된 필드 셀의 누락값과 무효한 레코드를 자동으로 찾아 100% 무결성 데이터로 정제합니다.
+                        지정된 매핑 필드의 누락 및 무효값을 추적하여 무결성을 보정합니다.
                       </p>
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
                       <div>
-                        <p className="text-xs font-semibold text-slate-500">현재 무결성 점수</p>
-                        <p className="text-2xl sm:text-3xl font-black text-emerald-600">{metrics.reliabilityScore}점</p>
+                        <p className="text-xs font-semibold text-slate-500">현재 데이터 무결성 점수</p>
+                        <p className="text-2xl sm:text-3xl font-black text-emerald-600 mt-0.5">{metrics.reliabilityScore}점</p>
                       </div>
                       <button
                         onClick={handleDataCleaning}
                         className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl text-xs sm:text-sm shadow-md transition"
                       >
-                        ✨ 결측치 완전 정제 (100점 만들기)
+                        ✨ 결측치 완전히 정제 (100점 맞추기)
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Tab 4: Raw Data Table */}
+                {/* TAB 4: Raw Data Table View */}
                 {activeTab === 'table' && (
-                  <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 justify-between items-center">
-                      <h3 className="font-bold text-sm text-slate-800 self-start sm:self-center">
-                        📋 데이터 관제 ({filteredData.length.toLocaleString()}건)
+                  <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 justify-between items-center bg-slate-50/50">
+                      <h3 className="font-bold text-xs sm:text-sm text-slate-800 self-start sm:self-center">
+                        📋 상세 데이터 관제 ({filteredData.length.toLocaleString()}건)
                       </h3>
                       <input
                         type="text"
-                        placeholder="검색어 입력..."
+                        placeholder="전체 항목 검색어 입력..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full sm:w-64 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full sm:w-72 px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                    {/* Mobile Scrollable Table */}
-                    <div className="overflow-x-auto custom-scrollbar">
+                    {/* Scrollable Data Table */}
+                    <div className="overflow-x-auto custom-scrollbar max-h-[600px]">
                       <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                        <thead className="sticky top-0 bg-slate-100 border-b border-slate-200 text-slate-700 z-10">
+                          <tr>
                             {Object.keys(rawData[0] || {}).map((col, idx) => (
                               <th key={idx} className="p-3 font-semibold whitespace-nowrap">{col}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {filteredData.slice(0, 50).map((row, rIdx) => (
-                            <tr key={rIdx} className="hover:bg-slate-50/80">
+                          {filteredData.slice(0, 100).map((row, rIdx) => (
+                            <tr key={rIdx} className="hover:bg-slate-50/90 transition">
                               {Object.keys(row).map((col, cIdx) => (
                                 <td key={cIdx} className="p-3 whitespace-nowrap text-slate-700">
                                   {String(row[col])}
@@ -853,12 +887,13 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
             )}
           </main>
 
+          {/* Mobile Specific Bottom Nav (Clean Corporate Style) */}
           {rawData.length > 0 && (
             <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 text-slate-400 z-30 flex justify-around items-center h-16 md:hidden">
               <button
                 onClick={() => setActiveTab('dashboard')}
                 className={`flex flex-col items-center justify-center w-full h-full text-[10px] font-medium ${
-                  activeTab === 'dashboard' ? 'text-blue-400' : 'hover:text-slate-200'
+                  activeTab === 'dashboard' ? 'text-blue-400 font-bold' : 'hover:text-slate-200'
                 }`}
               >
                 <span className="text-base mb-0.5">📊</span>
@@ -868,7 +903,7 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
               <button
                 onClick={() => setActiveTab('report')}
                 className={`flex flex-col items-center justify-center w-full h-full text-[10px] font-medium ${
-                  activeTab === 'report' ? 'text-blue-400' : 'hover:text-slate-200'
+                  activeTab === 'report' ? 'text-blue-400 font-bold' : 'hover:text-slate-200'
                 }`}
               >
                 <span className="text-base mb-0.5">📄</span>
@@ -878,7 +913,7 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
               <button
                 onClick={() => setActiveTab('quality')}
                 className={`flex flex-col items-center justify-center w-full h-full text-[10px] font-medium ${
-                  activeTab === 'quality' ? 'text-blue-400' : 'hover:text-slate-200'
+                  activeTab === 'quality' ? 'text-blue-400 font-bold' : 'hover:text-slate-200'
                 }`}
               >
                 <span className="text-base mb-0.5">🛡️</span>
@@ -888,7 +923,7 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
               <button
                 onClick={() => setActiveTab('table')}
                 className={`flex flex-col items-center justify-center w-full h-full text-[10px] font-medium ${
-                  activeTab === 'table' ? 'text-blue-400' : 'hover:text-slate-200'
+                  activeTab === 'table' ? 'text-blue-400 font-bold' : 'hover:text-slate-200'
                 }`}
               >
                 <span className="text-base mb-0.5">📋</span>
@@ -905,21 +940,21 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
             </nav>
           )}
 
-          {/* AI Chat Drawer */}
+          {/* AI Executive Chat Drawer */}
           {showChatDrawer && (
-            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-end flex-col md:items-end p-0 md:p-4 animate-fade-in">
-              <div className="bg-white w-full md:w-96 h-[85vh] md:h-[600px] rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-end flex-col md:items-end p-0 md:p-4">
+              <div className="bg-white w-full md:w-96 h-[85vh] md:h-[600px] rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
                 <div className="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <span className="text-lg">🤖</span>
                     <div>
-                      <h4 className="font-bold text-xs sm:text-sm">AI 경영 컨설턴트 1:1 Q&A</h4>
-                      <p className="text-[10px] text-emerald-400">실시간 데이터 연동 상태</p>
+                      <h4 className="font-bold text-xs sm:text-sm">Executive AI 수석 컨설턴트</h4>
+                      <p className="text-[10px] text-emerald-400">실시간 데이터 연동 가동 중</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowChatDrawer(false)}
-                    className="text-slate-400 hover:text-white text-lg p-1"
+                    className="text-slate-400 hover:text-white text-lg p-1 transition"
                   >
                     ✕
                   </button>
@@ -932,9 +967,9 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                       className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                        className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed ${
                           msg.role === 'user'
-                            ? 'bg-blue-600 text-white rounded-br-none'
+                            ? 'bg-blue-600 text-white rounded-br-none shadow-sm'
                             : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-bl-none'
                         }`}
                       >
@@ -945,7 +980,7 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                   {isChatLoading && (
                     <div className="flex justify-start">
                       <div className="bg-white border border-slate-200 p-3 rounded-2xl text-xs text-slate-400 animate-pulse">
-                        답변을 생각하고 있습니다...
+                        데이터 요소를 다각도로 검토 중입니다...
                       </div>
                     </div>
                   )}
@@ -954,15 +989,15 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                 <div className="p-3 bg-white border-t border-slate-200 flex gap-2">
                   <input
                     type="text"
-                    placeholder="매출 전략에 대해 질문해 보세요..."
+                    placeholder="경영진 질문 사항 입력..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     onClick={handleSendChat}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-sm"
                   >
                     전송
                   </button>
@@ -971,14 +1006,14 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
             </div>
           )}
 
-          {/* Desktop Floating AI Chat Trigger Button */}
+          {/* Desktop AI Assistant Floating Trigger */}
           {rawData.length > 0 && !showChatDrawer && (
             <button
               onClick={() => setShowChatDrawer(true)}
-              className="hidden md:flex fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-full shadow-2xl z-40 items-center gap-2 text-xs font-semibold hover:scale-105 transition"
+              className="hidden md:flex fixed bottom-6 right-6 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 px-4 py-3.5 rounded-full shadow-2xl z-40 items-center gap-2 text-xs font-semibold hover:scale-105 transition"
             >
-              <span>💬</span>
-              <span>AI 컨설턴트 Q&A</span>
+              <span className="text-base">💬</span>
+              <span>AI 경영 컨설턴트 질의</span>
             </button>
           )}
 
@@ -990,15 +1025,15 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                   <span>🔑</span> Google Gemini API 키 설정
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Google AI Studio에서 무료로 발급받으신 API 키를 등록해 주세요.<br />
-                  키는 사용자 스마트폰/PC의 브라우저에만 암호화 저장됩니다.
+                  Google AI Studio에서 무료 발급받으신 API 키를 입력하세요.<br />
+                  입력된 키는 사용자 컴퓨터/스마트폰 내부(Browser Store)에만 보안 보관됩니다.
                 </p>
                 <input
                   type="password"
                   placeholder="AIzaSy..."
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="flex justify-end gap-2 pt-2">
                   <button
@@ -1018,15 +1053,15 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
             </div>
           )}
 
-          {/* Reset Confirmation Modal */}
+          {/* Reset Modal */}
           {showResetModal && (
             <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <span>🔄</span> 데이터 세션 초기화
+                  <span>🔄</span> 분석 데이터 초기화
                 </h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  저장된 분석 데이터 및 필드 매핑 설정을 모두 삭제하시겠습니까? 삭제된 세션은 복구할 수 없습니다.
+                  현재 로드된 경영 데이터와 필드 매핑 세션을 모두 지우시겠습니까?
                 </p>
                 <div className="flex justify-end gap-2 pt-2">
                   <button
@@ -1039,7 +1074,7 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
                     onClick={executeResetData}
                     className="px-4 py-2 text-xs font-semibold bg-rose-600 text-white rounded-xl shadow-md hover:bg-rose-700"
                   >
-                    초기화
+                    초기화 실행
                   </button>
                 </div>
               </div>
@@ -1051,10 +1086,10 @@ ${metrics.topProducts.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}**: ${p.sa
             <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <span>⚙️</span> 맞춤 필드 매핑 설정
+                  <span>⚙️</span> 분석 항목 필드 매핑
                 </h3>
                 <p className="text-xs text-slate-500">
-                  업로드된 엑셀 열(Header) 중 각 분석 항목에 맞는 열을 선택하세요.
+                  업로드 데이터의 각 컬럼(Header)을 분석 매포에 매칭하십시오.
                 </p>
 
                 <div className="space-y-3 pt-2">
