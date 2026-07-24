@@ -420,7 +420,8 @@
       ]);
       const [chatInput, setChatInput] = useState('');
       const [savedChatInsights, setSavedChatInsights] = useState([]);
-      const [isAiLoading, setIsAiLoading] = useState(false);
+      const [isReportLoading, setIsReportLoading] = useState(false);
+      const [isChatLoading, setIsChatLoading] = useState(false);
       const [aiReport, setAiReport] = useState(null);
       const [reportType, setReportType] = useState('executive');
 
@@ -909,7 +910,7 @@
 
       const handleGenerateReport = async () => {
         if (!analytics) return;
-        setIsAiLoading(true);
+        setIsReportLoading(true);
 
         const topProductsDetail = analytics.productsABC.slice(0, 10).map(p => 
           `- 상품명: "${p.name}" | 브랜드: "${p.brand}" | 순매출: ${Math.round(p.revenue/1000000)}백만원 | 판매수량: ${p.qty}개 | 점유율: ${p.share.toFixed(1)}%`
@@ -999,7 +1000,7 @@
           }
           setAiReport(fallbackLocalReport);
         }
-        setIsAiLoading(false);
+        setIsReportLoading(false);
       };
 
       const copyReport = () => {
@@ -1027,19 +1028,18 @@
         
         const newHistory = [...chatMessages, { role: 'user', text: msg }];
         setChatMessages(newHistory);
-        setIsAiLoading(true);
+        setIsChatLoading(true);
 
         const topProductsList = analytics.productsABC.slice(0, 8).map(p => `- 상품: "${p.name}" (${p.brand}) | 순매출 ${Math.round(p.revenue/1000000)}백만원 | 수량 ${p.qty}개 | 점유율 ${p.share.toFixed(1)}%`).join('\n');
         const topBranchesList = analytics.topBranches.map(([b, r]) => `- ${b}: ${Math.round(r/1000000)}백만원`).join('\n');
         const topChannelsList = analytics.topChannels.map(([c, r]) => `- ${c}: ${Math.round(r/1000000)}백만원`).join('\n');
         
-        const systemPrompt = `당신은 최고경영진을 보조하는 수석 AI 애널리스트 및 상품 기획(MD) 분석 전문가입니다.
+        const systemPrompt = `당신은 최고경영진을 보조하는 대화형 AI 경영 컨설턴트입니다.
 
-[엄격한 가드레일 규칙]
-1. 오직 아래 제공된 [실제 로우데이터 집계 정보] 및 [상위 품목 실적] 데이터만을 바탕으로 답변하십시오.
-2. 상품명, 옵션명, 브랜드명의 키워드(소재/원단, 기능성/알러지케어, 핏/오버핏, 카테고리/침구류/상의 등)를 정밀 분석하여 상품 트렌드 인사이트를 제공하십시오.
+[핵심 답변 지침]
+1. 사용자의 질문("${msg}")에 대해 전체 보고서 양식이 아닌, 질문에 대한 **간결하고 명확한 대화형 답변(2~4문장)**을 작성하십시오.
+2. 오직 아래 제공된 [실제 로우데이터 집계 정보]만을 바탕으로 질문된 내용에 집중해서 답변하십시오.
 3. 원가/이익 필드가 없는 경우 임의 마진율을 환각(Hallucination)으로 지어내지 마십시오.
-4. 주문 취소 및 반품(${analytics.refundCount}건)은 순매출에 차감 반영되어 있음을 인지하십시오.
 
 [실제 로우데이터 집계 정보]
 - 총 순매출액: ${Math.round(analytics.totalRevenue/1000000).toLocaleString()} 백만원
@@ -1097,13 +1097,13 @@ ${topChannelsList}
           setChatMessages(prev => [...prev, { role: 'assistant', text: replyText }]);
         } else {
           const matchedProd = analytics.productsABC.find(p => msg.includes(p.name) || msg.includes(p.brand));
-          let fallbackReply = `업로드된 로우데이터 분석 결과, 총 순매출은 ${Math.round(analytics.totalRevenue/1000000).toLocaleString()}백만원이며, 취소/반품은 ${analytics.refundCount}건입니다.`;
+          let fallbackReply = `질문하신 내용과 관련하여, 현재 업로드된 데이터의 총 순매출은 ${Math.round(analytics.totalRevenue/1000000).toLocaleString()}백만원(취소/반품 ${analytics.refundCount}건 차감)입니다.`;
           if (matchedProd) {
-            fallbackReply = `요청하신 [${matchedProd.name}]은 순매출 ${Math.round(matchedProd.revenue/1000000).toLocaleString()}백만원(점유율 ${matchedProd.share.toFixed(1)}%)을 기록한 Class ${matchedProd.abc} 핵심 품목입니다.`;
+            fallbackReply = `질문하신 [${matchedProd.name}]은 순매출 ${Math.round(matchedProd.revenue/1000000).toLocaleString()}백만원(점유율 ${matchedProd.share.toFixed(1)}%)을 기록한 Class ${matchedProd.abc} 핵심 품목입니다.`;
           }
           setChatMessages(prev => [...prev, { role: 'assistant', text: fallbackReply }]);
         }
-        setIsAiLoading(false);
+        setIsChatLoading(false);
       };
 
       const sortedProducts = analytics ? [...analytics.productsABC].sort((a, b) => {
@@ -1517,15 +1517,15 @@ ${topChannelsList}
                             <span>전체 보고서 복사</span>
                           </button>
                         )}
-                        <button onClick={handleGenerateReport} disabled={isAiLoading} className="pl-3.5 pr-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-md btn-flex-center gap-1.5 transition disabled:opacity-50 whitespace-nowrap text-center">
-                          {isAiLoading ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="refresh-cw" className="w-3.5 h-3.5" />}
+                        <button onClick={handleGenerateReport} disabled={isReportLoading} className="pl-3.5 pr-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-md btn-flex-center gap-1.5 transition disabled:opacity-50 whitespace-nowrap text-center">
+                          {isReportLoading ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="refresh-cw" className="w-3.5 h-3.5" />}
                           <span>리포트 생성하기</span>
                         </button>
                       </div>
                     </div>
 
                     <div className="flex-1 text-xs text-slate-800 leading-relaxed whitespace-pre-line bg-slate-50 p-6 rounded-lg border border-slate-100 overflow-y-auto custom-scrollbar space-y-6">
-                      {isAiLoading ? (
+                      {isReportLoading ? (
                         <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-slate-400">
                           <Icon name="cpu" className="w-8 h-8 mb-3 animate-pulse shrink-0" />
                           <p className="text-center">AI 애널리스트가 업로드된 상품명, 옵션명, 원단/핏 키워드를 분석 중입니다...</p>
@@ -1710,8 +1710,8 @@ ${topChannelsList}
                   </div>
                   <div className="p-3 bg-white border-t border-slate-200 flex gap-2">
                     <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleChatSubmit()} placeholder="업로드된 데이터 기반 질문..." className="flex-1 px-3 py-2 bg-slate-100 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition" />
-                    <button onClick={handleChatSubmit} disabled={isAiLoading} className="p-2.5 bg-slate-900 text-white rounded-lg disabled:opacity-50 btn-flex-center shrink-0 justify-center text-center">
-                      <Icon name="send" className="w-3.5 h-3.5" />
+                    <button onClick={handleChatSubmit} disabled={isChatLoading} className="p-2.5 bg-slate-900 text-white rounded-lg disabled:opacity-50 btn-flex-center shrink-0 justify-center text-center">
+                      {isChatLoading ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="send" className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
