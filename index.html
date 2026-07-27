@@ -7,9 +7,9 @@
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js for High Performance Data Visualizations -->
+  <!-- Chart.js for Visualizations -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- SheetJS (XLSX) for Browser Excel File Parsing -->
+  <!-- SheetJS (XLSX) for Fast Browser Excel File Parsing -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- React 18 & ReactDOM UMD -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -81,7 +81,7 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-    // Safe React Icon wrapper to prevent Lucide DOM replacement conflicts with React Virtual DOM
+    // Safe Lucide Icon Component
     const Icon = ({ name, className = "w-4 h-4", color }) => {
       const containerRef = useRef(null);
       const [lucideReady, setLucideReady] = useState(!!window.lucide);
@@ -131,28 +131,103 @@
       return <span ref={containerRef} className="inline-flex items-center justify-center shrink-0" />;
     };
 
-    // Helper: Parse varied Excel date formats (Strings, Numbers, Serial dates)
+    // Robust Excel Date Parser
     const parseExcelDate = (val) => {
-      if (!val) return '2026-01-01';
-      if (typeof val === 'number') {
-        const jsDate = new Date(Math.round((val - 25569) * 86400 * 1000));
+      if (val === null || val === undefined || val === '') return '2025-01-01';
+
+      const numVal = Number(val);
+      if (!isNaN(numVal) && numVal > 30000 && numVal < 60000) {
+        const jsDate = new Date(Math.round((numVal - 25569) * 86400 * 1000));
         if (!isNaN(jsDate.getTime())) {
           const y = jsDate.getFullYear();
-          const m = String(jsDate.getMonth() + 1).padStart(2, '0');
-          const d = String(jsDate.getDate()).padStart(2, '0');
-          return `${y}-${m}-${d}`;
+          const m = jsDate.getMonth() + 1;
+          const d = jsDate.getDate();
+          return `${y}-${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`;
         }
       }
-      const str = String(val).trim().replace(/\./g, '-').replace(/\//g, '-');
-      if (str.length === 8 && !str.includes('-')) {
+
+      const str = String(val).trim();
+      if (!str) return '2025-01-01';
+
+      if (/^\d{8}$/.test(str)) {
         return `${str.substring(0,4)}-${str.substring(4,6)}-${str.substring(6,8)}`;
       }
-      const match = str.match(/\d{4}-\d{1,2}-\d{1,2}/);
+
+      const match = str.match(/(\d{4})[\.\-\/](\d{1,2})[\.\-\/](\d{1,2})/);
       if (match) {
-        const parts = match[0].split('-');
-        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        const y = match[1];
+        const m = parseInt(match[2], 10);
+        const d = parseInt(match[3], 10);
+        return `${y}-${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`;
       }
-      return '2026-01-01';
+
+      return '2025-01-01';
+    };
+
+    // Exact SAP Plant Code to Korean Store Name mapping
+    const PLANT_MAP = {
+      'R100': '본사',
+      'R110': '강남점',
+      'R120': '명동점',
+      'R130': '홍대점',
+      'R200': '백화점',
+      'R300': '아울렛',
+      'R400': '온라인몰',
+      'R500': '면세점',
+      '1000': '본사',
+      '7204': '중계점',
+      '7206': '안양점',
+      '7209': '분당점',
+      '7214': '해운대점',
+      '7215': '천호2점',
+      '7216': '부평점',
+      '7217': '불광점',
+      '7219': '고잔점',
+      '8201': '일산점',
+      '8202': '야탑점',
+      '8203': '인천점',
+      '8204': '평택점',
+      '8205': '평촌2점',
+      '8206': '강남점',
+      '8208': '동수원점',
+      '8212': '순천점',
+      '8215': '산본점',
+      '8216': '울산점',
+      '8217': '광명점',
+      '8218': '괴정점',
+      '8219': '울산2점',
+      '8220': '창원점',
+      '8222': '부천점',
+      '8223': '덕천점',
+      '8224': '송파점',
+      '8226': '논현점',
+      '8227': '강서점',
+      '8228': '충장점',
+      '8229': '부산대점',
+      '8230': '전주점',
+      '8231': '엑스코점',
+      '8233': '광주역점',
+      '8235': '중앙로역점',
+      '8237': '수원터미널점',
+      '8239': '경산점',
+      '8241': '청주점',
+      '8242': '신구로점',
+      '8243': 'NC대전유성점',
+      '8501': '쇼핑점',
+      '8502': '수성점',
+      '8503': '구미점',
+      '8504': '강북점'
+    };
+
+    // Store formatting: returns mapped Korean store name or exact raw text from Excel if unmapped
+    const formatStoreName = (raw) => {
+      if (!raw) return '(미지정)';
+      const clean = String(raw).trim().toUpperCase();
+      if (PLANT_MAP[clean]) return PLANT_MAP[clean];
+      for (const code in PLANT_MAP) {
+        if (clean.includes(code)) return PLANT_MAP[code];
+      }
+      return raw; // Unmapped store codes or text return exactly as in Excel file
     };
 
     const MathUtils = {
@@ -174,10 +249,11 @@
       }
     };
 
+    // Fast Single-Pass O(N) Hash Aggregator
     const aggregateByField = (sales, keyField) => {
       const map = {};
       sales.forEach(r => {
-        const k = String(r[keyField] || '기타');
+        const k = String(r[keyField] || '(미지정)');
         if (!map[k]) map[k] = { id: k, name: k, netRev: 0, grossRev: 0, qty: 0, margin: 0, count: 0, priceSum: 0 };
         map[k].netRev += (r.netRevenue || 0);
         map[k].grossRev += (r.grossRevenue || 0);
@@ -193,26 +269,42 @@
       insight: {
         generateDashboardInsights: (sales) => {
           if (!sales.length) return ["업로드된 엑셀 데이터가 없습니다. 상단 '엑셀 업로드' 버튼을 통해 매출 파일을 추가하세요."];
-          const sorted = [...sales].sort((a,b) => b.dateId - a.dateId);
-          const recent = sorted[0].yearmonth;
           
-          let curRev = 0, brandMap = {}, channelMap = {};
+          let curRev = 0, brandMap = {}, channelMap = {}, prodQtyMap = {};
+          let recentYearMonth = '2025-01';
+          
           sales.forEach(s => {
-            if (s.yearmonth === recent) { 
+            if (s.yearmonth > recentYearMonth) recentYearMonth = s.yearmonth;
+          });
+
+          sales.forEach(s => {
+            if (s.yearmonth === recentYearMonth) { 
               curRev += s.netRevenue; 
               brandMap[s.brandName] = (brandMap[s.brandName] || 0) + s.netRevenue;
               channelMap[s.channelName] = (channelMap[s.channelName] || 0) + s.netRevenue;
+              if (s.quantity > 0) {
+                prodQtyMap[s.productName] = (prodQtyMap[s.productName] || 0) + s.quantity;
+              }
             }
           });
           
-          const topBrandName = Object.keys(brandMap).sort((a,b) => brandMap[b] - brandMap[a])[0] || '기타';
-          const topChannelName = Object.keys(channelMap).sort((a,b) => channelMap[b] - channelMap[a])[0] || '기타';
+          const topBrandName = Object.keys(brandMap).sort((a,b) => brandMap[b] - brandMap[a])[0] || '(미지정)';
+          const topChannelName = Object.keys(channelMap).sort((a,b) => channelMap[b] - channelMap[a])[0] || '(미지정)';
           
-          return [
-            `📈 ${recent} 기준 최신 순매출 총액은 ₩${Math.round(curRev).toLocaleString()}원입니다.`,
+          const topSurgeProduct = Object.keys(prodQtyMap).sort((a,b) => prodQtyMap[b] - prodQtyMap[a])[0];
+          const surgeQty = topSurgeProduct ? prodQtyMap[topSurgeProduct] : 0;
+
+          const insights = [
+            `📈 ${recentYearMonth} 기준 최신 순매출 총액은 ₩${Math.round(curRev).toLocaleString()}원입니다.`,
             `🔥 가장 높은 매출 기여도를 보인 브랜드는 [${topBrandName}] 입니다.`,
             `🛒 주력 매출 발생 채널은 [${topChannelName}] 채널입니다.`
           ];
+
+          if (topSurgeProduct && surgeQty > 20) {
+            insights.push(`🚀 [${topSurgeProduct}] 상품의 당월 판매량이 ${surgeQty.toLocaleString()}개로 급증하며 매출을 견인하고 있습니다.`);
+          }
+
+          return insights;
         }
       },
       pricing: {
@@ -257,28 +349,63 @@
         detect: (sales) => {
           if (!sales.length) return [];
           const anomalies = [];
+          
+          const validSales = sales.filter(s => s.quantity > 0 && s.netRevenue > 0);
+          
+          const brandAspMap = {};
+          validSales.forEach(s => {
+            const b = s.brandName || '(미지정)';
+            if (!brandAspMap[b]) brandAspMap[b] = { totalRev: 0, totalQty: 0 };
+            brandAspMap[b].totalRev += s.netRevenue;
+            brandAspMap[b].totalQty += s.quantity;
+          });
+
+          for (const b in brandAspMap) {
+            brandAspMap[b].avgAsp = brandAspMap[b].totalQty ? (brandAspMap[b].totalRev / brandAspMap[b].totalQty) : 0;
+          }
+
           const pMap = {};
-          sales.forEach(s => { 
-            if (!pMap[s.productCode]) pMap[s.productCode] = { prices: [], qtys: [] }; 
-            pMap[s.productCode].prices.push(s.salePrice); 
-            pMap[s.productCode].qtys.push(s.quantity); 
+          validSales.forEach(s => { 
+            const unitPrice = s.salePrice || (s.netRevenue / s.quantity);
+            if (!pMap[s.productName]) pMap[s.productName] = { prices: [], unitPrices: [], brand: s.brandName }; 
+            pMap[s.productName].prices.push(s.netRevenue);
+            pMap[s.productName].unitPrices.push(unitPrice);
           });
           
-          for (const code in pMap) {
-            pMap[code].priceMean = MathUtils.mean(pMap[code].prices); 
-            pMap[code].priceStd = MathUtils.stdDev(pMap[code].prices, pMap[code].priceMean);
-            pMap[code].qtyMean = MathUtils.mean(pMap[code].qtys); 
-            pMap[code].qtyStd = MathUtils.stdDev(pMap[code].qtys, pMap[code].qtyMean);
+          for (const name in pMap) {
+            pMap[name].unitPriceMean = MathUtils.mean(pMap[name].unitPrices); 
+            pMap[name].unitPriceStd = MathUtils.stdDev(pMap[name].unitPrices, pMap[name].unitPriceMean);
+            pMap[name].unitPriceMedian = MathUtils.median(pMap[name].unitPrices);
           }
           
-          sales.forEach(s => {
-            const zPrice = Math.abs(MathUtils.zScore(s.salePrice, pMap[s.productCode].priceMean, pMap[s.productCode].priceStd));
-            const zQty = Math.abs(MathUtils.zScore(s.quantity, pMap[s.productCode].qtyMean, pMap[s.productCode].qtyStd));
-            
-            if (zPrice > 3) anomalies.push({ date: s.fullDate, sku: s.productCode, type: '비정상 판매가', value: `₩${Math.round(s.salePrice).toLocaleString()}`, severity: '높음' });
-            if (zQty > 3 && s.quantity > 0) anomalies.push({ date: s.fullDate, sku: s.productCode, type: '판매량 급증', value: `${s.quantity}개`, severity: '보통' });
+          validSales.forEach(s => {
+            const unitPrice = s.salePrice || (s.netRevenue / s.quantity);
+            const prodStats = pMap[s.productName];
+            const brandAvg = brandAspMap[s.brandName]?.avgAsp || 20000;
+
+            const isBrandPriceSpike = brandAvg > 0 && unitPrice > (brandAvg * 5) && unitPrice > 300000;
+            const zPrice = prodStats.unitPriceStd > 0 ? Math.abs(MathUtils.zScore(unitPrice, prodStats.unitPriceMean, prodStats.unitPriceStd)) : 0;
+
+            if (isBrandPriceSpike || zPrice > 3.5) {
+              anomalies.push({ 
+                date: s.fullDate, 
+                name: s.productName, 
+                brand: s.brandName,
+                type: '비정상 단가 (입력 오류 의심)', 
+                value: `₩${Math.round(unitPrice).toLocaleString()} /개`, 
+                severity: '높음',
+                reason: isBrandPriceSpike ? `브랜드 평균단가(₩${Math.round(brandAvg).toLocaleString()}) 대비 5배 이상 초과` : '제품 내 표준단가 편차 초과'
+              });
+            }
           });
-          return anomalies.slice(-50).reverse();
+
+          const uniqueMap = {};
+          anomalies.forEach(a => {
+            const key = `${a.date}_${a.name}`;
+            if (!uniqueMap[key]) uniqueMap[key] = a;
+          });
+
+          return Object.values(uniqueMap).slice(-50).reverse();
         }
       },
       nlp: {
@@ -319,7 +446,7 @@
         margin += (r.marginAmount || 0);
         if (r.quantity !== 0) { 
           if (r.brandName) bSet.add(r.brandName); 
-          if (r.productCode) sSet.add(r.productCode); 
+          if (r.productName) sSet.add(r.productName); 
           if (r.channelName) cSet.add(r.channelName); 
           if (r.storeName) stSet.add(r.storeName); 
         }
@@ -336,7 +463,7 @@
       const [theme, setTheme] = useState('light');
       const [activeTab, setActiveTab] = useState('dashboard');
       const [analyticsSubTab, setAnalyticsSubTab] = useState('best');
-      const [selectedProductCode, setSelectedProductCode] = useState(null);
+      const [selectedProductName, setSelectedProductName] = useState(null);
       const [isLoading, setIsLoading] = useState(false);
       const [isChatOpen, setIsChatOpen] = useState(false);
       const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -363,7 +490,7 @@
       const handleFilterChange = (newFilters) => { 
         setIsLoading(true); 
         setFilters(newFilters); 
-        setTimeout(() => setIsLoading(false), 100); 
+        setTimeout(() => setIsLoading(false), 30); 
       };
 
       const dynamicBrands = useMemo(() => {
@@ -390,8 +517,7 @@
           if (filters.searchKeyword.trim() !== '') {
             const kw = filters.searchKeyword.toLowerCase();
             const nameMatch = item.productName && item.productName.toLowerCase().includes(kw);
-            const codeMatch = item.productCode && item.productCode.toLowerCase().includes(kw);
-            if (!nameMatch && !codeMatch) return false;
+            if (!nameMatch) return false;
           }
           return true;
         });
@@ -401,8 +527,8 @@
         setIsLoading(true); 
         setActiveTab(tab);
         if (subTab) setAnalyticsSubTab(subTab);
-        if (tab === 'product_detail' && data) setSelectedProductCode(data);
-        setTimeout(() => setIsLoading(false), 100);
+        if (tab === 'product_detail' && data) setSelectedProductName(data);
+        setTimeout(() => setIsLoading(false), 30);
       };
 
       return (
@@ -489,7 +615,7 @@
 
                 <div className="ml-auto relative">
                   <Icon name="search" className="w-3 h-3 absolute left-2 top-2 text-slate-400 dark:text-zinc-500" />
-                  <input type="text" placeholder="상품명/코드 검색..." value={filters.searchKeyword} onChange={e => handleFilterChange({...filters, searchKeyword: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded pl-7 pr-2 py-1 text-slate-800 dark:text-white outline-none w-44 shadow-xs" />
+                  <input type="text" placeholder="상품명 검색..." value={filters.searchKeyword} onChange={e => handleFilterChange({...filters, searchKeyword: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded pl-7 pr-2 py-1 text-slate-800 dark:text-white outline-none w-44 shadow-xs" />
                 </div>
              </div>
           </div>
@@ -504,7 +630,7 @@
                 {activeTab === 'dashboard' && <DashboardView sales={filteredSales} navigateTo={navigateTo} theme={theme} />}
                 {activeTab === 'analytics' && <AnalyticsView sales={filteredSales} subTab={analyticsSubTab} setSubTab={setAnalyticsSubTab} navigateTo={navigateTo} />}
                 {activeTab === 'products' && <ProductsExplorerView sales={filteredSales} navigateTo={navigateTo} />}
-                {activeTab === 'product_detail' && <ProductDetailFullView sales={filteredSales} allSales={salesData} productCode={selectedProductCode} navigateTo={navigateTo} theme={theme} />}
+                {activeTab === 'product_detail' && <ProductDetailFullView sales={filteredSales} allSales={salesData} productName={selectedProductName} navigateTo={navigateTo} theme={theme} />}
                 {activeTab === 'anomaly' && <AnomalyCenterView allSales={filteredSales} />}
                 {activeTab === 'purchase' && <PurchaseRecommendationView sales={filteredSales} />}
                 {activeTab === 'report' && <ExecutiveReportView sales={filteredSales} />}
@@ -547,59 +673,90 @@
       const fileInputRef = useRef(null);
 
       const targetFields = [
-        { key: 'date', label: '날짜/일자', keywords: ['일자', '날짜', '영업일자', '판매일', '주문일', '출고일', '결제일', 'date'] },
-        { key: 'order', label: '주문/전표번호', keywords: ['주문번호', '전표번호', '주문전표번호', '주문no', 'orderno', 'ord_no', 'order'] },
-        { key: 'code', label: '상품코드(SKU)', keywords: ['자사상품코드', '상품코드', 'sku코드', '품목코드', '외부몰상품코드', 'sku', 'code'] },
-        { key: 'name', label: '상품명', keywords: ['외부몰 상품명', '외부몰상품명', '자사상품명', '상품명', '품목명', '제품명', 'item', 'product'] },
-        { key: 'brand', label: '브랜드명', keywords: ['브랜드 내역', '브랜드내역', '브랜드명', '자사브랜드', '브랜드', 'brand'] },
+        { key: 'date', label: '날짜/일자', keywords: ['출고확정일', '일자', '날짜', '전표일자', '영업일자', '판매일', '주문일', '출고일', '결제일', 'date'] },
+        { key: 'order', label: '주문/전표번호', keywords: ['주문번호-순번', '주문번호', '전표번호', '주문전표번호', '주문no', 'orderno', 'ord_no', 'order'] },
+        { key: 'name', label: '외부몰 상품명', keywords: ['외부몰 상품명', '외부몰상품명', '상품명', '품목명', '제품명', 'item', 'product'] },
+        { key: 'brand', label: '브랜드명', keywords: ['브랜드 내역', '브랜드내역', '브랜드명', '자사브랜드', '브랜드'] },
         { key: 'category', label: '카테고리', keywords: ['카테고리', '대분류', '중분류', '품목군', 'category'] },
-        { key: 'channel', label: '판매채널', keywords: ['판매채널', '유통채널', '채널명', '채널', '구분', '채널구분', 'channel'] },
-        { key: 'store', label: '지점/매장(플랜트)', keywords: ['플랜트명', '플랜트', '지점명', '지점', '매장명', '매장', '점포명', '점포', 'store'] },
-        { key: 'option', label: '옵션/규격', keywords: ['옵션명', '옵션', '규격', '색상', '사이즈', 'option'] },
-        { key: 'qty', label: '판매수량', keywords: ['판매수량', '수량', '출고수량', 'qty', 'quantity'] },
+        { key: 'channel', label: '판매채널', keywords: ['채널명', '판매채널', '유통채널', '채널', '구분', '채널구분', 'channel'] },
+        { key: 'store', label: '지점/매장(플랜트)', keywords: ['플랜트(R100)', '플랜트', '플랜트명', '지점명', '지점', '매장명', '매장', '점포명', 'store'] },
+        { key: 'option', label: '옵션/규격', keywords: ['외부몰 옵션명', '외부몰옵션명', '옵션명', '옵션', '규격', '색상', '사이즈', 'option'] },
+        { key: 'qty', label: '판매수량', keywords: ['오더 수량', '오더수량', '판매수량', '수량', '출고수량', 'qty', 'quantity'] },
         { key: 'price', label: '정가/단가', keywords: ['소비자가', '정가', '단가', '표준단가', 'unitprice', 'price'] },
         { key: 'disc', label: '할인금액', keywords: ['할인금액', '할인액', '할인단가', '할인', 'discount'] },
         { key: 'salePrice', label: '실판매가/결제액', keywords: ['실판매가', '판매금액', '판매가', '결제금액', '판매단가', 'saleprice', '금액'] },
         { key: 'cost', label: '원가/공급가', keywords: ['원가', '공급가', '제조원가', '매입가', 'cost'] }
       ];
 
-      const PLANT_MAP = {
-        'R100': '본사(R100)',
-        'R110': '강남점(R110)',
-        'R120': '명동점(R120)',
-        'R130': '홍대점(R130)',
-        'R200': '백화점(R200)',
-        'R300': '아울렛(R300)',
-        'R400': '온라인(R400)',
-        'R500': '면세점(R500)',
-        '1000': '본사(1000)'
-      };
-
       const [customKeyMap, setCustomKeyMap] = useState({});
       const [detectedHeaders, setDetectedHeaders] = useState([]);
-      const [rawJsonRows, setRawJsonRows] = useState([]);
 
       const readSheetHeadersAndRows = (file) => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = (evt) => {
-            try {
-              const data = new Uint8Array(evt.target.result);
-              const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellFormulas: false, cellStyles: false });
-              const firstSheetName = workbook.SheetNames[0];
-              const worksheet = workbook.Sheets[firstSheetName];
-              const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-              
-              if (!json || json.length === 0) {
-                resolve({ headers: [], json: [] });
-                return;
-              }
+            setTimeout(() => {
+              try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { 
+                  type: 'array', 
+                  dense: true, 
+                  cellDates: false, 
+                  cellFormulas: false, 
+                  cellStyles: false, 
+                  cellHTML: false,
+                  cellNF: false
+                });
+                
+                if (!workbook.SheetNames || !workbook.SheetNames.length) {
+                  resolve({ headers: [], rows2D: [] });
+                  return;
+                }
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                if (!worksheet) {
+                  resolve({ headers: [], rows2D: [] });
+                  return;
+                }
 
-              const headers = Object.keys(json[0]);
-              resolve({ headers, json });
-            } catch (err) { reject(err); }
+                const raw2D = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                if (!raw2D || raw2D.length < 1) {
+                  resolve({ headers: [], rows2D: [] });
+                  return;
+                }
+
+                let headerRowIdx = 0;
+                let maxMatches = 0;
+                const knownKeywords = ['출고확정일', '일자', '날짜', '외부몰 상품명', '외부몰상품명', '브랜드 내역', '브랜드내역', '플랜트(R100)', '플랜트', '판매채널', '채널명', '오더 수량', '실판매가', '결제금액'];
+
+                for (let r = 0; r < Math.min(15, raw2D.length); r++) {
+                  const rowArr = raw2D[r] || [];
+                  let matches = 0;
+                  rowArr.forEach(cell => {
+                    const strCell = String(cell || '').trim();
+                    if (knownKeywords.some(kw => strCell.includes(kw))) {
+                      matches++;
+                    }
+                  });
+                  if (matches > maxMatches) {
+                    maxMatches = matches;
+                    headerRowIdx = r;
+                  }
+                }
+
+                const headers = (raw2D[headerRowIdx] || []).map(h => String(h || '').trim());
+                const dataRows = raw2D.slice(headerRowIdx + 1);
+                resolve({ headers, rows2D: dataRows });
+              } catch (err) { 
+                console.error("XLSX 파싱 에러:", err);
+                resolve({ headers: [], rows2D: [] }); 
+              }
+            }, 10);
           };
-          reader.onerror = (err) => reject(err);
+          reader.onerror = (err) => {
+            console.error("FileReader 에러:", err);
+            resolve({ headers: [], rows2D: [] });
+          };
           reader.readAsArrayBuffer(file);
         });
       };
@@ -609,20 +766,23 @@
         if (!files.length) return;
         
         setIsProcessing(true);
-        setMessage(`${files.length}개 파일 파싱 진행 중...`);
+        setMessage(`${files.length}개 파일 파싱 분석 중...`);
+        await new Promise(r => setTimeout(r, 20));
 
         const fileResults = [];
         let allHeaders = new Set();
-        let firstFileRows = [];
 
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           try {
             setMessage(`읽는 중 (${i + 1}/${files.length}): ${file.name}`);
-            const { headers, json } = await readSheetHeadersAndRows(file);
-            headers.forEach(h => allHeaders.add(h));
-            fileResults.push({ file, headers, json });
-            if (i === 0) firstFileRows = json;
+            await new Promise(r => setTimeout(r, 20));
+            
+            const { headers, rows2D } = await readSheetHeadersAndRows(file);
+            if (headers.length && rows2D.length) {
+              headers.forEach(h => { if(h) allHeaders.add(h); });
+              fileResults.push({ file, headers, rows2D });
+            }
           } catch (err) {
             console.error("파일 읽기 오류:", file.name, err);
           }
@@ -630,151 +790,209 @@
 
         const headersArr = Array.from(allHeaders);
         setDetectedHeaders(headersArr);
-        setRawJsonRows(firstFileRows);
         setParsedFilesInfo(fileResults);
 
         const autoMap = {};
         targetFields.forEach(field => {
-          const matched = headersArr.find(h => 
-            field.keywords.some(k => h.toLowerCase().replace(/\s+/g, '').includes(k.toLowerCase()))
-          );
+          let matched = headersArr.find(h => h === field.keywords[0]);
+          if (!matched) {
+            matched = headersArr.find(h => field.keywords.includes(h));
+          }
+          if (!matched) {
+            matched = headersArr.find(h => 
+              field.keywords.some(k => h.replace(/\s+/g, '').toLowerCase().includes(k.replace(/\s+/g, '').toLowerCase()))
+            );
+          }
           autoMap[field.key] = matched || '';
         });
 
         setCustomKeyMap(autoMap);
         setIsProcessing(false);
-        setStep(2);
-        setMessage(`✅ 총 ${fileResults.length}개 파일 파싱 완료. 컬럼 매핑 및 정규화를 확인하세요.`);
+        
+        if (fileResults.length === 0) {
+          setMessage(`⚠️ 선택한 파일에서 올바른 데이터를 읽지 못했습니다. 엑셀 파일 형식을 확인해주세요.`);
+        } else {
+          setStep(2);
+          setMessage(`✅ 총 ${fileResults.length}개 파일 분석 완료. 컬럼 매핑을 확인하시고 저장 버튼을 눌러주세요.`);
+        }
       };
 
-      const handleIngest = () => {
+      const handleIngest = async () => {
         if (!parsedFilesInfo.length) return;
         setIsProcessing(true);
+        setMessage("데이터 변환 및 정규화 준비 중...");
+        await new Promise(r => setTimeout(r, 20));
 
-        let updatedSales = [...salesData];
-        const newLogs = [];
+        try {
+          let updatedSales = [...salesData];
+          const newLogs = [];
 
-        parsedFilesInfo.forEach(({ file, json }, fileIdx) => {
-          const newUploadId = Date.now() + fileIdx;
-          const convertedRows = json.map((row, idx) => {
-            const getRowVal = (mapKey, keywords) => {
-              if (customKeyMap[mapKey] && row[customKeyMap[mapKey]] !== undefined && row[customKeyMap[mapKey]] !== '') {
-                return String(row[customKeyMap[mapKey]]).trim();
-              }
-              for (const kw of keywords) {
-                for (const key of Object.keys(row)) {
-                  if (key.replace(/\s+/g, '').toLowerCase().includes(kw.replace(/\s+/g, '').toLowerCase())) {
-                    if (row[key] !== undefined && row[key] !== '') return String(row[key]).trim();
+          const resolveColForField = (headers, mapKey, keywords) => {
+            if (customKeyMap[mapKey] && headers.includes(customKeyMap[mapKey])) {
+              return customKeyMap[mapKey];
+            }
+            let exactTop = headers.find(h => h === keywords[0]);
+            if (exactTop) return exactTop;
+
+            for (const kw of keywords) {
+              const kwClean = kw.replace(/\s+/g, '').toLowerCase();
+              const matched = headers.find(h => h.replace(/\s+/g, '').toLowerCase().includes(kwClean));
+              if (matched) return matched;
+            }
+            return null;
+          };
+
+          for (let fileIdx = 0; fileIdx < parsedFilesInfo.length; fileIdx++) {
+            const { file, headers, rows2D } = parsedFilesInfo[fileIdx];
+            const newUploadId = Date.now() + fileIdx;
+            
+            const colIdxMap = {};
+            targetFields.forEach(field => {
+              const matchedHeader = resolveColForField(headers, field.key, field.keywords);
+              colIdxMap[field.key] = matchedHeader ? headers.indexOf(matchedHeader) : -1;
+            });
+
+            const totalRows = rows2D.length;
+            const convertedRows = [];
+            const CHUNK_SIZE = 1000;
+
+            for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
+              const chunk = rows2D.slice(i, i + CHUNK_SIZE);
+
+              for (let idx = 0; idx < chunk.length; idx++) {
+                const row = chunk[idx];
+                const getVal = (key) => {
+                  const cIdx = colIdxMap[key];
+                  if (cIdx !== undefined && cIdx !== -1 && row[cIdx] !== undefined && row[cIdx] !== null) {
+                    return String(row[cIdx]).trim();
+                  }
+                  return '';
+                };
+
+                const dateVal = parseExcelDate(getVal('date'));
+                const globalRowIdx = i + idx;
+                const orderNum = getVal('order') || `ORD_${newUploadId}_${globalRowIdx}`;
+                
+                let prodName = '';
+                if (colIdxMap['name'] !== -1 && row[colIdxMap['name']] !== undefined && row[colIdxMap['name']] !== null) {
+                  prodName = String(row[colIdxMap['name']]).trim();
+                }
+                if (!prodName) {
+                  const extNameIdx = headers.findIndex(h => h === '외부몰 상품명' || h === '외부몰상품명');
+                  if (extNameIdx !== -1 && row[extNameIdx] !== undefined && row[extNameIdx] !== null) {
+                    prodName = String(row[extNameIdx]).trim();
                   }
                 }
-              }
-              return '';
-            };
+                if (!prodName || /^SKU_/i.test(prodName)) prodName = '미지정 상품명';
 
-            const dateVal = parseExcelDate(getRowVal('date', ['일자', '날짜', '영업일자', '판매일', '주문일', '출고일', '결제일']));
-            const orderNum = getRowVal('order', ['주문번호', '전표번호', '주문전표번호', 'orderno']) || `ORD_${Date.now()}_${idx}`;
-            
-            // Priority 1: 외부몰 상품명 / 자사상품명
-            const prodName = getRowVal('name', ['외부몰 상품명', '외부몰상품명', '자사상품명', '상품명', '품목명']) || '미지정 상품';
-            
-            // Priority 2: Product Code with fallback hash generation
-            let prodCode = getRowVal('code', ['자사상품코드', '상품코드', 'sku코드', '품목코드', '외부몰상품코드']);
-            if (!prodCode) {
-              if (prodName !== '미지정 상품') {
-                const hash = Math.abs(prodName.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0));
-                prodCode = `SKU_${hash.toString(36).toUpperCase()}`;
-              } else {
-                prodCode = `SKU_UNMAPPED_${idx}`;
+                let brandName = getVal('brand');
+                if (!brandName || /^\d+$/.test(brandName)) {
+                  const bIdx = headers.findIndex(h => h.includes('브랜드 내역') || h.includes('브랜드내역'));
+                  if (bIdx !== -1 && row[bIdx]) {
+                    brandName = String(row[bIdx]).trim();
+                  }
+                }
+                if (!brandName || /^\d+$/.test(brandName)) {
+                  brandName = '기타 브랜드';
+                }
+
+                const categoryL1 = getVal('category') || '의류/잡화';
+                const channelName = getVal('channel') || '자사몰';
+                
+                let rawStore = getVal('store');
+                if (!rawStore) {
+                  const altPlantIdx = headers.findIndex(h => h.trim() === '플랜트' || h.replace(/\s+/g, '').includes('플랜트'));
+                  if (altPlantIdx !== -1 && row[altPlantIdx] !== undefined && row[altPlantIdx] !== null) {
+                    rawStore = String(row[altPlantIdx]).trim();
+                  }
+                }
+                const storeName = formatStoreName(rawStore);
+
+                const optionName = getVal('option') || 'FREE';
+
+                let qty = parseInt(getVal('qty') || '1', 10) || 0;
+                if (Math.abs(qty) > 50000) {
+                  qty = 1;
+                }
+
+                let unitP = parseFloat(getVal('price')) || 0;
+                let discP = parseFloat(getVal('disc')) || 0;
+                let saleP = parseFloat(getVal('salePrice')) || 0;
+
+                if (saleP === 0 && unitP > 0) saleP = unitP - discP;
+                if (unitP === 0 && saleP > 0) unitP = saleP + discP;
+                let costP = parseFloat(getVal('cost')) || Math.round(saleP * 0.6);
+
+                const dateParts = dateVal.split('-');
+                const year = parseInt(dateParts[0], 10) || 2025;
+                const month = parseInt(dateParts[1], 10) || 1;
+                const day = parseInt(dateParts[2], 10) || 1;
+                const monthStr = month < 10 ? `0${month}` : `${month}`;
+                const yearmonth = `${year}-${monthStr}`;
+
+                const grossRev = qty * unitP;
+                const netRev = qty * saleP;
+                const marginAmt = netRev - (qty * costP);
+                const marginRt = netRev !== 0 ? (marginAmt / netRev) : 0;
+                const discRt = grossRev !== 0 ? ((grossRev - netRev) / grossRev) : 0;
+
+                convertedRows.push({
+                  saleId: newUploadId + globalRowIdx,
+                  orderNumber: orderNum,
+                  fullDate: dateVal, yearmonth, yearweek: `${year}-W${Math.ceil((month*4)+(day/7))}`, year, month,
+                  productName: prodName, brandName, categoryL1,
+                  channelName, storeName, optionName,
+                  quantity: qty, unitPrice: unitP, discountPrice: discP, salePrice: saleP,
+                  grossRevenue: grossRev, netRevenue: netRev, costPrice: costP,
+                  marginAmount: marginAmt, marginRate: marginRt, discountRate: discRt, uploadId: newUploadId
+                });
               }
+
+              setMessage(`변환 중 (${fileIdx + 1}/${parsedFilesInfo.length} 파일): ${Math.min(i + CHUNK_SIZE, totalRows)} / ${totalRows} 행 완료`);
+              await new Promise(r => setTimeout(r, 0));
             }
 
-            // Priority 3: 브랜드 내역 우선 파싱
-            const brandName = getRowVal('brand', ['브랜드 내역', '브랜드내역', '브랜드명', '자사브랜드', '브랜드']) || '기타 브랜드';
-            const categoryL1 = getRowVal('category', ['카테고리', '대분류', '중분류']) || '의류/잡화';
-            const channelName = getRowVal('channel', ['판매채널', '유통채널', '채널명', '채널']) || '자사몰';
-            
-            // Priority 4: Plant Code Mapping
-            let rawStore = getRowVal('store', ['플랜트명', '플랜트', '지점명', '지점', '매장명', '매장']);
-            let storeName = rawStore;
-            if (rawStore && PLANT_MAP[rawStore.toUpperCase()]) {
-              storeName = PLANT_MAP[rawStore.toUpperCase()];
-            } else if (!storeName) {
-              storeName = '본사';
+            let dupCount = 0;
+            let newCount = 0;
+
+            if (strategy === 'overwrite') {
+              const incomingOrderSet = new Set(convertedRows.map(r => r.orderNumber));
+              updatedSales = updatedSales.filter(s => !incomingOrderSet.has(s.orderNumber));
+              updatedSales = [...updatedSales, ...convertedRows];
+              newCount = convertedRows.length;
+            } else if (strategy === 'skip') {
+              const existingOrderSet = new Set(updatedSales.map(s => s.orderNumber));
+              const filteredNew = convertedRows.filter(r => !existingOrderSet.has(r.orderNumber));
+              dupCount = convertedRows.length - filteredNew.length;
+              newCount = filteredNew.length;
+              updatedSales = [...updatedSales, ...filteredNew];
+            } else {
+              updatedSales = [...updatedSales, ...convertedRows];
+              newCount = convertedRows.length;
             }
 
-            const optionName = getRowVal('option', ['옵션명', '옵션', '규격', '색상']) || 'FREE';
-
-            const qty = parseInt(getRowVal('qty', ['판매수량', '수량', '출고수량']) || '1', 10) || 0;
-            let unitP = parseFloat(getRowVal('price', ['소비자가', '정가', '단가'])) || 0;
-            let discP = parseFloat(getRowVal('disc', ['할인금액', '할인액'])) || 0;
-            let saleP = parseFloat(getRowVal('salePrice', ['실판매가', '판매금액', '판매가', '결제금액'])) || 0;
-
-            if (saleP === 0 && unitP > 0) saleP = unitP - discP;
-            if (unitP === 0 && saleP > 0) unitP = saleP + discP;
-            let costP = parseFloat(getRowVal('cost', ['원가', '공급가'])) || Math.round(saleP * 0.6);
-
-            const dateParts = dateVal.split('-');
-            const year = parseInt(dateParts[0]) || 2026;
-            const month = parseInt(dateParts[1]) || 1;
-            const day = parseInt(dateParts[2]) || 1;
-            const monthStr = month < 10 ? `0${month}` : `${month}`;
-            const yearmonth = `${year}-${monthStr}`;
-            const dateId = parseInt(`${year}${monthStr}${day < 10 ? '0'+day : day}`);
-
-            const grossRev = qty * unitP;
-            const netRev = qty * saleP;
-            const marginAmt = netRev - (qty * costP);
-            const marginRt = netRev !== 0 ? (marginAmt / netRev) : 0;
-            const discRt = grossRev !== 0 ? ((grossRev - netRev) / grossRev) : 0;
-
-            return {
-              saleId: newUploadId + idx,
-              orderNumber: orderNum,
-              fullDate: dateVal, dateId, yearmonth, yearweek: `${year}-W${Math.ceil((month*4)+(day/7))}`, year, month,
-              productCode: prodCode, productName: prodName, brandName, categoryL1,
-              channelName, storeName, optionName,
-              quantity: qty, unitPrice: unitP, discountPrice: discP, salePrice: saleP,
-              grossRevenue: grossRev, netRevenue: netRev, costPrice: costP,
-              marginAmount: marginAmt, marginRate: marginRt, discountRate: discRt, uploadId: newUploadId
-            };
-          });
-
-          let dupCount = 0;
-          let newCount = 0;
-
-          if (strategy === 'overwrite') {
-            const incomingOrderSet = new Set(convertedRows.map(r => r.orderNumber));
-            updatedSales = updatedSales.filter(s => !incomingOrderSet.has(s.orderNumber));
-            updatedSales = [...updatedSales, ...convertedRows];
-            newCount = convertedRows.length;
-          } else if (strategy === 'skip') {
-            const existingOrderSet = new Set(updatedSales.map(s => s.orderNumber));
-            const filteredNew = convertedRows.filter(r => !existingOrderSet.has(r.orderNumber));
-            dupCount = convertedRows.length - filteredNew.length;
-            newCount = filteredNew.length;
-            updatedSales = [...updatedSales, ...filteredNew];
-          } else {
-            updatedSales = [...updatedSales, ...convertedRows];
-            newCount = convertedRows.length;
+            newLogs.push({
+              id: newUploadId,
+              filename: file.name,
+              date: new Date().toLocaleString(),
+              rowsTotal: convertedRows.length,
+              rowsNew: newCount,
+              rowsDup: dupCount,
+              status: '완료',
+              strategy: strategy === 'overwrite' ? '덮어쓰기' : strategy === 'skip' ? '건너뛰기' : '병합'
+            });
           }
 
-          newLogs.push({
-            id: newUploadId,
-            filename: file.name,
-            date: new Date().toLocaleString(),
-            rowsTotal: convertedRows.length,
-            rowsNew: newCount,
-            rowsDup: dupCount,
-            status: '완료',
-            strategy: strategy === 'overwrite' ? '덮어쓰기' : strategy === 'skip' ? '건너뛰기' : '병합'
-          });
-        });
-
-        setSalesData(updatedSales);
-        setUploadHistory([...newLogs, ...uploadHistory]);
-        setIsProcessing(false);
-        setMessage(`🎉 저장 완료: ${parsedFilesInfo.length}개 파일 데이터베이스 연동 성공.`);
-        setTimeout(() => onClose(), 800);
+          setSalesData(updatedSales);
+          setUploadHistory([...newLogs, ...uploadHistory]);
+          setIsProcessing(false);
+          setMessage(`🎉 저장 완료: 총 ${updatedSales.length}건 데이터가 성공적으로 반영되었습니다.`);
+          setTimeout(() => onClose(), 400);
+        } catch (err) {
+          console.error("데이터 처리 오류:", err);
+          setIsProcessing(false);
+          setMessage(`❌ 데이터 처리 중 오류가 발생했습니다: ${err.message}`);
+        }
       };
 
       return (
@@ -803,8 +1021,8 @@
                   className="hidden" 
                 />
                 <Icon name="file-spreadsheet" className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">엑셀 파일(.xlsx)을 끌어다 놓거나 클릭하여 여러 개 선택하세요.</p>
-                <p className="text-[10px] text-slate-400 mt-1">SAP 원본 엑셀 파일을 업로드하면 자동으로 헤더 컬럼을 분석하여 매핑합니다.</p>
+                <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">엑셀 파일(.xlsx)을 끌어다 놓거나 클릭하여 선택하세요.</p>
+                <p className="text-[10px] text-slate-400 mt-1">SAP 원본 엑셀 파일을 업로드하면 대용량 분할 파싱으로 정규화됩니다.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -814,7 +1032,7 @@
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">SAP 컬럼 수동/자동 매핑 설정</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">SAP 컬럼 매핑 설정</span>
                   <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg">
                     {targetFields.map(field => (
                       <div key={field.key} className="flex items-center justify-between text-xs gap-1">
@@ -834,22 +1052,31 @@
               </div>
             )}
 
-            {message && <div className="text-xs p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-300 font-medium">{message}</div>}
+            {isProcessing && (
+              <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-300 font-medium">
+                <Icon name="loader-2" className="w-4 h-4 animate-spin text-blue-500" />
+                <span>{message}</span>
+              </div>
+            )}
+
+            {!isProcessing && message && (
+              <div className="text-xs p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-300 font-medium">{message}</div>
+            )}
 
             <div className="p-3 bg-slate-50 dark:bg-zinc-950 rounded-lg border border-slate-200 dark:border-zinc-800 space-y-2">
               <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 block">중복 데이터 처리 방식</span>
               <div className="flex items-center gap-4 text-xs">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input type="radio" name="strategy" value="overwrite" checked={strategy === 'overwrite'} onChange={()=>setStrategy('overwrite')} />
-                  <span>덮어쓰기 (기존 덮어씀)</span>
+                  <span>덮어쓰기</span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input type="radio" name="strategy" value="skip" checked={strategy === 'skip'} onChange={()=>setStrategy('skip')} />
-                  <span>건너뛰기 (중복 제외)</span>
+                  <span>건너뛰기</span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input type="radio" name="strategy" value="merge" checked={strategy === 'merge'} onChange={()=>setStrategy('merge')} />
-                  <span>병합 (수량 합산)</span>
+                  <span>병합</span>
                 </label>
               </div>
             </div>
@@ -857,8 +1084,9 @@
             <div className="flex justify-end gap-2 pt-1">
               <button onClick={onClose} className="px-3 py-1.5 rounded-lg border text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-zinc-700 dark:text-zinc-300">취소</button>
               {step === 2 && (
-                <button onClick={handleIngest} disabled={!parsedFilesInfo.length || isProcessing} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs">
-                  데이터 저장 및 반영
+                <button onClick={handleIngest} disabled={!parsedFilesInfo.length || isProcessing} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                  {isProcessing && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}
+                  <span>데이터 저장 및 반영</span>
                 </button>
               )}
             </div>
@@ -930,7 +1158,7 @@
               </h3>
               <button onClick={()=>navigateTo('analytics', 'best')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium">전체보기 <Icon name="chevron-right" className="w-3 h-3" /></button>
             </div>
-            <TopProductsTable sales={sales} limit={10} navigateTo={navigateTo} />
+            <TopProductsTable sales={sales} limit={10} navigateTo={navigateTo} showChannelStore={false} />
           </div>
         </div>
       );
@@ -1022,18 +1250,49 @@
       return <div className="h-60 relative"><canvas ref={canvasRef}></canvas></div>;
     };
 
-    const TopProductsTable = ({ sales, limit=10, navigateTo }) => {
-      const pMap = aggregateByField(sales, 'productCode');
-      
-      const sorted = Object.keys(pMap).map(code => {
-        const item = sales.find(s => s.productCode === code) || {};
-        return {
-          code,
-          name: item.productName || code,
-          brand: item.brandName || '기타',
-          ...pMap[code]
-        };
-      }).sort((a,b) => b.netRev - a.netRev || b.qty - a.qty || a.code.localeCompare(b.code)).slice(0, limit);
+    // Updated TopProductsTable with optional showChannelStore prop
+    const TopProductsTable = ({ sales, limit=10, navigateTo, showChannelStore=false }) => {
+      const sorted = useMemo(() => {
+        if (!sales || !sales.length) return [];
+        const pMap = aggregateByField(sales, 'productName');
+        const metaMap = {};
+        const channelRevMap = {};
+        const storeRevMap = {};
+
+        sales.forEach(s => {
+          const p = s.productName;
+          if (!metaMap[p]) {
+            metaMap[p] = { brand: s.brandName || '(미지정)' };
+            channelRevMap[p] = {};
+            storeRevMap[p] = {};
+          }
+          const ch = s.channelName || '(미지정)';
+          const st = s.storeName || '(미지정)';
+          channelRevMap[p][ch] = (channelRevMap[p][ch] || 0) + s.netRevenue;
+          storeRevMap[p][st] = (storeRevMap[p][st] || 0) + s.netRevenue;
+        });
+
+        return Object.keys(pMap).map(pName => {
+          const chObj = channelRevMap[pName] || {};
+          const stObj = storeRevMap[pName] || {};
+          const sortedChannels = Object.keys(chObj).sort((a,b) => chObj[b] - chObj[a]);
+          const sortedStores = Object.keys(stObj).sort((a,b) => stObj[b] - stObj[a]);
+          
+          const topChannel = sortedChannels[0] || '-';
+          const channelText = sortedChannels.length > 1 ? `${topChannel} (외 ${sortedChannels.length - 1})` : topChannel;
+
+          const topStore = sortedStores[0] || '-';
+          const storeText = sortedStores.length > 1 ? `${topStore} (외 ${sortedStores.length - 1})` : topStore;
+
+          return {
+            name: pName,
+            brand: metaMap[pName]?.brand || '(미지정)',
+            topChannel: channelText,
+            topStore: storeText,
+            ...pMap[pName]
+          };
+        }).sort((a,b) => b.netRev - a.netRev || b.qty - a.qty || a.name.localeCompare(b.name)).slice(0, limit);
+      }, [sales, limit]);
 
       if (!sorted.length) return <div className="p-4 text-center text-xs text-slate-400">데이터가 없습니다.</div>;
 
@@ -1043,9 +1302,10 @@
             <thead className="bg-slate-100 dark:bg-zinc-900/80 text-slate-500 dark:text-zinc-400 uppercase text-[10px] font-semibold">
               <tr>
                 <th className="p-2 rounded-l">순위</th>
-                <th className="p-2">상품코드</th>
-                <th className="p-2">상품명</th>
+                <th className="p-2">상품명 (외부몰)</th>
                 <th className="p-2">브랜드</th>
+                {showChannelStore && <th className="p-2">주요 채널</th>}
+                {showChannelStore && <th className="p-2">주요 지점</th>}
                 <th className="p-2 text-right">판매수량</th>
                 <th className="p-2 text-right">순매출액</th>
                 <th className="p-2 text-right rounded-r">평균판매가(ASP)</th>
@@ -1053,11 +1313,12 @@
             </thead>
             <tbody className="divide-y divide-slate-200/60 dark:divide-zinc-800">
               {sorted.map((item, idx) => (
-                <tr key={item.code} onClick={() => navigateTo('product_detail', null, item.code)} className="hover:bg-slate-100/60 dark:hover:bg-zinc-800/50 cursor-pointer transition">
+                <tr key={item.name} onClick={() => navigateTo('product_detail', null, item.name)} className="hover:bg-slate-100/60 dark:hover:bg-zinc-800/50 cursor-pointer transition">
                   <td className="p-2 font-bold text-slate-400 dark:text-zinc-500">{idx+1}</td>
-                  <td className="p-2 font-mono text-[11px] text-blue-600 dark:text-blue-400">{item.code}</td>
-                  <td className="p-2 font-medium text-slate-900 dark:text-zinc-100">{item.name}</td>
+                  <td className="p-2 font-semibold text-slate-900 dark:text-zinc-100">{item.name}</td>
                   <td className="p-2 text-slate-500 dark:text-zinc-400">{item.brand}</td>
+                  {showChannelStore && <td className="p-2 text-slate-600 dark:text-zinc-300 font-medium">{item.topChannel}</td>}
+                  {showChannelStore && <td className="p-2 text-slate-600 dark:text-zinc-300 font-medium">{item.topStore}</td>}
                   <td className="p-2 text-right font-medium">{item.qty.toLocaleString()}개</td>
                   <td className="p-2 text-right font-bold text-slate-900 dark:text-white">₩{Math.round(item.netRev).toLocaleString()}</td>
                   <td className="p-2 text-right text-slate-500 dark:text-zinc-400">₩{Math.round(item.netRev / (item.qty || 1)).toLocaleString()}</td>
@@ -1084,7 +1345,7 @@
             </button>
           </div>
 
-          {subTab === 'best' && <TopProductsTable sales={sales} limit={100} navigateTo={navigateTo} />}
+          {subTab === 'best' && <TopProductsTable sales={sales} limit={100} navigateTo={navigateTo} showChannelStore={true} />}
           {subTab === 'brand' && <GenericGroupAnalyticsTab sales={sales} field="brandName" title="브랜드별 실적 요약" />}
           {subTab === 'channel' && <GenericGroupAnalyticsTab sales={sales} field="channelName" title="채널별 실적 요약" />}
           {subTab === 'store' && <GenericGroupAnalyticsTab sales={sales} field="storeName" title="지점별 실적 요약" />}
@@ -1102,7 +1363,10 @@
 
       return (
         <div className="p-4 rounded-xl glass-card space-y-3">
-          <h3 className="text-xs font-bold text-slate-900 dark:text-white">{title}</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">{title}</h3>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500">※ 마진 금액 = 순매출액 - (수량 × 원가/공급가)</span>
+          </div>
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-100 dark:bg-zinc-900 text-slate-500 font-semibold">
               <tr><th className="p-2">항목명</th><th className="p-2 text-right">판매수량</th><th className="p-2 text-right">순매출액</th><th className="p-2 text-right">마진 금액</th><th className="p-2 text-right">평균판매가</th></tr>
@@ -1113,7 +1377,7 @@
                   <td className="p-2 font-medium">{r.name}</td>
                   <td className="p-2 text-right">{r.qty.toLocaleString()}개</td>
                   <td className="p-2 text-right font-bold">₩{Math.round(r.netRev).toLocaleString()}</td>
-                  <td className="p-2 text-right text-emerald-600 dark:text-emerald-400">₩{Math.round(r.margin).toLocaleString()}</td>
+                  <td className="p-2 text-right text-emerald-600 dark:text-emerald-400 font-medium">₩{Math.round(r.margin).toLocaleString()}</td>
                   <td className="p-2 text-right">₩{Math.round(r.netRev / (r.qty || 1)).toLocaleString()}</td>
                 </tr>
               ))}
@@ -1132,14 +1396,14 @@
               <Icon name="download" className="w-3.5 h-3.5" /> CSV 다운로드
             </button>
           </div>
-          <TopProductsTable sales={sales} limit={200} navigateTo={navigateTo} />
+          <TopProductsTable sales={sales} limit={200} navigateTo={navigateTo} showChannelStore={true} />
         </div>
       );
     };
 
-    const ProductDetailFullView = ({ sales, allSales, productCode, navigateTo, theme }) => {
+    const ProductDetailFullView = ({ sales, allSales, productName, navigateTo, theme }) => {
       const [tab, setTab] = useState('overview');
-      const pSales = useMemo(() => allSales.filter(s => s.productCode === productCode), [allSales, productCode]);
+      const pSales = useMemo(() => allSales.filter(s => s.productName === productName), [allSales, productName]);
       const prodSample = pSales[0] || {};
       const kpi = useMemo(() => calculateKPIs(pSales), [pSales]);
       const priceAnalysis = useMemo(() => AIService.pricing.analyzeProductPricing(pSales), [pSales]);
@@ -1153,10 +1417,9 @@
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-bold">{productCode}</span>
                 <span className="text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300">{prodSample.categoryL1 || '의류/잡화'}</span>
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">{prodSample.productName || productCode}</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">{productName || '선택 상품'}</h2>
             </div>
           </div>
 
@@ -1222,25 +1485,41 @@
         <div className="p-4 rounded-xl glass-card space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Icon name="alert-triangle" className="w-4 h-4 text-rose-500" /> 이상치 탐지 (표준편차 Z &gt; 3)
+              <Icon name="alert-triangle" className="w-4 h-4 text-rose-500" /> 이상치 탐지 (비정상 단가 / 입력 오류)
             </h3>
-            <span className="text-xs text-slate-400">자동 검수</span>
+            <span className="text-[11px] text-slate-500 dark:text-zinc-400">※ 환불/취소(음수 거래)는 정상 반품으로 이상치에서 자동 제외됩니다.</span>
           </div>
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+            <Icon name="info" className="w-4 h-4 text-blue-500 shrink-0" />
+            <span>판매량 급증 항목은 메인 대시보드의 <strong>'AI 매출 인사이트 요약'</strong> 영역에서 실시간 안내됩니다.</span>
+          </div>
+
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-100 dark:bg-zinc-900 text-slate-500 font-semibold">
-              <tr><th className="p-2">발생일자</th><th className="p-2">상품코드</th><th className="p-2">이상치 유형</th><th className="p-2">기록값</th><th className="p-2 text-right">심각도</th></tr>
+              <tr>
+                <th className="p-2">발생일자</th>
+                <th className="p-2">상품명 (외부몰)</th>
+                <th className="p-2">브랜드</th>
+                <th className="p-2">이상치 유형</th>
+                <th className="p-2">단가 기록값</th>
+                <th className="p-2">감지 원인</th>
+                <th className="p-2 text-right">심각도</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-zinc-800">
               {anomalies.length === 0 ? (
-                <tr><td colSpan="5" className="p-4 text-center text-slate-400">검출된 데이터 이상치가 없습니다.</td></tr>
+                <tr><td colSpan="7" className="p-4 text-center text-slate-400">검출된 데이터 단가 이상치가 없습니다. (모든 단가 입력 상태가 정상 범위입니다)</td></tr>
               ) : (
                 anomalies.map((an, i) => (
                   <tr key={i} className="hover:bg-slate-100/50 dark:hover:bg-zinc-800/40">
-                    <td className="p-2 font-mono">{an.date}</td>
-                    <td className="p-2 font-mono text-blue-500">{an.sku}</td>
-                    <td className="p-2 font-medium">{an.type}</td>
-                    <td className="p-2 text-rose-500 font-bold">{an.value}</td>
-                    <td className="p-2 text-right"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${an.severity==='높음'?'bg-rose-500/20 text-rose-600':'bg-amber-500/20 text-amber-600'}`}>{an.severity}</span></td>
+                    <td className="p-2 font-mono text-slate-500">{an.date}</td>
+                    <td className="p-2 font-semibold text-slate-900 dark:text-white">{an.name}</td>
+                    <td className="p-2 text-slate-500">{an.brand || '기타'}</td>
+                    <td className="p-2 font-medium text-rose-600 dark:text-rose-400">{an.type}</td>
+                    <td className="p-2 text-rose-600 dark:text-rose-400 font-bold">{an.value}</td>
+                    <td className="p-2 text-slate-500 dark:text-zinc-400 text-[11px]">{an.reason}</td>
+                    <td className="p-2 text-right"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${an.severity==='높음'?'bg-rose-500/20 text-rose-600 dark:text-rose-400':'bg-amber-500/20 text-amber-600'}`}>{an.severity}</span></td>
                   </tr>
                 ))
               )}
@@ -1251,7 +1530,26 @@
     };
 
     const PurchaseRecommendationView = ({ sales }) => {
-      const pCodes = useMemo(() => Array.from(new Set(sales.map(s => s.productCode))), [sales]);
+      const recommendations = useMemo(() => {
+        if (!sales || !sales.length) return [];
+        const pMap = aggregateByField(sales, 'productName');
+
+        const names = Object.keys(pMap).slice(0, 50);
+        return names.map(name => {
+          const item = pMap[name];
+          const avgWeekly = item.qty / 8;
+          let action = '현상 유지';
+          if (avgWeekly > 10) action = '긴급 발주 추천';
+          else if (avgWeekly < 2) action = '재고 소진 필요';
+
+          return {
+            name,
+            totalQty: item.qty,
+            burnRate: avgWeekly.toFixed(1),
+            action
+          };
+        });
+      }, [sales]);
 
       return (
         <div className="p-4 rounded-xl glass-card space-y-3">
@@ -1260,27 +1558,20 @@
           </h3>
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-100 dark:bg-zinc-900 text-slate-500 font-semibold">
-              <tr><th className="p-2">상품코드</th><th className="p-2">상품명</th><th className="p-2 text-right">누적판매량</th><th className="p-2 text-right">주당소진</th><th className="p-2 text-center">AI 추천행동</th></tr>
+              <tr><th className="p-2">상품명 (외부몰)</th><th className="p-2 text-right">누적판매량</th><th className="p-2 text-right">주당소진</th><th className="p-2 text-center">AI 추천행동</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-zinc-800">
-              {pCodes.length === 0 ? (
-                <tr><td colSpan="5" className="p-4 text-center text-slate-400">업로드된 상품 데이터가 없습니다.</td></tr>
+              {recommendations.length === 0 ? (
+                <tr><td colSpan="4" className="p-4 text-center text-slate-400">업로드된 상품 데이터가 없습니다.</td></tr>
               ) : (
-                pCodes.slice(0, 50).map(code => {
-                  const pSales = sales.filter(s => s.productCode === code);
-                  const pName = pSales[0]?.productName || code;
-                  const totalQ = pSales.reduce((acc,s) => acc + s.quantity, 0);
-                  const risk = AIService.inventory.assessRisk(pSales, 100, 0);
-                  return (
-                    <tr key={code} className="hover:bg-slate-100/50 dark:hover:bg-zinc-800/40">
-                      <td className="p-2 font-mono text-blue-500">{code}</td>
-                      <td className="p-2 font-medium">{pName}</td>
-                      <td className="p-2 text-right">{totalQ.toLocaleString()}개</td>
-                      <td className="p-2 text-right">{risk.burnRate}개</td>
-                      <td className="p-2 text-center"><span className="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-600 font-bold">{risk.action}</span></td>
-                    </tr>
-                  );
-                })
+                recommendations.map(item => (
+                  <tr key={item.name} className="hover:bg-slate-100/50 dark:hover:bg-zinc-800/40">
+                    <td className="p-2 font-medium text-slate-900 dark:text-white">{item.name}</td>
+                    <td className="p-2 text-right">{item.totalQty.toLocaleString()}개</td>
+                    <td className="p-2 text-right">{item.burnRate}개</td>
+                    <td className="p-2 text-center"><span className="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-600 font-bold">{item.action}</span></td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
