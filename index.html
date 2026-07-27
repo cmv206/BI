@@ -325,51 +325,42 @@
           if (!sales.length) return [];
           const anomalies = [];
           
-          // 1. Calculate per-product baseline unit price and quantity metrics (Single pass)
-          const prodPriceMap = {};
-          const prodQtyMap = {};
+          // 1. Calculate category/brand baseline statistics for contextual detection
+          const categoryStats = {};
+          let totalQtySum = 0;
 
           for (let i = 0; i < sales.length; i++) {
             const s = sales[i];
-            const pKey = s.productName || '미지정';
-            if (s.quantity > 0 && s.salePrice > 0) {
-              if (!prodPriceMap[pKey]) prodPriceMap[pKey] = [];
-              prodPriceMap[pKey].push(s.salePrice);
-            }
-            if (s.quantity > 0) {
-              if (!prodQtyMap[pKey]) prodQtyMap[pKey] = [];
-              prodQtyMap[pKey].push(s.quantity);
-            }
-          }
-
-          const prodStats = {};
-          for (const pKey in prodPriceMap) {
-            const prices = prodPriceMap[pKey];
-            const qties = prodQtyMap[pKey] || [1];
-            prodStats[pKey] = {
-              medianPrice: MathUtils.median(prices),
-              meanPrice: MathUtils.mean(prices),
-              avgQty: MathUtils.mean(qties),
-              count: prices.length
-            };
-          }
-
-          // Premium/High-Value keywords to respect legitimate high prices
-          const luxuryKeywords = [
-            '구찌', '샤넬', '루이비통', '프라다', '버버리', '에르메스', '디올', '펜디', '발렌시아가', '보테가', '로렉스',
-            '진주', '소가죽', '천연가죽', '가죽', '대형캐리어', '캐리어', '소파', '원목', '침대', '금', '18k', '14k', '다이아', '밍크', '모피', '패딩', '다이슨'
-          ];
-
-          for (let i = 0; i < sales.length; i++) {
-            const s = sales[i];
-            const pKey = s.productName || '미지정';
-            const stat = prodStats[pKey];
             const catKey = s.categoryL1 || s.brandName || '일반';
+            if (!categoryStats[catKey]) {
+              categoryStats[catKey] = { priceSum: 0, qtySum: 0, count: 0 };
+            }
+            if (s.quantity > 0 && s.salePrice > 0) {
+              categoryStats[catKey].priceSum += (s.salePrice * s.quantity);
+              categoryStats[catKey].qtySum += s.quantity;
+              categoryStats[catKey].count += s.quantity;
+            }
+            totalQtySum += Math.max(0, s.quantity);
+          }
 
-            // 1. Abnormal Quantity Detection (Order/Phone Number misentry)
-            const prodAvgQty = stat ? stat.avgQty : 1;
-            if (s.quantity > 3000 || (prodAvgQty > 0 && s.quantity > Math.max(10, prodAvgQty * 20) && s.quantity > 300)) {
-              const multiple = prodAvgQty > 0 ? (s.quantity / prodAvgQty).toFixed(1) : '대형';
+          const overallAvgQty = sales.length ? (totalQtySum / sales.length) : 1;
+
+          for (let i = 0; i < sales.length; i++) {
+            const s = sales[i];
+            const catKey = s.categoryL1 || s.brandName || '일반';
+            const catStat = categoryStats[catKey];
+            
+            // Average sale price for this specific category
+            const catAvgPrice = (catStat && catStat.count > 0) 
+              ? (catStat.priceSum / catStat.count) 
+              : 30000;
+            const catAvgQty = (catStat && sales.length > 0) 
+              ? (catStat.qtySum / sales.length) 
+              : overallAvgQty;
+
+            // 1. Abnormal Quantity Detection (Order Number misentry)
+            if (s.quantity > 3000 || (catAvgQty > 0 && s.quantity > catAvgQty * 20 && s.quantity > 300)) {
+              const multiple = catAvgQty > 0 ? (s.quantity / catAvgQty).toFixed(1) : '대형';
               anomalies.push({
                 saleId: s.saleId,
                 date: s.fullDate,
@@ -379,44 +370,28 @@
                 type: '비정상 수량 (오더번호 오입력 의심)',
                 value: `${s.quantity.toLocaleString()}개`,
                 severity: '높음',
-                reason: `해당 상품 평균 출고 수량(${Math.round(prodAvgQty)}개) 대비 ${multiple}배 초과 (${s.quantity.toLocaleString()}개 기록, 전표/주문번호 오입력 의심)`
+                reason: `[${catKey}] 카테고리 평균 출고 수량(${Math.round(catAvgQty)}개) 대비 ${multiple}배 초과 (${s.quantity.toLocaleString()}개 기록)`
               });
             }
 
-            // 2. Contextual Abnormal Unit Price Detection (Typos & Intra-product spikes)
+            // 2. Abnormal Unit Price Detection (Product/Category Contextual Threshold)
             if (s.quantity > 0 && s.netRevenue > 0) {
               const unitPrice = s.salePrice || (s.netRevenue / s.quantity);
-
-              // Detect true typos based on THAT SPECIFIC ITEM's own median price history
-              if (stat && stat.count >= 2 && stat.medianPrice > 0) {
-                const ratio = unitPrice / stat.medianPrice;
-                if (ratio >= 3.0 && (unitPrice - stat.medianPrice) > 50000) {
-                  // Price spiked 3x+ above THIS SAME PRODUCT's normal price
-                  anomalies.push({
-                    saleId: s.saleId,
-                    date: s.fullDate,
-                    name: s.productName,
-                    brand: s.brandName,
-                    category: catKey,
-                    type: '비정상 단가 (입력 오류 의심)',
-                    value: `₩${Math.round(unitPrice).toLocaleString()} /개`,
-                    severity: '높음',
-                    reason: `동일 상품 통상 판매가(₩${Math.round(stat.medianPrice).toLocaleString()}) 대비 ${ratio.toFixed(1)}배 급증 (+₩${Math.round(unitPrice - stat.medianPrice).toLocaleString()} 차이, 0 추가 오입력 의심)`
-                  });
-                } else if (ratio <= 0.2 && (stat.medianPrice - unitPrice) > 30000) {
-                  // Price dropped below 20% of THIS SAME PRODUCT's normal price
-                  anomalies.push({
-                    saleId: s.saleId,
-                    date: s.fullDate,
-                    name: s.productName,
-                    brand: s.brandName,
-                    category: catKey,
-                    type: '비정상 단가 (단가 누락 의심)',
-                    value: `₩${Math.round(unitPrice).toLocaleString()} /개`,
-                    severity: '높음',
-                    reason: `동일 상품 통상 판매가(₩${Math.round(stat.medianPrice).toLocaleString()}) 대비 80% 이상 폭락 (₩${Math.round(unitPrice).toLocaleString()} 기록, 단가/0 누락 의심)`
-                  });
-                }
+              // Check if the item's unit price significantly exceeds its category benchmark (>3.5x and >₩50,000 difference)
+              if (catAvgPrice > 0 && unitPrice > catAvgPrice * 3.5 && (unitPrice - catAvgPrice) > 50000) {
+                const ratio = (unitPrice / catAvgPrice).toFixed(1);
+                const diff = Math.round(unitPrice - catAvgPrice);
+                anomalies.push({
+                  saleId: s.saleId,
+                  date: s.fullDate,
+                  name: s.productName,
+                  brand: s.brandName,
+                  category: catKey,
+                  type: '비정상 단가 (입력 오류 의심)',
+                  value: `₩${Math.round(unitPrice).toLocaleString()} /개`,
+                  severity: '높음',
+                  reason: `[${catKey}] 카테고리 평균 단가(₩${Math.round(catAvgPrice).toLocaleString()}) 대비 ${ratio}배 초과 (+₩${diff.toLocaleString()} 높은 ₩${Math.round(unitPrice).toLocaleString()} 기록)`
+                });
               }
             }
           }
@@ -429,4 +404,1523 @@
     };
 
     const exportCSV = (filename, rows) => {
-<!-- ... existing code -->
+      if (!rows || !rows.length) return;
+      const headers = Object.keys(rows[0]).join(',');
+      const csvContent = [headers, ...rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${filename}.csv`; link.click();
+    };
+
+    const calculateKPIs = (sales) => {
+      let netRev = 0, grossRev = 0, qty = 0, margin = 0;
+      const bSet = new Set(), sSet = new Set(), cSet = new Set(), stSet = new Set();
+      
+      for (let i = 0; i < sales.length; i++) {
+        const r = sales[i];
+        netRev += (r.netRevenue || 0); 
+        grossRev += (r.grossRevenue || 0); 
+        qty += (r.quantity || 0); 
+        margin += (r.marginAmount || 0);
+        if (r.quantity !== 0) { 
+          if (r.brandName) bSet.add(r.brandName); 
+          if (r.productName) sSet.add(r.productName); 
+          if (r.channelName) cSet.add(r.channelName); 
+          if (r.storeName) stSet.add(r.storeName); 
+        }
+      }
+      return {
+        netRev, grossRev, qty, margin, asp: qty ? Math.round(netRev / qty) : 0,
+        marginRate: netRev ? (margin / netRev * 100).toFixed(1) : 0, 
+        discountRate: grossRev ? ((grossRev - netRev) / grossRev * 100).toFixed(1) : 0,
+        brands: bSet.size, skus: sSet.size, channels: cSet.size, stores: stSet.size
+      };
+    };
+
+    function App() {
+      const [theme, setTheme] = useState('light');
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [analyticsSubTab, setAnalyticsSubTab] = useState('best');
+      const [selectedProductName, setSelectedProductName] = useState(null);
+      const [isLoading, setIsLoading] = useState(false);
+      const [isChatOpen, setIsChatOpen] = useState(false);
+      const [isUploadOpen, setIsUploadOpen] = useState(false);
+
+      const [salesData, setSalesData] = useState([]);
+      const [uploadHistory, setUploadHistory] = useState([]);
+      const [excludedSaleIds, setExcludedSaleIds] = useState(new Set());
+
+      const salesDataRef = useRef(salesData);
+      useEffect(() => {
+        salesDataRef.current = salesData;
+      }, [salesData]);
+
+      const [filters, setFilters] = useState({ 
+        startDate: '2020-01-01', 
+        endDate: '2030-12-31', 
+        brandName: '', 
+        channelName: '', 
+        storeName: '', 
+        searchKeyword: '' 
+      });
+
+      // Firebase Firestore Synchronization
+      useEffect(() => {
+        if (!window.FirebaseSDK) return;
+        const { initializeApp, getAuth, signInWithCustomToken, signInAnonymously, getFirestore, collection, onSnapshot } = window.FirebaseSDK;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sales-analysis-platform';
+        const firebaseConfig = typeof __firebase_config !== 'undefined'
+          ? (typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config)
+          : { apiKey: "demo-key", authDomain: "demo.firebaseapp.com", projectId: "demo-project" };
+
+        const initSync = async () => {
+          try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+              await signInAnonymously(auth);
+            }
+
+            const salesCol = collection(db, 'artifacts', appId, 'public', 'data', 'sales_chunks');
+            const historyCol = collection(db, 'artifacts', appId, 'public', 'data', 'upload_history');
+
+            onSnapshot(salesCol, (snapshot) => {
+              let loadedSales = [];
+              snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data && Array.isArray(data.rows)) {
+                  loadedSales = loadedSales.concat(data.rows);
+                }
+              });
+              // Only overwrite local state if local is empty or incoming snapshot has complete data
+              const currentCount = salesDataRef.current ? salesDataRef.current.length : 0;
+              if (loadedSales.length > 0 && (currentCount === 0 || loadedSales.length >= currentCount)) {
+                setSalesData(loadedSales);
+              }
+            }, (err) => console.warn("Firestore sales sync warning:", err));
+
+            onSnapshot(historyCol, (snapshot) => {
+              let history = [];
+              snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data) history.push(data);
+              });
+              if (history.length) {
+                setUploadHistory(history.sort((a,b) => b.id - a.id));
+              }
+            }, (err) => console.warn("Firestore history sync warning:", err));
+
+          } catch (err) {
+            console.warn("Firestore persistence init note:", err);
+          }
+        };
+
+        initSync();
+      }, []);
+
+      useEffect(() => {
+        const root = document.documentElement;
+        if (theme === 'dark') { root.classList.add('dark'); } else { root.classList.remove('dark'); }
+      }, [theme]);
+
+      const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+
+      const handleFilterChange = (newFilters) => { 
+        setIsLoading(true); 
+        setFilters(newFilters); 
+        setTimeout(() => setIsLoading(false), 20); 
+      };
+
+      const toggleExcludeSaleId = (saleId) => {
+        setExcludedSaleIds(prev => {
+          const next = new Set(prev);
+          if (next.has(saleId)) next.delete(saleId);
+          else next.add(saleId);
+          return next;
+        });
+      };
+
+      const toggleExcludeAllAnomalies = (anomalyList) => {
+        setExcludedSaleIds(prev => {
+          const next = new Set(prev);
+          const allExcluded = anomalyList.every(a => next.has(a.saleId));
+          if (allExcluded) {
+            anomalyList.forEach(a => next.delete(a.saleId));
+          } else {
+            anomalyList.forEach(a => next.add(a.saleId));
+          }
+          return next;
+        });
+      };
+
+      const dynamicBrands = useMemo(() => {
+        const set = new Set(); salesData.forEach(s => { if (s.brandName) set.add(s.brandName); });
+        return Array.from(set).sort();
+      }, [salesData]);
+
+      const dynamicChannels = useMemo(() => {
+        const set = new Set(); salesData.forEach(s => { if (s.channelName) set.add(s.channelName); });
+        return Array.from(set).sort();
+      }, [salesData]);
+
+      const dynamicStores = useMemo(() => {
+        const set = new Set(); salesData.forEach(s => { if (s.storeName) set.add(s.storeName); });
+        return Array.from(set).sort();
+      }, [salesData]);
+
+      const filteredSales = useMemo(() => {
+        const res = [];
+        const kw = filters.searchKeyword.trim().toLowerCase();
+        for (let i = 0; i < salesData.length; i++) {
+          const item = salesData[i];
+          if (excludedSaleIds.has(item.saleId)) continue;
+          if (item.fullDate < filters.startDate || item.fullDate > filters.endDate) continue;
+          if (filters.brandName && item.brandName !== filters.brandName) continue;
+          if (filters.channelName && item.channelName !== filters.channelName) continue;
+          if (filters.storeName && item.storeName !== filters.storeName) continue;
+          if (kw !== '' && item.productName && !item.productName.toLowerCase().includes(kw)) continue;
+          res.push(item);
+        }
+        return res;
+      }, [salesData, filters, excludedSaleIds]);
+
+      const navigateTo = (tab, subTab = null, data = null) => {
+        setIsLoading(true); 
+        setActiveTab(tab);
+        if (subTab) setAnalyticsSubTab(subTab);
+        if (tab === 'product_detail' && data) setSelectedProductName(data);
+        setTimeout(() => setIsLoading(false), 20);
+      };
+
+      return (
+        <div className="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 transition-colors duration-200">
+          <header className="no-print h-14 border-b border-slate-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-between px-3 md:px-4 z-20 shrink-0 shadow-xs dark:shadow-none gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-violet-600 to-blue-500 flex items-center justify-center font-black text-white text-xs shadow-md shadow-violet-500/20">AI</div>
+              <h1 className="font-bold text-xs sm:text-sm tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
+                AI판매분석
+              </h1>
+            </div>
+
+            <nav className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-950/60 p-1 rounded-lg border border-slate-200 dark:border-zinc-800 shrink-0">
+              <NavBtn active={activeTab === 'dashboard'} onClick={() => navigateTo('dashboard')} icon="layout-dashboard" label="대시보드" />
+              <NavBtn active={activeTab === 'analytics'} onClick={() => navigateTo('analytics')} icon="bar-chart-2" label="매출 분석" />
+              <NavBtn active={activeTab === 'products' || activeTab === 'product_detail'} onClick={() => navigateTo('products')} icon="package" label="상품 카탈로그" />
+              <div className="w-px h-4 bg-slate-300 dark:bg-zinc-700 mx-0.5"></div>
+              <NavBtn active={activeTab === 'anomaly'} onClick={() => navigateTo('anomaly')} icon="alert-triangle" label="이상치 탐지" color="rose" />
+              <NavBtn active={activeTab === 'purchase'} onClick={() => navigateTo('purchase')} icon="shopping-cart" label="AI 발주 추천" color="emerald" />
+              <NavBtn active={activeTab === 'report'} onClick={() => navigateTo('report')} icon="file-text" label="경영진 리포트" color="violet" />
+            </nav>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button 
+                onClick={() => setIsUploadOpen(true)}
+                className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition whitespace-nowrap"
+                title="엑셀 파일 업로드"
+              >
+                <Icon name="upload-cloud" className="w-3.5 h-3.5" />
+                <span>엑셀 업로드</span>
+              </button>
+
+              <button 
+                onClick={toggleTheme} 
+                className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 transition text-xs font-semibold whitespace-nowrap"
+                title="화면 테마 변경"
+              >
+                <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-3.5 h-3.5 text-amber-500 dark:text-indigo-400" />
+                <span className="hidden sm:inline">{theme === 'dark' ? '라이트' : '다크'}</span>
+              </button>
+
+              <button onClick={() => setIsChatOpen(!isChatOpen)} className="flex items-center gap-1 bg-violet-600/10 hover:bg-violet-600/20 dark:bg-violet-600/20 dark:hover:bg-violet-600/40 text-violet-700 dark:text-violet-300 px-2.5 py-1.5 rounded-lg border border-violet-500/30 transition text-xs font-semibold whitespace-nowrap">
+                <Icon name="sparkles" className="w-3.5 h-3.5 text-violet-600 dark:text-violet-300" />
+                <span>AI 검색</span>
+              </button>
+            </div>
+          </header>
+
+          {isChatOpen && <AIChatModal onClose={() => setIsChatOpen(false)} sales={filteredSales} />}
+          {isUploadOpen && (
+            <ExcelUploadModal 
+              onClose={() => setIsUploadOpen(false)} 
+              salesData={salesData} 
+              setSalesData={setSalesData}
+              uploadHistory={uploadHistory}
+              setUploadHistory={setUploadHistory}
+            />
+          )}
+
+          <div className="no-print bg-white/70 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800 px-5 py-2.5 shrink-0 flex items-center justify-between shadow-xs">
+             <div className="flex flex-wrap items-center gap-2.5 w-full">
+                <div className="flex items-center gap-1.5 mr-2">
+                  <Icon name="filter" className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                  <span className="text-[11px] font-bold text-slate-800 dark:text-white uppercase tracking-wider">전체 필터</span>
+                </div>
+                <input type="date" value={filters.startDate} onChange={e => handleFilterChange({...filters, startDate: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded px-2 py-1 text-slate-800 dark:text-white focus:border-blue-500 outline-none shadow-xs" />
+                <span className="text-slate-400 dark:text-zinc-500 text-xs">~</span>
+                <input type="date" value={filters.endDate} onChange={e => handleFilterChange({...filters, endDate: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded px-2 py-1 text-slate-800 dark:text-white focus:border-blue-500 outline-none shadow-xs" />
+                
+                <select value={filters.brandName} onChange={e => handleFilterChange({...filters, brandName: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded px-2 py-1 text-slate-800 dark:text-white outline-none shadow-xs">
+                  <option value="">전체 브랜드 ({dynamicBrands.length})</option>
+                  {dynamicBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+
+                <select value={filters.channelName} onChange={e => handleFilterChange({...filters, channelName: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded px-2 py-1 text-slate-800 dark:text-white outline-none shadow-xs">
+                  <option value="">전체 채널 ({dynamicChannels.length})</option>
+                  {dynamicChannels.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+
+                <select value={filters.storeName} onChange={e => handleFilterChange({...filters, storeName: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded px-2 py-1 text-slate-800 dark:text-white outline-none shadow-xs">
+                  <option value="">전체 지점 ({dynamicStores.length})</option>
+                  {dynamicStores.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+
+                {excludedSaleIds.size > 0 && (
+                  <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                    ⚠️ {excludedSaleIds.size}개 이상치 항목 제외 중
+                  </span>
+                )}
+
+                <div className="ml-auto relative">
+                  <Icon name="search" className="w-3 h-3 absolute left-2 top-2 text-slate-400 dark:text-zinc-500" />
+                  <input type="text" placeholder="상품명 검색..." value={filters.searchKeyword} onChange={e => handleFilterChange({...filters, searchKeyword: e.target.value})} className="bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 text-[11px] rounded pl-7 pr-2 py-1 text-slate-800 dark:text-white outline-none w-44 shadow-xs" />
+                </div>
+             </div>
+          </div>
+
+          <main className="flex-1 overflow-y-auto p-5 relative print-only-scroll">
+            {isLoading && <div className="absolute inset-0 z-10 bg-slate-100/50 dark:bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center"><Icon name="loader-2" className="w-8 h-8 text-blue-500 animate-spin" /></div>}
+            
+            {salesData.length === 0 ? (
+              <EmptyDataBanner onUploadClick={() => setIsUploadOpen(true)} />
+            ) : (
+              <div className={`transition-opacity duration-300 ${isLoading ? 'opacity-30' : 'opacity-100'}`}>
+                {activeTab === 'dashboard' && <DashboardView sales={filteredSales} navigateTo={navigateTo} theme={theme} />}
+                {activeTab === 'analytics' && <AnalyticsView sales={filteredSales} subTab={analyticsSubTab} setSubTab={setAnalyticsSubTab} navigateTo={navigateTo} />}
+                {activeTab === 'products' && <ProductsExplorerView sales={filteredSales} navigateTo={navigateTo} />}
+                {activeTab === 'product_detail' && <ProductDetailFullView sales={filteredSales} allSales={salesData} productName={selectedProductName} navigateTo={navigateTo} theme={theme} />}
+                {activeTab === 'anomaly' && (
+                  <AnomalyCenterView 
+                    allSales={salesData} 
+                    excludedSaleIds={excludedSaleIds}
+                    toggleExcludeSaleId={toggleExcludeSaleId}
+                    toggleExcludeAllAnomalies={toggleExcludeAllAnomalies}
+                  />
+                )}
+                {activeTab === 'purchase' && <PurchaseRecommendationView sales={filteredSales} />}
+                {activeTab === 'report' && <ExecutiveReportView sales={filteredSales} />}
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    function EmptyDataBanner({ onUploadClick }) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center glass-panel rounded-2xl border border-dashed border-slate-300 dark:border-zinc-800 space-y-4 max-w-2xl mx-auto my-8">
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-inner">
+            <Icon name="file-spreadsheet" className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">업로드된 매출 로우데이터가 없습니다</h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
+              분석할 SAP 엑셀 파일(.xlsx)을 업로드하면, 예시 데이터 없이 <strong>실제 로우데이터만을 기준으로</strong> KPI, 브랜드/채널별 점유율, 상품 실적이 초고속으로 계산됩니다.
+            </p>
+          </div>
+          <button 
+            onClick={onUploadClick} 
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-2"
+          >
+            <Icon name="upload-cloud" className="w-4 h-4" />
+            <span>엑셀 파일 업로드하기</span>
+          </button>
+        </div>
+      );
+    }
+
+    function ExcelUploadModal({ onClose, salesData, setSalesData, uploadHistory, setUploadHistory }) {
+      const [strategy, setStrategy] = useState('overwrite');
+      const [parsedMeta, setParsedMeta] = useState([]);
+      const [isProcessing, setIsProcessing] = useState(false);
+      const [message, setMessage] = useState('');
+      const [step, setStep] = useState(1);
+      const fileInputRef = useRef(null);
+      const parsedFilesRef = useRef([]);
+
+      const targetFields = [
+        { key: 'date', label: '날짜/일자', keywords: ['출고확정일', '일자', '날짜', '전표일자', '영업일자', '판매일', '주문일', '출고일', '결제일', 'date'] },
+        { key: 'order', label: '주문/전표번호', keywords: ['주문번호-순번', '주문번호', '전표번호', '주문전표번호', '주문no', 'orderno', 'ord_no', 'order'] },
+        { key: 'name', label: '외부몰 상품명', keywords: ['외부몰 상품명', '외부몰상품명', '상품명', '품목명', '제품명', 'item', 'product'] },
+        { key: 'brand', label: '브랜드명', keywords: ['브랜드 내역', '브랜드내역', '브랜드명', '자사브랜드', '브랜드'] },
+        { key: 'category', label: '카테고리', keywords: ['카테고리', '대분류', '중분류', '품목군', 'category'] },
+        { key: 'channel', label: '판매채널', keywords: ['채널명', '판매채널', '유통채널', '채널', '구분', '채널구분', 'channel'] },
+        { key: 'store', label: '지점/매장(플랜트)', keywords: ['플랜트(R100)', '플랜트', '플랜트명', '지점명', '지점', '매장명', '매장', '점포명', 'store'] },
+        { key: 'option', label: '옵션/규격', keywords: ['외부몰 옵션명', '외부몰옵션명', '옵션명', '옵션', '규격', '색상', '사이즈', 'option'] },
+        { key: 'qty', label: '판매수량', keywords: ['오더 수량', '오더수량', '판매수량', '수량', '출고수량', 'qty', 'quantity'] },
+        { key: 'price', label: '정가/단가', keywords: ['소비자가', '정가', '단가', '표준단가', 'unitprice', 'price'] },
+        { key: 'disc', label: '할인금액', keywords: ['할인금액', '할인액', '할인단가', '할인', 'discount'] },
+        { key: 'salePrice', label: '실판매가/결제액', keywords: ['실판매가', '판매금액', '판매가', '결제금액', '판매단가', 'saleprice', '금액'] },
+        { key: 'cost', label: '원가/공급가', keywords: ['원가', '공급가', '제조원가', '매입가', 'cost'] }
+      ];
+
+      const [customKeyMap, setCustomKeyMap] = useState({});
+      const [detectedHeaders, setDetectedHeaders] = useState([]);
+
+      const readSheetHeadersAndRows = (file) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            setTimeout(() => {
+              try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { 
+                  type: 'array', 
+                  dense: true, 
+                  cellDates: false, 
+                  cellFormulas: false, 
+                  cellStyles: false, 
+                  cellHTML: false,
+                  cellNF: false,
+                  cellText: false
+                });
+                
+                if (!workbook.SheetNames || !workbook.SheetNames.length) {
+                  resolve({ headers: [], rows2D: [] });
+                  return;
+                }
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                if (!worksheet) {
+                  resolve({ headers: [], rows2D: [] });
+                  return;
+                }
+
+                const raw2D = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, raw: true });
+                if (!raw2D || raw2D.length < 1) {
+                  resolve({ headers: [], rows2D: [] });
+                  return;
+                }
+
+                let headerRowIdx = 0;
+                let maxMatches = 0;
+                const knownKeywords = ['출고확정일', '일자', '날짜', '외부몰 상품명', '외부몰상품명', '브랜드 내역', '브랜드내역', '플랜트(R100)', '플랜트', '판매채널', '채널명', '오더 수량', '실판매가', '결제금액'];
+
+                for (let r = 0; r < Math.min(15, raw2D.length); r++) {
+                  const rowArr = raw2D[r] || [];
+                  let matches = 0;
+                  rowArr.forEach(cell => {
+                    const strCell = String(cell || '').trim();
+                    if (knownKeywords.some(kw => strCell.includes(kw))) {
+                      matches++;
+                    }
+                  });
+                  if (matches > maxMatches) {
+                    maxMatches = matches;
+                    headerRowIdx = r;
+                  }
+                }
+
+                const headers = (raw2D[headerRowIdx] || []).map(h => String(h || '').trim());
+                const dataRows = raw2D.slice(headerRowIdx + 1);
+                resolve({ headers, rows2D: dataRows });
+              } catch (err) { 
+                console.error("XLSX 파싱 에러:", err);
+                resolve({ headers: [], rows2D: [] }); 
+              }
+            }, 10);
+          };
+          reader.onerror = (err) => {
+            console.error("FileReader 에러:", err);
+            resolve({ headers: [], rows2D: [] });
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      };
+
+      const processFiles = async (filesList) => {
+        const files = Array.from(filesList).filter(f => !f.name.startsWith('~$') && !f.name.startsWith('.'));
+        if (!files.length) return;
+        
+        setIsProcessing(true);
+        setMessage(`${files.length}개 파일 읽는 중...`);
+        await new Promise(r => setTimeout(r, 10));
+
+        const fileResults = [];
+        const fileMetas = [];
+        let allHeaders = new Set();
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          try {
+            setMessage(`읽는 중 (${i + 1}/${files.length}): ${file.name}`);
+            await new Promise(r => setTimeout(r, 10));
+            
+            const { headers, rows2D } = await readSheetHeadersAndRows(file);
+            if (headers.length && rows2D.length) {
+              headers.forEach(h => { if(h) allHeaders.add(h); });
+              fileResults.push({ file, headers, rows2D });
+              fileMetas.push({ name: file.name, headersCount: headers.length, rowCount: rows2D.length });
+            }
+          } catch (err) {
+            console.error("파일 읽기 오류:", file.name, err);
+          }
+        }
+
+        const headersArr = Array.from(allHeaders);
+        setDetectedHeaders(headersArr);
+        parsedFilesRef.current = fileResults;
+        setParsedMeta(fileMetas);
+
+        const autoMap = {};
+        targetFields.forEach(field => {
+          let matched = headersArr.find(h => h === field.keywords[0]);
+          if (!matched) {
+            matched = headersArr.find(h => field.keywords.includes(h));
+          }
+          if (!matched) {
+            matched = headersArr.find(h => 
+              field.keywords.some(k => h.replace(/\s+/g, '').toLowerCase().includes(k.replace(/\s+/g, '').toLowerCase()))
+            );
+          }
+          autoMap[field.key] = matched || '';
+        });
+
+        setCustomKeyMap(autoMap);
+        setIsProcessing(false);
+        
+        if (fileResults.length === 0) {
+          setMessage(`⚠️ 선택한 파일에서 올바른 데이터를 읽지 못했습니다. 엑셀 파일 형식을 확인해주세요.`);
+        } else {
+          setStep(2);
+          setMessage(`✅ 총 ${fileResults.length}개 파일 분석 완료. 컬럼 매핑을 확인하시고 저장 버튼을 눌러주세요.`);
+        }
+      };
+
+      const handleIngest = async () => {
+        const fileResults = parsedFilesRef.current;
+        if (!fileResults || !fileResults.length) return;
+        setIsProcessing(true);
+        setMessage("데이터 초고속 변환 및 정규화 준비 중...");
+        await new Promise(r => setTimeout(r, 10));
+
+        try {
+          let updatedSales = [...salesData];
+          const newLogs = [];
+
+          const resolveColForField = (headers, mapKey, keywords) => {
+            if (customKeyMap[mapKey] && headers.includes(customKeyMap[mapKey])) {
+              return customKeyMap[mapKey];
+            }
+            let exactTop = headers.find(h => h === keywords[0]);
+            if (exactTop) return exactTop;
+
+            for (const kw of keywords) {
+              const kwClean = kw.replace(/\s+/g, '').toLowerCase();
+              const matched = headers.find(h => h.replace(/\s+/g, '').toLowerCase().includes(kwClean));
+              if (matched) return matched;
+            }
+            return null;
+          };
+
+          for (let fileIdx = 0; fileIdx < fileResults.length; fileIdx++) {
+            const { file, headers, rows2D } = fileResults[fileIdx];
+            const newUploadId = Date.now() + fileIdx;
+            
+            const colIndices = {};
+            targetFields.forEach(field => {
+              const matchedHeader = resolveColForField(headers, field.key, field.keywords);
+              colIndices[field.key] = matchedHeader ? headers.indexOf(matchedHeader) : -1;
+            });
+
+            const dateCol = colIndices['date'];
+            const orderCol = colIndices['order'];
+            const nameCol = colIndices['name'];
+            const brandCol = colIndices['brand'];
+            const categoryCol = colIndices['category'];
+            const channelCol = colIndices['channel'];
+            const storeCol = colIndices['store'];
+            const optionCol = colIndices['option'];
+            const qtyCol = colIndices['qty'];
+            const priceCol = colIndices['price'];
+            const discCol = colIndices['disc'];
+            const salePriceCol = colIndices['salePrice'];
+            const costCol = colIndices['cost'];
+
+            const extNameCol = headers.findIndex(h => h === '외부몰 상품명' || h === '외부몰상품명');
+            const bCol = headers.findIndex(h => h.includes('브랜드 내역') || h.includes('브랜드내역'));
+            const altPlantCol = headers.findIndex(h => h.trim() === '플랜트' || h.replace(/\s+/g, '').includes('플랜트'));
+
+            const totalRows = rows2D.length;
+            const convertedRows = new Array(totalRows);
+            const CHUNK_SIZE = 3000;
+
+            for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
+              const limit = Math.min(i + CHUNK_SIZE, totalRows);
+
+              for (let idx = i; idx < limit; idx++) {
+                const row = rows2D[idx];
+                if (!row) continue;
+
+                const rawDateStr = dateCol !== -1 && row[dateCol] != null ? String(row[dateCol]).trim() : '';
+                const dateVal = parseExcelDateFast(rawDateStr);
+                
+                const orderNum = (orderCol !== -1 && row[orderCol] != null) 
+                  ? String(row[orderCol]).trim() 
+                  : `ORD_${newUploadId}_${idx}`;
+                
+                let prodName = nameCol !== -1 && row[nameCol] != null ? String(row[nameCol]).trim() : '';
+                if (!prodName && extNameCol !== -1 && row[extNameCol] != null) {
+                  prodName = String(row[extNameCol]).trim();
+                }
+                if (!prodName) prodName = '미지정 상품명';
+
+                let brandName = brandCol !== -1 && row[brandCol] != null ? String(row[brandCol]).trim() : '';
+                if ((!brandName || /^\d+$/.test(brandName)) && bCol !== -1 && row[bCol] != null) {
+                  brandName = String(row[bCol]).trim();
+                }
+                if (!brandName || /^\d+$/.test(brandName)) brandName = '기타 브랜드';
+
+                const categoryL1 = categoryCol !== -1 && row[categoryCol] != null ? String(row[categoryCol]).trim() : '의류/잡화';
+                const channelName = channelCol !== -1 && row[channelCol] != null ? String(row[channelCol]).trim() : '자사몰';
+                
+                let rawStore = storeCol !== -1 && row[storeCol] != null ? String(row[storeCol]).trim() : '';
+                if (!rawStore && altPlantCol !== -1 && row[altPlantCol] != null) {
+                  rawStore = String(row[altPlantCol]).trim();
+                }
+                const storeName = formatStoreName(rawStore);
+                const optionName = optionCol !== -1 && row[optionCol] != null ? String(row[optionCol]).trim() : 'FREE';
+
+                const rawQtyStr = qtyCol !== -1 && row[qtyCol] != null ? String(row[qtyCol]).trim() : '1';
+                let qty = parseInt(rawQtyStr, 10);
+                if (isNaN(qty)) qty = 1;
+
+                let unitP = priceCol !== -1 && row[priceCol] != null ? parseFloat(row[priceCol]) || 0 : 0;
+                let discP = discCol !== -1 && row[discCol] != null ? parseFloat(row[discCol]) || 0 : 0;
+                let saleP = salePriceCol !== -1 && row[salePriceCol] != null ? parseFloat(row[salePriceCol]) || 0 : 0;
+
+                if (saleP === 0 && unitP > 0) saleP = unitP - discP;
+                if (unitP === 0 && saleP > 0) unitP = saleP + discP;
+                let costP = costCol !== -1 && row[costCol] != null ? parseFloat(row[costCol]) || 0 : Math.round(saleP * 0.6);
+
+                const dateParts = dateVal.split('-');
+                const year = parseInt(dateParts[0], 10) || 2025;
+                const month = parseInt(dateParts[1], 10) || 1;
+                const day = parseInt(dateParts[2], 10) || 1;
+                const monthStr = month < 10 ? `0${month}` : `${month}`;
+                const yearmonth = `${year}-${monthStr}`;
+
+                const grossRev = qty * unitP;
+                const netRev = qty * saleP;
+                const marginAmt = netRev - (qty * costP);
+                const marginRt = netRev !== 0 ? (marginAmt / netRev) : 0;
+                const discRt = grossRev !== 0 ? ((grossRev - netRev) / grossRev) : 0;
+
+                convertedRows[idx] = {
+                  saleId: newUploadId + '_' + idx,
+                  orderNumber: orderNum,
+                  fullDate: dateVal, yearmonth, yearweek: `${year}-W${Math.ceil((month*4)+(day/7))}`, year, month,
+                  productName: prodName, brandName, categoryL1,
+                  channelName, storeName, optionName,
+                  quantity: qty, unitPrice: unitP, discountPrice: discP, salePrice: saleP,
+                  grossRevenue: grossRev, netRevenue: netRev, costPrice: costP,
+                  marginAmount: marginAmt, marginRate: marginRt, discountRate: discRt, uploadId: newUploadId
+                };
+              }
+
+              setMessage(`변환 중 (${fileIdx + 1}/${fileResults.length} 파일): ${limit} / ${totalRows} 행 완료`);
+              await new Promise(r => setTimeout(r, 0));
+            }
+
+            const validRows = convertedRows.filter(Boolean);
+            let dupCount = 0;
+            let newCount = 0;
+
+            if (strategy === 'overwrite') {
+              const incomingOrderSet = new Set(validRows.map(r => r.orderNumber));
+              updatedSales = updatedSales.filter(s => !incomingOrderSet.has(s.orderNumber));
+              updatedSales = [...updatedSales, ...validRows];
+              newCount = validRows.length;
+            } else if (strategy === 'skip') {
+              const existingOrderSet = new Set(updatedSales.map(s => s.orderNumber));
+              const filteredNew = validRows.filter(r => !existingOrderSet.has(r.orderNumber));
+              dupCount = validRows.length - filteredNew.length;
+              newCount = filteredNew.length;
+              updatedSales = [...updatedSales, ...filteredNew];
+            } else {
+              updatedSales = [...updatedSales, ...validRows];
+              newCount = validRows.length;
+            }
+
+            newLogs.push({
+              id: newUploadId,
+              filename: file.name,
+              date: new Date().toLocaleString(),
+              rowsTotal: validRows.length,
+              rowsNew: newCount,
+              rowsDup: dupCount,
+              status: '완료',
+              strategy: strategy === 'overwrite' ? '덮어쓰기' : strategy === 'skip' ? '건너뛰기' : '병합'
+            });
+
+            // Async Background Firestore Sync with stream pacing & queue protection
+            if (window.FirebaseSDK) {
+              setTimeout(async () => {
+                try {
+                  const { getFirestore, doc, setDoc } = window.FirebaseSDK;
+                  const appId = typeof __app_id !== 'undefined' ? __app_id : 'sales-analysis-platform';
+                  const db = getFirestore();
+                  
+                  // Helper function with timeout to prevent endless queue accumulation
+                  const setDocWithTimeout = (docRef, data, timeoutMs = 2000) => {
+                    return Promise.race([
+                      setDoc(docRef, data),
+                      new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore write timeout')), timeoutMs))
+                    ]);
+                  };
+
+                  // Safe batch size (~250 rows) to stay strictly under Firestore's 1MB document limit
+                  const BATCH_SIZE = 250;
+                  const maxChunks = 10; // Cap background chunks to protect client buffer
+                  const totalBatches = Math.min(Math.ceil(validRows.length / BATCH_SIZE), maxChunks);
+
+                  for (let i = 0; i < totalBatches; i++) {
+                    const b = i * BATCH_SIZE;
+                    // Minify/strip heavy fields for cloud sync to keep payload size small
+                    const batchRows = validRows.slice(b, b + BATCH_SIZE).map(r => ({
+                      saleId: r.saleId,
+                      orderNumber: r.orderNumber,
+                      fullDate: r.fullDate,
+                      yearmonth: r.yearmonth,
+                      productName: r.productName,
+                      brandName: r.brandName,
+                      channelName: r.channelName,
+                      storeName: r.storeName,
+                      quantity: r.quantity,
+                      unitPrice: r.unitPrice,
+                      salePrice: r.salePrice,
+                      netRevenue: r.netRevenue,
+                      costPrice: r.costPrice,
+                      marginAmount: r.marginAmount
+                    }));
+
+                    const chunkDoc = doc(db, 'artifacts', appId, 'public', 'data', 'sales_chunks', `chunk_${newUploadId}_${b}`);
+                    
+                    try {
+                      await setDocWithTimeout(chunkDoc, { uploadId: newUploadId, rows: batchRows });
+                    } catch (chunkErr) {
+                      console.warn("Firestore background write stream paused or timed out:", chunkErr.message);
+                      break; // Safely halt stream if SDK write queue is full or offline
+                    }
+
+                    // Pacing delay (150ms) to allow Firebase Web SDK write stream queue to flush
+                    await new Promise(res => setTimeout(res, 150));
+                  }
+
+                  const histDoc = doc(db, 'artifacts', appId, 'public', 'data', 'upload_history', `log_${newUploadId}`);
+                  await setDocWithTimeout(histDoc, newLogs[newLogs.length - 1], 2000).catch(() => {});
+                } catch (fsErr) {
+                  console.warn("Firestore save chunk note:", fsErr);
+                }
+              }, 100);
+            }
+          }
+
+          setSalesData(updatedSales);
+          setUploadHistory([...newLogs, ...uploadHistory]);
+          setIsProcessing(false);
+          setMessage(`🎉 저장 완료: 총 ${updatedSales.length}건 데이터가 성공적으로 반영되었습니다.`);
+          setTimeout(() => onClose(), 300);
+        } catch (err) {
+          console.error("데이터 처리 오류:", err);
+          setIsProcessing(false);
+          setMessage(`❌ 데이터 처리 중 오류가 발생했습니다: ${err.message}`);
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-5 w-full max-w-2xl shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Icon name="upload-cloud" className="w-4 h-4 text-blue-500" /> 엑셀 파일 업로드 및 컬럼 매핑
+              </h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="x" className="w-4 h-4" /></button>
+            </div>
+
+            {step === 1 ? (
+              <div 
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files) processFiles(e.dataTransfer.files); }}
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-blue-400/50 dark:border-blue-500/30 hover:border-blue-500 rounded-xl p-6 text-center bg-blue-50/40 dark:bg-blue-900/10 cursor-pointer transition"
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={(e) => { if (e.target.files) { processFiles(e.target.files); e.target.value = ''; } }} 
+                  accept=".xlsx,.xls,.csv" 
+                  multiple 
+                  className="hidden" 
+                />
+                <Icon name="file-spreadsheet" className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">엑셀 파일(.xlsx)을 끌어다 놓거나 클릭하여 선택하세요.</p>
+                <p className="text-[10px] text-slate-400 mt-1">초고속 비동기 엔진으로 대용량 SAP 엑셀 파일도 수초 내 변환합니다.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300">
+                  <span>감지된 컬럼 수: <strong>{detectedHeaders.length}개</strong> | 파싱 대상 파일: <strong>{parsedMeta.length}개</strong></span>
+                  <button onClick={() => setStep(1)} className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline">← 파일 다시 선택</button>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">SAP 컬럼 매핑 설정</span>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg">
+                    {targetFields.map(field => (
+                      <div key={field.key} className="flex items-center justify-between text-xs gap-1">
+                        <span className="text-slate-500 dark:text-zinc-400 w-28 truncate">{field.label}:</span>
+                        <select 
+                          value={customKeyMap[field.key] || ''} 
+                          onChange={(e) => setCustomKeyMap({...customKeyMap, [field.key]: e.target.value})}
+                          className="flex-1 text-[11px] bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded px-1.5 py-0.5 outline-none"
+                        >
+                          <option value="">(자동 생성/미지정)</option>
+                          {detectedHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isProcessing && (
+              <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-300 font-medium">
+                <Icon name="loader-2" className="w-4 h-4 animate-spin text-blue-500" />
+                <span>{message}</span>
+              </div>
+            )}
+
+            {!isProcessing && message && (
+              <div className="text-xs p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-300 font-medium">{message}</div>
+            )}
+
+            <div className="p-3 bg-slate-50 dark:bg-zinc-950 rounded-lg border border-slate-200 dark:border-zinc-800 space-y-2">
+              <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 block">중복 데이터 처리 방식</span>
+              <div className="flex items-center gap-4 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="strategy" value="overwrite" checked={strategy === 'overwrite'} onChange={()=>setStrategy('overwrite')} />
+                  <span>덮어쓰기</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="strategy" value="skip" checked={strategy === 'skip'} onChange={()=>setStrategy('skip')} />
+                  <span>건너뛰기</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="strategy" value="merge" checked={strategy === 'merge'} onChange={()=>setStrategy('merge')} />
+                  <span>병합</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={onClose} className="px-3 py-1.5 rounded-lg border text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-zinc-700 dark:text-zinc-300">취소</button>
+              {step === 2 && (
+                <button onClick={handleIngest} disabled={!parsedMeta.length || isProcessing} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                  {isProcessing && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}
+                  <span>데이터 저장 및 반영</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const NavBtn = ({ active, onClick, icon, label, color="zinc" }) => (
+      <button onClick={onClick} className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${active ? `bg-white dark:bg-${color}-800 text-slate-900 dark:text-white shadow-xs font-semibold` : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'}`}>
+        <Icon name={icon} className={`w-3.5 h-3.5 shrink-0 ${active ? `text-blue-600 dark:text-${color}-400` : ''}`} /> {label}
+      </button>
+    );
+
+    const DashboardView = ({ sales, navigateTo, theme }) => {
+      const kpi = useMemo(() => calculateKPIs(sales), [sales]);
+      const insights = useMemo(() => AIService.insight.generateDashboardInsights(sales), [sales]);
+
+      return (
+        <div className="space-y-5">
+          <div className="p-4 rounded-xl glass-panel border border-violet-500/20 bg-gradient-to-r from-violet-500/5 via-blue-500/5 to-transparent relative overflow-hidden">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="sparkles" className="w-4 h-4 text-violet-500" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">AI 매출 인사이트 요약</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {insights.map((ins, idx) => (
+                <div key={idx} className="text-xs p-2.5 rounded-lg bg-white/80 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-start gap-2 shadow-2xs">
+                  <span className="font-semibold">{ins}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+            <KPICard title="총 순매출액" value={`₩${Math.round(kpi.netRev).toLocaleString()}`} sub={`할인율 ${kpi.discountRate}%`} icon="dollar-sign" color="blue" />
+            <KPICard title="총 판매수량" value={`${kpi.qty.toLocaleString()}개`} sub="정상 출고 수량" icon="shopping-bag" color="emerald" />
+            <KPICard title="평균 판매가(ASP)" value={`₩${kpi.asp.toLocaleString()}`} sub="가중 평균가" icon="tag" color="violet" />
+            <KPICard title="브랜드 수" value={`${kpi.brands}개`} sub="매출 발생 브랜드" icon="layers" color="amber" />
+            <KPICard title="상품 수(SKU)" value={`${kpi.skus}개`} sub="운영 상품 규격" icon="box" color="indigo" />
+            <KPICard title="채널 수" value={`${kpi.channels}개`} sub="온/오프라인 채널" icon="globe" color="rose" />
+            <KPICard title="지점 수" value={`${kpi.stores}개`} sub="전국 지점" icon="map-pin" color="teal" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+             <div className="lg:col-span-2 p-4 rounded-xl glass-card">
+               <div className="flex items-center justify-between mb-3">
+                 <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                   <Icon name="trending-up" className="w-4 h-4 text-blue-500" /> 월별 매출 / 판매량 추이
+                 </h3>
+               </div>
+               <MonthlyTrendChart sales={sales} theme={theme} />
+             </div>
+
+             <div className="p-4 rounded-xl glass-card">
+               <div className="flex items-center justify-between mb-3">
+                 <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                   <Icon name="pie-chart" className="w-4 h-4 text-violet-500" /> 브랜드별 매출 점유율 (Top 10)
+                 </h3>
+               </div>
+               <BrandShareChart sales={sales} theme={theme} />
+             </div>
+          </div>
+
+          <div className="p-4 rounded-xl glass-card">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                <Icon name="award" className="w-4 h-4 text-amber-500" /> 인기 상품 Top 10 (순매출 기준)
+              </h3>
+              <button onClick={()=>navigateTo('analytics', 'best')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium">전체보기 <Icon name="chevron-right" className="w-3 h-3" /></button>
+            </div>
+            <TopProductsTable sales={sales} limit={10} navigateTo={navigateTo} showChannelStore={false} />
+          </div>
+        </div>
+      );
+    };
+
+    const KPICard = ({ title, value, sub, icon, color }) => (
+      <div className="p-3 rounded-xl glass-card relative overflow-hidden transition-all hover:scale-[1.02]">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400">{title}</span>
+          <Icon name={icon} className={`w-3.5 h-3.5 text-${color}-500`} />
+        </div>
+        <div className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">{value}</div>
+        <div className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">{sub}</div>
+      </div>
+    );
+
+    const MonthlyTrendChart = ({ sales, theme }) => {
+      const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+
+      useEffect(() => {
+        if (!canvasRef.current || !sales.length) return;
+        const monthMap = aggregateByField(sales, 'yearmonth');
+        const labels = Object.keys(monthMap).sort();
+        const revData = labels.map(m => monthMap[m].netRev);
+        const qtyData = labels.map(m => monthMap[m].qty);
+
+        const ctx = canvasRef.current.getContext('2d');
+        if (chartRef.current) chartRef.current.destroy();
+
+        const isDark = theme === 'dark';
+        const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        const textColor = isDark ? '#9ca3af' : '#64748b';
+
+        chartRef.current = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              { label: '순매출액 (원)', data: revData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
+              { label: '판매수량 (개)', data: qtyData, borderColor: '#10b981', backgroundColor: 'transparent', borderDash: [4, 4], tension: 0.3, yAxisID: 'y1' }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+              x: { ticks: { color: textColor, font: { size: 9 } }, grid: { color: gridColor } },
+              y: { type: 'linear', position: 'left', ticks: { color: textColor, font: { size: 9 } }, grid: { color: gridColor } },
+              y1: { type: 'linear', position: 'right', ticks: { color: textColor, font: { size: 9 } }, grid: { display: false } }
+            },
+            plugins: { legend: { labels: { color: textColor, font: { size: 10 } } } }
+          }
+        });
+        return () => { if (chartRef.current) chartRef.current.destroy(); };
+      }, [sales, theme]);
+
+      if (!sales.length) return <div className="h-60 flex items-center justify-center text-xs text-slate-400">데이터 없음</div>;
+      return <div className="h-60 relative"><canvas ref={canvasRef}></canvas></div>;
+    };
+
+    const BrandShareChart = ({ sales, theme }) => {
+      const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+
+      useEffect(() => {
+        if (!canvasRef.current || !sales.length) return;
+        const bMap = aggregateByField(sales, 'brandName');
+        const sortedBrands = Object.keys(bMap).sort((a, b) => bMap[b].netRev - bMap[a].netRev).slice(0, 10);
+
+        const labels = sortedBrands;
+        const data = sortedBrands.map(k => bMap[k].netRev);
+
+        const ctx = canvasRef.current.getContext('2d');
+        if (chartRef.current) chartRef.current.destroy();
+
+        chartRef.current = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels,
+            datasets: [{ 
+              data, 
+              backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#6366f1', '#14b8a6', '#ec4899', '#06b6d4', '#84cc16'] 
+            }]
+          },
+          options: {
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+              legend: { position: 'bottom', labels: { color: theme === 'dark' ? '#9ca3af' : '#64748b', font: { size: 10 } } } 
+            }
+          }
+        });
+        return () => { if (chartRef.current) chartRef.current.destroy(); };
+      }, [sales, theme]);
+
+      if (!sales.length) return <div className="h-60 flex items-center justify-center text-xs text-slate-400">데이터 없음</div>;
+      return <div className="h-60 relative"><canvas ref={canvasRef}></canvas></div>;
+    };
+
+    const TopProductsTable = ({ sales, limit=10, navigateTo, showChannelStore=false }) => {
+      const sorted = useMemo(() => {
+        if (!sales || !sales.length) return [];
+        const pMap = aggregateByField(sales, 'productName');
+        const metaMap = {};
+        const channelRevMap = {};
+        const storeRevMap = {};
+
+        for (let i = 0; i < sales.length; i++) {
+          const s = sales[i];
+          const p = s.productName;
+          if (!metaMap[p]) {
+            metaMap[p] = { brand: s.brandName || '(미지정)' };
+            channelRevMap[p] = {};
+            storeRevMap[p] = {};
+          }
+          const ch = s.channelName || '(미지정)';
+          const st = s.storeName || '(미지정)';
+          channelRevMap[p][ch] = (channelRevMap[p][ch] || 0) + s.netRevenue;
+          storeRevMap[p][st] = (storeRevMap[p][st] || 0) + s.netRevenue;
+        }
+
+        return Object.keys(pMap).map(pName => {
+          const chObj = channelRevMap[pName] || {};
+          const stObj = storeRevMap[pName] || {};
+          const sortedChannels = Object.keys(chObj).sort((a,b) => chObj[b] - chObj[a]);
+          const sortedStores = Object.keys(stObj).sort((a,b) => stObj[b] - stObj[a]);
+          
+          const topChannel = sortedChannels[0] || '-';
+          const channelText = sortedChannels.length > 1 ? `${topChannel} (외 ${sortedChannels.length - 1})` : topChannel;
+
+          const topStore = sortedStores[0] || '-';
+          const storeText = sortedStores.length > 1 ? `${topStore} (외 ${sortedStores.length - 1})` : topStore;
+
+          return {
+            name: pName,
+            brand: metaMap[pName]?.brand || '(미지정)',
+            topChannel: channelText,
+            topStore: storeText,
+            ...pMap[pName]
+          };
+        }).sort((a,b) => b.netRev - a.netRev || b.qty - a.qty || a.name.localeCompare(b.name)).slice(0, limit);
+      }, [sales, limit]);
+
+      if (!sorted.length) return <div className="p-4 text-center text-xs text-slate-400">데이터가 없습니다.</div>;
+
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-100 dark:bg-zinc-900/80 text-slate-500 dark:text-zinc-400 uppercase text-[10px] font-semibold">
+              <tr>
+                <th className="p-2.5 rounded-l whitespace-nowrap">순위</th>
+                <th className="p-2.5">상품명 (외부몰)</th>
+                <th className="p-2.5 whitespace-nowrap">브랜드</th>
+                {showChannelStore && <th className="p-2.5 whitespace-nowrap">주요 채널</th>}
+                {showChannelStore && <th className="p-2.5 whitespace-nowrap">주요 지점</th>}
+                <th className="p-2.5 text-right whitespace-nowrap">판매수량</th>
+                <th className="p-2.5 text-right whitespace-nowrap">순매출액</th>
+                <th className="p-2.5 text-right rounded-r whitespace-nowrap">평균판매가(ASP)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/60 dark:divide-zinc-800">
+              {sorted.map((item, idx) => (
+                <tr key={item.name} onClick={() => navigateTo('product_detail', null, item.name)} className="hover:bg-slate-100/60 dark:hover:bg-zinc-800/50 cursor-pointer transition">
+                  <td className="p-2.5 font-bold text-slate-400 dark:text-zinc-500">{idx+1}</td>
+                  <td className="p-2.5 font-semibold text-slate-900 dark:text-zinc-100">{item.name}</td>
+                  <td className="p-2.5 text-slate-500 dark:text-zinc-400 whitespace-nowrap">{item.brand}</td>
+                  {showChannelStore && <td className="p-2.5 text-slate-600 dark:text-zinc-300 font-medium whitespace-nowrap">{item.topChannel}</td>}
+                  {showChannelStore && <td className="p-2.5 text-slate-600 dark:text-zinc-300 font-medium whitespace-nowrap">{item.topStore}</td>}
+                  <td className="p-2.5 text-right font-medium whitespace-nowrap">{item.qty.toLocaleString()}개</td>
+                  <td className="p-2.5 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">₩{Math.round(item.netRev).toLocaleString()}</td>
+                  <td className="p-2.5 text-right text-slate-500 dark:text-zinc-400 whitespace-nowrap">₩{Math.round(item.netRev / (item.qty || 1)).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    };
+
+    const AnalyticsView = ({ sales, subTab, setSubTab, navigateTo }) => {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2">
+            <div className="flex items-center gap-2">
+              <SubTabBtn active={subTab==='best'} onClick={()=>setSubTab('best')} label="인기 상품 TOP 100" />
+              <SubTabBtn active={subTab==='brand'} onClick={()=>setSubTab('brand')} label="브랜드 분석" />
+              <SubTabBtn active={subTab==='channel'} onClick={()=>setSubTab('channel')} label="채널 분석" />
+              <SubTabBtn active={subTab==='store'} onClick={()=>setSubTab('store')} label="지점 분석" />
+            </div>
+            <button onClick={()=>exportCSV('매출분석_다운로드', sales)} className="text-xs bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-2.5 py-1 rounded text-slate-700 dark:text-zinc-200 flex items-center gap-1 font-medium">
+              <Icon name="download" className="w-3.5 h-3.5" /> CSV 내보내기
+            </button>
+          </div>
+
+          {subTab === 'best' && <TopProductsTable sales={sales} limit={100} navigateTo={navigateTo} showChannelStore={true} />}
+          {subTab === 'brand' && <GenericGroupAnalyticsTab sales={sales} field="brandName" title="브랜드별 실적 요약" />}
+          {subTab === 'channel' && <GenericGroupAnalyticsTab sales={sales} field="channelName" title="채널별 실적 요약" />}
+          {subTab === 'store' && <GenericGroupAnalyticsTab sales={sales} field="storeName" title="지점별 실적 요약" />}
+        </div>
+      );
+    };
+
+    const SubTabBtn = ({ active, onClick, label }) => (
+      <button onClick={onClick} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${active ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-800'}`}>{label}</button>
+    );
+
+    const GenericGroupAnalyticsTab = ({ sales, field, title }) => {
+      const groupMap = aggregateByField(sales, field);
+      const rows = Object.keys(groupMap).map(k => ({ name: k, ...groupMap[k] })).sort((a,b) => b.netRev - a.netRev);
+
+      return (
+        <div className="p-4 rounded-xl glass-card space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">{title}</h3>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500">※ 마진 금액 = 순매출액 - (수량 × 원가/공급가)</span>
+          </div>
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-100 dark:bg-zinc-900 text-slate-500 font-semibold">
+              <tr><th className="p-2.5">항목명</th><th className="p-2.5 text-right whitespace-nowrap">판매수량</th><th className="p-2.5 text-right whitespace-nowrap">순매출액</th><th className="p-2.5 text-right whitespace-nowrap">마진 금액</th><th className="p-2.5 text-right whitespace-nowrap">평균판매가</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-zinc-800">
+              {rows.map(r => (
+                <tr key={r.name} className="hover:bg-slate-100/50 dark:hover:bg-zinc-800/40">
+                  <td className="p-2.5 font-medium">{r.name}</td>
+                  <td className="p-2.5 text-right whitespace-nowrap">{r.qty.toLocaleString()}개</td>
+                  <td className="p-2.5 text-right font-bold whitespace-nowrap">₩{Math.round(r.netRev).toLocaleString()}</td>
+                  <td className="p-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">₩{Math.round(r.margin).toLocaleString()}</td>
+                  <td className="p-2.5 text-right whitespace-nowrap">₩{Math.round(r.netRev / (r.qty || 1)).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    };
+
+    const ProductsExplorerView = ({ sales, navigateTo }) => {
+      return (
+        <div className="p-4 rounded-xl glass-card space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">전체 상품 카탈로그 및 실적</h3>
+            <button onClick={()=>exportCSV('상품카탈로그_다운로드', sales)} className="text-xs bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 px-2.5 py-1 rounded text-slate-700 dark:text-zinc-200 flex items-center gap-1 font-medium">
+              <Icon name="download" className="w-3.5 h-3.5" /> CSV 다운로드
+            </button>
+          </div>
+          <TopProductsTable sales={sales} limit={200} navigateTo={navigateTo} showChannelStore={true} />
+        </div>
+      );
+    };
+
+    const ProductDetailFullView = ({ sales, allSales, productName, navigateTo, theme }) => {
+      const [tab, setTab] = useState('overview');
+      const pSales = useMemo(() => allSales.filter(s => s.productName === productName), [allSales, productName]);
+      const prodSample = pSales[0] || {};
+      const kpi = useMemo(() => calculateKPIs(pSales), [pSales]);
+      const priceAnalysis = useMemo(() => AIService.pricing.analyzeProductPricing(pSales), [pSales]);
+      const invRisk = useMemo(() => AIService.inventory.assessRisk(pSales, 150, 0), [pSales]);
+
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigateTo('products')} className="p-2 rounded-lg bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 hover:bg-slate-300">
+              <Icon name="arrow-left" className="w-4 h-4" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300">{prodSample.categoryL1 || '의류/잡화'}</span>
+              </div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">{productName || '선택 상품'}</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            <KPICard title="총 순매출액" value={`₩${Math.round(kpi.netRev).toLocaleString()}`} sub="누적 합계" icon="dollar-sign" color="blue" />
+            <KPICard title="총 판매량" value={`${kpi.qty.toLocaleString()}개`} sub="정상 수량" icon="shopping-bag" color="emerald" />
+            <KPICard title="평균 판매가" value={`₩${kpi.asp.toLocaleString()}`} sub="ASP" icon="tag" color="violet" />
+            <KPICard title="평균 마진율" value={`${kpi.marginRate}%`} sub="원가 차감 후" icon="trending-up" color="amber" />
+            <KPICard title="재고 보유주수" value={`${invRisk.weeksCovered}주`} sub={`상태: ${invRisk.status}`} icon="box" color="rose" />
+          </div>
+
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-zinc-800 pb-2">
+            <SubTabBtn active={tab==='overview'} onClick={()=>setTab('overview')} label="실적 개요 & 추이" />
+            <SubTabBtn active={tab==='price'} onClick={()=>setTab('price')} label="가격 분석" />
+            <SubTabBtn active={tab==='ai'} onClick={()=>setTab('ai')} label="AI 추천 액션" />
+          </div>
+
+          {tab === 'overview' && (
+            <div className="p-4 rounded-xl glass-card space-y-3">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white">판매량 & 순매출 추이</h3>
+              <MonthlyTrendChart sales={pSales} theme={theme} />
+            </div>
+          )}
+
+          {tab === 'price' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl glass-panel border border-violet-500/20 bg-violet-500/5">
+                <h3 className="text-xs font-bold text-violet-600 dark:text-violet-400 mb-1">AI 적정 판매가 분석</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs mt-2">
+                  <div className="bg-white/80 dark:bg-zinc-900/80 p-3 rounded-lg border border-slate-200 dark:border-zinc-800">
+                    <span className="text-slate-500">AI 권장 판매가</span>
+                    <div className="text-base font-bold text-blue-600 dark:text-blue-400 mt-1">₩{Math.round(priceAnalysis?.recPrice || 0).toLocaleString()}</div>
+                  </div>
+                  <div className="bg-white/80 dark:bg-zinc-900/80 p-3 rounded-lg border border-slate-200 dark:border-zinc-800">
+                    <span className="text-slate-500">권장 할인율</span>
+                    <div className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-1">{priceAnalysis?.recDisc || 0}%</div>
+                  </div>
+                  <div className="bg-white/80 dark:bg-zinc-900/80 p-3 rounded-lg border border-slate-200 dark:border-zinc-800">
+                    <span className="text-slate-500">산출 근거</span>
+                    <p className="text-[11px] text-slate-700 dark:text-zinc-300 mt-1">{priceAnalysis?.reason || '분석 중'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === 'ai' && (
+            <div className="p-4 rounded-xl glass-card space-y-3">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><Icon name="sparkles" className="w-4 h-4 text-violet-500" /> AI 추천 액션</h3>
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300">
+                <strong>권장 가이드:</strong> {invRisk.action} - {invRisk.status} 상태입니다. 주당 평균 소진 속도는 {invRisk.burnRate}개입니다.
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const AnomalyCenterView = ({ allSales, excludedSaleIds, toggleExcludeSaleId, toggleExcludeAllAnomalies }) => {
+      const anomalies = useMemo(() => AIService.anomaly.detect(allSales), [allSales]);
+      const [selectedSaleIds, setSelectedSaleIds] = useState(new Set());
+      const [typeFilter, setTypeFilter] = useState('ALL');
+
+      const availableTypes = useMemo(() => {
+        const types = new Set();
+        anomalies.forEach(a => types.add(a.type));
+        return Array.from(types);
+      }, [anomalies]);
+
+      const filteredAnomalies = useMemo(() => {
+        if (typeFilter === 'ALL') return anomalies;
+        return anomalies.filter(a => a.type === typeFilter);
+      }, [anomalies, typeFilter]);
+
+      const handleSelectAll = (e) => {
+        if (e.target.checked) {
+          setSelectedSaleIds(new Set(filteredAnomalies.map(a => a.saleId)));
+        } else {
+          setSelectedSaleIds(new Set());
+        }
+      };
+
+      const handleSelectRow = (saleId) => {
+        setSelectedSaleIds(prev => {
+          const next = new Set(prev);
+          if (next.has(saleId)) next.delete(saleId);
+          else next.add(saleId);
+          return next;
+        });
+      };
+
+      const handleBatchExclude = (excludeFlag) => {
+        selectedSaleIds.forEach(id => {
+          if (excludeFlag && !excludedSaleIds.has(id)) {
+            toggleExcludeSaleId(id);
+          } else if (!excludeFlag && excludedSaleIds.has(id)) {
+            toggleExcludeSaleId(id);
+          }
+        });
+      };
+
+      return (
+        <div className="p-4 rounded-xl glass-card space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-zinc-800 pb-3">
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Icon name="alert-triangle" className="w-4 h-4 text-rose-500" /> 이상치 탐지 (카테고리 평균 기준 비정상 검출)
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                ※ 항목 마우스 오버 시 상세 감지 원인과 구체적 수치가 표시됩니다. 환불/취소(음수 거래)는 자동 제외됩니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => handleBatchExclude(true)} 
+                disabled={selectedSaleIds.size === 0}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-xs font-semibold flex items-center gap-1 transition"
+              >
+                <Icon name="eye-off" className="w-3.5 h-3.5" />
+                <span>선택 {selectedSaleIds.size}건 분석에서 제외</span>
+              </button>
+              <button 
+                onClick={() => handleBatchExclude(false)} 
+                disabled={selectedSaleIds.size === 0}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-semibold flex items-center gap-1 transition"
+              >
+                <Icon name="check-circle" className="w-3.5 h-3.5" />
+                <span>선택 {selectedSaleIds.size}건 분석에 다시 포함</span>
+              </button>
+              <button 
+                onClick={() => toggleExcludeAllAnomalies(anomalies)}
+                className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-semibold flex items-center gap-1 transition"
+              >
+                <span>전체 이상치 ({anomalies.length}건) 일괄 토글</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50 text-xs text-blue-800 dark:text-blue-300">
+            <div className="flex items-center gap-2">
+              <Icon name="info" className="w-4 h-4 text-blue-500 shrink-0" />
+              <span>현재 감지된 이상치 <strong>{anomalies.length}건</strong> 중 <strong>{anomalies.filter(a => excludedSaleIds.has(a.saleId)).length}건</strong> 제외 처리됨</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-zinc-300">이상치 유형 필터:</span>
+              <select 
+                value={typeFilter} 
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-xs rounded px-2.5 py-1 text-slate-800 dark:text-white outline-none shadow-xs font-medium"
+              >
+                <option value="ALL">전체 유형 보기 ({anomalies.length}건)</option>
+                {availableTypes.map(t => (
+                  <option key={t} value={t}>{t} ({anomalies.filter(a => a.type === t).length}건)</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-slate-100 dark:bg-zinc-900 text-slate-500 font-semibold uppercase text-[10px]">
+                <tr>
+                  <th className="p-2.5 text-center whitespace-nowrap w-8">
+                    <input type="checkbox" onChange={handleSelectAll} checked={filteredAnomalies.length > 0 && selectedSaleIds.size === filteredAnomalies.length} />
+                  </th>
+                  <th className="p-2.5 whitespace-nowrap min-w-[100px]">발생일자</th>
+                  <th className="p-2.5">상품명 (외부몰)</th>
+                  <th className="p-2.5 whitespace-nowrap">브랜드</th>
+                  <th className="p-2.5 whitespace-nowrap">이상치 유형 (마우스 올려 원인 확인)</th>
+                  <th className="p-2.5 whitespace-nowrap">기록값</th>
+                  <th className="p-2.5 text-center whitespace-nowrap min-w-[70px]">심각도</th>
+                  <th className="p-2.5 text-center whitespace-nowrap min-w-[110px]">분석 상태 / 조치</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-zinc-800">
+                {filteredAnomalies.length === 0 ? (
+                  <tr><td colSpan="8" className="p-6 text-center text-slate-400">조건에 일치하는 데이터 이상치가 없습니다.</td></tr>
+                ) : (
+                  filteredAnomalies.map((an) => {
+                    const isExcluded = excludedSaleIds.has(an.saleId);
+                    const isChecked = selectedSaleIds.has(an.saleId);
+
+                    return (
+                      <tr key={an.saleId} className={`hover:bg-slate-100/60 dark:hover:bg-zinc-800/50 transition ${isExcluded ? 'bg-rose-500/5 opacity-60' : ''}`}>
+                        <td className="p-2.5 text-center whitespace-nowrap">
+                          <input type="checkbox" checked={isChecked} onChange={() => handleSelectRow(an.saleId)} />
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-600 dark:text-zinc-400 whitespace-nowrap">{an.date}</td>
+                        <td className="p-2.5 font-semibold text-slate-900 dark:text-white max-w-xs truncate" title={an.name}>{an.name}</td>
+                        <td className="p-2.5 text-slate-500 dark:text-zinc-400 whitespace-nowrap">{an.brand || '기타'}</td>
+                        <td className="p-2.5 font-medium text-rose-600 dark:text-rose-400 whitespace-nowrap relative group cursor-help">
+                          <span className="border-b border-dashed border-rose-400/80 pb-0.5 inline-flex items-center gap-1">
+                            {an.type}
+                            <Icon name="info" className="w-3 h-3 text-rose-400" />
+                          </span>
+                          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-40 w-80 p-3 bg-slate-900 text-white text-[11px] rounded-lg shadow-xl leading-snug pointer-events-none border border-slate-700">
+                            <div className="font-bold text-amber-300 mb-1 flex items-center gap-1">
+                              <span>🔍 감지 원인 세부 분석</span>
+                            </div>
+                            <p className="text-slate-200 font-normal leading-relaxed">{an.reason}</p>
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-rose-600 dark:text-rose-400 font-bold whitespace-nowrap">{an.value}</td>
+                        <td className="p-2.5 text-center whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap inline-block ${an.severity==='높음'?'bg-rose-500/20 text-rose-600 dark:text-rose-400':'bg-amber-500/20 text-amber-600'}`}>{an.severity}</span>
+                        </td>
+                        <td className="p-2.5 text-center whitespace-nowrap">
+                          {isExcluded ? (
+                            <button 
+                              onClick={() => toggleExcludeSaleId(an.saleId)} 
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold transition whitespace-nowrap shadow-xs"
+                            >
+                              분석에 포함
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => toggleExcludeSaleId(an.saleId)} 
+                              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-semibold transition whitespace-nowrap shadow-xs"
+                            >
+                              분석에서 제외
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    };
+
+    const PurchaseRecommendationView = ({ sales }) => {
+      const recommendations = useMemo(() => {
+        if (!sales || !sales.length) return [];
+        const pMap = aggregateByField(sales, 'productName');
+
+        const names = Object.keys(pMap).slice(0, 50);
+        return names.map(name => {
+          const item = pMap[name];
+          const avgWeekly = item.qty / 8;
+          let action = '현상 유지';
+          if (avgWeekly > 10) action = '긴급 발주 추천';
+          else if (avgWeekly < 2) action = '재고 소진 필요';
+
+          return {
+            name,
+            totalQty: item.qty,
+            burnRate: avgWeekly.toFixed(1),
+            action
+          };
+        });
+      }, [sales]);
+
+      return (
+        <div className="p-4 rounded-xl glass-card space-y-3">
+          <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Icon name="shopping-cart" className="w-4 h-4 text-emerald-500" /> AI 발주 추천 상품 List
+          </h3>
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-100 dark:bg-zinc-900 text-slate-500 font-semibold">
+              <tr><th className="p-2.5">상품명 (외부몰)</th><th className="p-2.5 text-right whitespace-nowrap">누적판매량</th><th className="p-2.5 text-right whitespace-nowrap">주당소진</th><th className="p-2.5 text-center whitespace-nowrap">AI 추천행동</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-zinc-800">
+              {recommendations.length === 0 ? (
+                <tr><td colSpan="4" className="p-4 text-center text-slate-400">업로드된 상품 데이터가 없습니다.</td></tr>
+              ) : (
+                recommendations.map(item => (
+                  <tr key={item.name} className="hover:bg-slate-100/50 dark:hover:bg-zinc-800/40">
+                    <td className="p-2.5 font-medium text-slate-900 dark:text-white">{item.name}</td>
+                    <td className="p-2.5 text-right whitespace-nowrap">{item.totalQty.toLocaleString()}개</td>
+                    <td className="p-2.5 text-right whitespace-nowrap">{item.burnRate}개</td>
+                    <td className="p-2.5 text-center whitespace-nowrap"><span className="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-600 font-bold">{item.action}</span></td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    };
+
+    const ExecutiveReportView = ({ sales }) => {
+      const kpi = useMemo(() => calculateKPIs(sales), [sales]);
+      return (
+        <div className="p-6 rounded-xl glass-card space-y-5 max-w-4xl mx-auto">
+          <div className="flex items-center justify-between border-b pb-4 border-slate-200 dark:border-zinc-800">
+            <div>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white">경영진 월간 매출 리포트</h1>
+              <p className="text-xs text-slate-400 mt-1">실시간 로우데이터 분석 결과 요약 보고서</p>
+            </div>
+            <button onClick={() => window.print()} className="no-print text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5">
+              <Icon name="printer" className="w-3.5 h-3.5" /> 인쇄 / PDF 저장
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">1. 핵심 경영 요약</h3>
+            <p className="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed bg-slate-100 dark:bg-zinc-900 p-3 rounded-lg">
+              업로드된 실시간 데이터 기준 총 순매출액은 <strong>₩{Math.round(kpi.netRev).toLocaleString()}원</strong>이며, 전체 판매수량은 <strong>{kpi.qty.toLocaleString()}개</strong>입니다. 평균 마진율은 <strong>{kpi.marginRate}%</strong>를 기록하고 있습니다.
+            </p>
+          </div>
+        </div>
+      );
+    };
+
+    const AIChatModal = ({ onClose, sales }) => {
+      const [query, setQuery] = useState('');
+      const [reply, setReply] = useState('');
+
+      const handleAsk = () => {
+        if (!query.trim()) return;
+        const res = AIService.nlp.search(query, sales);
+        setReply(res);
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-5 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Icon name="sparkles" className="w-4 h-4 text-violet-500" /> AI 자연어 검색
+              </h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><Icon name="x" className="w-4 h-4" /></button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="text" value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleAsk()} placeholder="예: 매출 1위 상품은?" className="flex-1 bg-slate-100 dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none" />
+              <button onClick={handleAsk} className="bg-violet-600 hover:bg-violet-700 text-white text-xs px-3 py-2 rounded-lg font-semibold whitespace-nowrap">검색</button>
+            </div>
+            {reply && (
+              <div className="p-3 rounded-lg bg-violet-500/10 border border-violet-500/20 text-xs text-violet-900 dark:text-violet-200">
+                {reply}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
