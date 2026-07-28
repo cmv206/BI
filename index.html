@@ -396,7 +396,7 @@
       let foundSize = '';
 
       // Regex pattern definitions
-      const parenSizeRegex = /(?:^|[^\d\w])([A-Z0-9]{1,5}\s*\([A-Z0-9가-힣]+\)|\d{2,3}\s*\(\d{2,3}\))(?:[^\d\w]|$)/i;
+      const parenSizeRegex = /(?:^|[^\d\w])(\d{2,3}\s*\(\d{2,3}\)|(?:[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b|\d{2,3})\s*\(\s*(?:[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b|\d{2,3})\s*\))(?:[^\d\w]|$)/i;
       const shoeSizeRegex = /\b(2[1-9][05])\b/;
       const clothSizeRegex = /(?:^|[^\d])(0[89][05]|1[0-6][05]|[1-5]?XL|XXL|XXXL|FREE\(F\)|FREE|\bF\b|\b44\b|\b55\b|\b66\b|\b77\b|\b88\b|\b99\b|\b2[4-9]\b|\b3[0-9]\b|\b4[02]\b|\b78\b|\b80\b|\b82\b|\b84\b|\b85\b|\b86\b|\b88\b|\b90\b|\b92\b|\b94\b|\b95\b|\b96\b|\b98\b|\b100\b|\b102\b|\b104\b|\b105\b|\b108\b|\b110\b|\b115\b|\b120\b|\b130\b|\b140\b|\b150\b|\b160\b)(?:[^\d]|$)/i;
 
@@ -481,6 +481,13 @@
           if (korM) foundColor = korM[0].replace(/\s+/g, '');
           else if (engWordM) foundColor = engWordM[0].toUpperCase();
           else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
+        }
+      }
+
+      // Safety guard against duplicate color and size
+      if (foundColor && foundSize) {
+        if (foundColor.replace(/\s+/g, '').toUpperCase() === foundSize.replace(/\s+/g, '').toUpperCase()) {
+          foundSize = '';
         }
       }
 
