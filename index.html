@@ -397,11 +397,11 @@
 
       // Regex pattern definitions
       const shoeSizeRegex = /\b(2[1-9][05])\b/;
-      const clothSizeRegex = /\b(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[1-5]?XL|FREE|FREE\(F\)|\bF\b|85|90|95|100|105|110|120|130|140|150|160)\b/i;
+      const clothSizeRegex = /(?:^|[^\d])(0[89][05]|1[0-6][05]|XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[1-5]?XL|FREE\(F\)|FREE|\bF\b|\b80\b|\b85\b|\b90\b|\b95\b|\b100\b|\b105\b|\b110\b|\b120\b|\b130\b|\b140\b|\b150\b|\b160\b)(?:[^\d]|$)/i;
 
       const koreanColorRegex = /(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|오렌지|멜란지|[가-힣]{2,6}(?:색|컬러))/i;
       const englishColorWordRegex = /\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER|MELANGE)\b/i;
-      const englishColorCodeRegex = /\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR)\b/i;
+      const englishColorCodeRegex = /\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR|DU|DN|CH|KA|NA|OW|CG|SE|CP|SB|DB|DG|LB|[A-Z]{2,3})\b/i;
       const codeWithParenRegex = /([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/;
 
       // Tier 1 & 2: Extract Color & Size from '외부몰 옵션명' (rawOpt)
@@ -413,8 +413,11 @@
         // Extract Size from rawOpt
         let shoeM = sOpt.match(shoeSizeRegex);
         let clothM = sOpt.match(clothSizeRegex);
-        if (shoeM) foundSize = shoeM[0];
-        else if (clothM) foundSize = clothM[0];
+        if (shoeM) {
+          foundSize = shoeM[0];
+        } else if (clothM) {
+          foundSize = (clothM[1] || clothM[0]).trim();
+        }
 
         // Extract Color from rawOpt
         let codeParenM = sOpt.match(codeWithParenRegex);
@@ -426,6 +429,15 @@
         else if (korM) foundColor = korM[0].replace(/\s+/g, '');
         else if (engWordM) foundColor = engWordM[0].toUpperCase();
         else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
+
+        // If sOpt is short (e.g. <= 20 chars like "DU 095" or "DU/095") and size is found,
+        // use remaining non-numeric token as color code if standard color list missed it
+        if (!foundColor && foundSize && sOpt.length <= 20) {
+          let rem = sOpt.replace(foundSize, '').replace(/[\/\_\-\,\.\:\s]/g, ' ').trim();
+          if (rem && rem.length <= 10 && !/^\d+$/.test(rem)) {
+            foundColor = rem.toUpperCase();
+          }
+        }
       }
 
       // Tier 3: If Color or Size is missing, cross-reference dedicated columns (rawColor, rawSize) & prodName
@@ -441,16 +453,19 @@
       // Check prodName if still missing Color or Size
       let sProd = String(prodName || '').trim();
       if (sProd && (!foundColor || !foundSize)) {
+        // Strip brand names containing color words to prevent false-positive color extraction (e.g., '블랙야크' -> '블랙')
+        let cleanedProdForColor = sProd.replace(/(블랙야크|핑크퐁|화이트리퍼|그린핑거|그린조이|골드윈|레드페이스|블루독|크림하우스)/gi, '');
+
         if (!foundSize) {
           let shoeM = sProd.match(shoeSizeRegex);
           let clothM = sProd.match(clothSizeRegex);
           if (shoeM) foundSize = shoeM[0];
-          else if (clothM) foundSize = clothM[0];
+          else if (clothM) foundSize = (clothM[1] || clothM[0]).trim();
         }
         if (!foundColor) {
-          let korM = sProd.match(koreanColorRegex);
-          let engWordM = sProd.match(englishColorWordRegex);
-          let engCodeM = sProd.match(englishColorCodeRegex);
+          let korM = cleanedProdForColor.match(koreanColorRegex);
+          let engWordM = cleanedProdForColor.match(englishColorWordRegex);
+          let engCodeM = cleanedProdForColor.match(englishColorCodeRegex);
           if (korM) foundColor = korM[0].replace(/\s+/g, '');
           else if (engWordM) foundColor = engWordM[0].toUpperCase();
           else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
