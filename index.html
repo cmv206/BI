@@ -19,8 +19,8 @@
         extend: {
           colors: {
             brand: { 50: '#eef2ff', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 900: '#312e81' },
-            darkbg: '#0b1120',    // Deeper slate for rich contrast
-            panelbg: '#1e293b',   // Premium slate card background
+            darkbg: '#0f172a',    // Deep slate
+            panelbg: '#1e293b',   // Lighter slate for cards
             panelborder: '#334155'
           }
         }
@@ -28,21 +28,15 @@
     }
   </script>
   <style>
-    /* Thicker, prominent scrollbars designed for easy mouse click-and-drag */
+    /* Prominent 10px customized scrollbars for easy click-and-drag */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 8px; }
-    ::-webkit-scrollbar-thumb { 
-      background: #475569; 
-      border-radius: 8px; 
-      border: 2px solid transparent; 
-      background-clip: padding-box; 
-    }
+    ::-webkit-scrollbar-track { background: #0f172a; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 6px; border: 2px solid #0f172a; }
     ::-webkit-scrollbar-thumb:hover { background: #818cf8; }
-
-    /* Light mode scrollbar adaptation */
-    html:not(.dark) ::-webkit-scrollbar-track { background: #f1f5f9; }
-    html:not(.dark) ::-webkit-scrollbar-thumb { background: #94a3b8; }
-    html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+    
+    .light ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .light ::-webkit-scrollbar-thumb { background: #94a3b8; border: 2px solid #f1f5f9; }
+    .light ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
 
     .tab-btn.active { border-bottom: 2px solid #818cf8; color: #818cf8; font-weight: 700; }
     .tab-content { display: none; }
@@ -50,62 +44,62 @@
   </style>
 </head>
 
-<body class="bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 font-sans min-h-screen flex flex-col selection:bg-brand-500 selection:text-white transition-colors duration-200 overflow-x-hidden">
+<body class="bg-slate-100 dark:bg-darkbg text-slate-800 dark:text-slate-200 font-sans min-h-screen flex flex-col selection:bg-brand-500 selection:text-white transition-colors duration-200">
 
-  <!-- Header (Compacted padding py-1.5) -->
-  <header class="bg-white dark:bg-panelbg border-b border-slate-200 dark:border-panelborder px-6 xl:px-12 py-1.5 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors duration-200">
+  <!-- Header -->
+  <header class="bg-white dark:bg-panelbg border-b border-slate-200 dark:border-panelborder px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors duration-200">
     <div class="flex items-center gap-3">
-      <div class="bg-gradient-to-br from-brand-500 to-indigo-700 text-white p-1.5 rounded-xl shadow-lg shadow-brand-500/30">
-        <i class="fa-solid fa-chart-line text-base"></i>
+      <div class="bg-gradient-to-br from-brand-500 to-indigo-700 text-white p-2.5 rounded-xl shadow-lg shadow-brand-500/30">
+        <i class="fa-solid fa-chart-line text-xl"></i>
       </div>
       <div>
-        <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-tight">O2O Sales Analytics AI</h1>
-        <p class="text-[10px] text-brand-600 dark:text-brand-400 font-medium">Enterprise Data Intelligence Platform</p>
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">O2O Sales Analytics AI</h1>
+        <p class="text-xs text-brand-600 dark:text-brand-400 font-medium">Enterprise BI & Demand Intelligence Platform</p>
       </div>
     </div>
     
-    <div class="flex items-center gap-2.5">
-      <div id="loadingIndicator" class="hidden items-center gap-2 text-brand-500 dark:text-brand-400 text-xs font-medium animate-pulse">
+    <div class="flex items-center gap-3">
+      <div id="loadingIndicator" class="hidden items-center gap-2 text-brand-500 dark:text-brand-400 text-sm font-medium animate-pulse">
         <i class="fa-solid fa-circle-notch fa-spin"></i> <span id="loadingText">데이터 분석 중...</span>
       </div>
       
       <!-- Theme Toggle Button -->
-      <button id="themeToggleBtn" onclick="toggleTheme()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition border border-slate-300 dark:border-slate-700 flex items-center gap-1.5">
+      <button id="themeToggleBtn" onclick="toggleTheme()" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition border border-slate-300 dark:border-slate-700 flex items-center gap-2">
         <i id="themeIcon" class="fa-solid fa-sun text-amber-500"></i>
         <span id="themeText" class="hidden sm:inline">라이트 모드</span>
       </button>
 
-      <label class="cursor-pointer bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-md">
+      <label class="cursor-pointer bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-md">
         <i class="fa-solid fa-file-excel"></i> <span class="hidden sm:inline">엑셀 파일 누적 업로드</span>
         <input type="file" id="excelInput" multiple accept=".xlsx, .xls" class="hidden">
       </label>
-      <button onclick="showClearModal()" class="bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-rose-900/80 dark:text-slate-300 dark:hover:text-rose-300 dark:border-slate-700 dark:hover:border-rose-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition">
+      <button onclick="showClearModal()" class="bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-rose-900/80 dark:text-slate-300 dark:hover:text-rose-300 dark:border-slate-700 dark:hover:border-rose-800 text-xs font-semibold px-3 py-2 rounded-lg transition">
         <i class="fa-solid fa-trash-can"></i> <span class="hidden sm:inline">DB 초기화</span>
       </button>
     </div>
   </header>
 
-  <!-- Global Filters Bar (Compacted padding py-1) -->
-  <section class="bg-white dark:bg-panelbg/60 border-b border-slate-200 dark:border-panelborder/80 px-6 xl:px-12 py-1">
-    <div class="max-w-[1800px] w-full mx-auto flex flex-wrap items-center justify-between gap-2">
-      <div class="flex flex-wrap items-center gap-2.5">
-        <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold">
+  <!-- Global Filters Bar -->
+  <section class="bg-white dark:bg-panelbg/60 border-b border-slate-200 dark:border-panelborder/80 px-6 py-2">
+    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold">
           <i class="fa-solid fa-filter text-brand-500"></i>
-          <span class="text-slate-500 dark:text-slate-400">필터:</span>
+          <span class="text-slate-500 dark:text-slate-400">글로벌 필터:</span>
         </div>
         
         <!-- Channel Select -->
-        <select id="filterChannel" onchange="applyFilters()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <select id="filterChannel" onchange="applyFilters()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
           <option value="ALL">전체 채널</option>
         </select>
 
         <!-- Store Select -->
-        <select id="filterStore" onchange="applyFilters()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <select id="filterStore" onchange="applyFilters()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
           <option value="ALL">전체 지점</option>
         </select>
 
         <!-- Brand Select -->
-        <select id="filterBrand" onchange="applyFilters()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <select id="filterBrand" onchange="applyFilters()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
           <option value="ALL">전체 브랜드</option>
         </select>
       </div>
@@ -116,21 +110,21 @@
     </div>
   </section>
 
-  <!-- Main Container (Expanded max-w-[1800px] with py-2 space-y-2) -->
-  <main class="flex-1 max-w-[1800px] w-full mx-auto px-6 xl:px-12 py-2 space-y-2">
+  <!-- Main Container -->
+  <main class="flex-1 max-w-[1800px] w-full mx-auto px-6 py-4 space-y-4">
 
-    <!-- Navigation Tabs -->
+    <!-- Navigation Tabs (4 Core Views) -->
     <div class="flex items-center gap-2 border-b border-slate-200 dark:border-panelborder overflow-x-auto text-xs sm:text-sm">
-      <button onclick="switchTab('tab1', this)" class="tab-btn active px-3.5 py-1.5 flex items-center gap-2 transition whitespace-nowrap">
+      <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2.5 flex items-center gap-2 transition whitespace-nowrap">
         <i class="fa-solid fa-chart-pie"></i> 종합 대시보드
       </button>
-      <button onclick="switchTab('tab2', this)" class="tab-btn px-3.5 py-1.5 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
+      <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2.5 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-trophy"></i> 베스트 상품 & 브랜드
       </button>
-      <button onclick="switchTab('tab4', this)" class="tab-btn px-3.5 py-1.5 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
+      <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2.5 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-boxes-stacked"></i> 52주 트렌드 & 재고 예측
       </button>
-      <button onclick="switchTab('tab3', this)" class="tab-btn px-3.5 py-1.5 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
+      <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2.5 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-tags"></i> 가격 변동 & 적정가 분석
       </button>
     </div>
@@ -141,23 +135,23 @@
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">순매출액 (Net)</p>
-          <h3 id="kpiNet" class="text-lg sm:text-xl font-bold text-brand-600 dark:text-brand-400 mt-1">0 원</h3>
+          <h3 id="kpiNet" class="text-base sm:text-lg font-bold text-brand-600 dark:text-brand-400 mt-0.5">0 원</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">총매출액 (Gross)</p>
-          <h3 id="kpiGross" class="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
+          <h3 id="kpiGross" class="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">0 원</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">환불액 (Refund)</p>
-          <h3 id="kpiRefund" class="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 mt-1">0 원</h3>
+          <h3 id="kpiRefund" class="text-base sm:text-lg font-bold text-rose-600 dark:text-rose-400 mt-0.5">0 원</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">환불율 (Refund Rate)</p>
-          <h3 id="kpiRefundRate" class="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">0.0 %</h3>
+          <h3 id="kpiRefundRate" class="text-base sm:text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">0.0 %</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-xl shadow-sm col-span-2 md:col-span-1">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">총 판매 수량</p>
-          <h3 id="kpiQty" class="text-lg sm:text-xl font-bold text-sky-600 dark:text-sky-400 mt-1">0 개</h3>
+          <h3 id="kpiQty" class="text-base sm:text-lg font-bold text-sky-600 dark:text-sky-400 mt-0.5">0 개</h3>
         </div>
       </div>
 
@@ -165,31 +159,33 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-2xl shadow-sm">
           <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-2">월별 매출 및 환불 추이</h4>
-          <div id="chartMonthly" class="w-full h-72"></div>
+          <div id="chartMonthly" class="w-full h-64"></div>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-2xl shadow-sm">
           <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-2">채널별 매출 점유율</h4>
-          <div id="chartChannel" class="w-full h-72"></div>
+          <div id="chartChannel" class="w-full h-64"></div>
         </div>
       </div>
     </div>
 
-    <!-- TAB 2: 베스트 상품 & 브랜드 (Strictly fitted to viewport height calc(100vh - 195px)) -->
+    <!-- TAB 2: 베스트 상품 & 브랜드 -->
     <div id="tab2" class="tab-content space-y-2">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <!-- Top Brands (Shifted Left - 4 cols) -->
+        <!-- Top Brands (Left - 4 cols) -->
         <div class="lg:col-span-4 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-3 shadow-sm space-y-2">
-          <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <i class="fa-solid fa-award text-amber-500"></i> 브랜드별 매출 순위 Top 50
-          </h4>
-          <div class="max-h-[calc(100vh-195px)] min-h-[360px] overflow-y-auto pr-1">
+          <div class="flex items-center h-5">
+            <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-award text-amber-500"></i> 브랜드별 매출 순위 Top 50
+            </h4>
+          </div>
+          <div class="max-h-[calc(100vh-270px)] min-h-[250px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
+              <thead class="text-[11px] uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 font-semibold">
                 <tr>
-                  <th class="px-2.5 py-1.5 text-center">순위</th>
-                  <th class="px-2.5 py-1.5 text-center">브랜드</th>
-                  <th class="px-2.5 py-1.5 text-center">순매출액 (원)</th>
-                  <th class="px-2.5 py-1.5 text-center">수량 (개)</th>
+                  <th class="px-2 py-1.5 text-center">순위</th>
+                  <th class="px-2 py-1.5 text-center">브랜드명</th>
+                  <th class="px-2 py-1.5 text-center">순매출액</th>
+                  <th class="px-2 py-1.5 text-center">판매량</th>
                 </tr>
               </thead>
               <tbody id="tblBrands" class="divide-y divide-slate-200 dark:divide-slate-800">
@@ -199,24 +195,24 @@
           </div>
         </div>
 
-        <!-- Top Products (Wider - 8 cols with Store & Option detail) -->
+        <!-- Top Products (Right - 8 cols) -->
         <div class="lg:col-span-8 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-3 shadow-sm space-y-2">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between h-5">
             <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <i class="fa-solid fa-box-open text-brand-500"></i> 베스트 상품 순위 Top 100
             </h4>
             <span class="text-[10px] text-slate-400 dark:text-slate-500">💡 행 클릭 시 52주 트렌드 & 재고 예측으로 이동합니다</span>
           </div>
-          <div class="max-h-[calc(100vh-195px)] min-h-[360px] overflow-y-auto pr-1">
+          <div class="max-h-[calc(100vh-270px)] min-h-[250px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
+              <thead class="text-[11px] uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 font-semibold">
                 <tr>
-                  <th class="px-3 py-1.5 text-center whitespace-nowrap">순위 / 상품명</th>
-                  <th class="px-2.5 py-1.5 text-center whitespace-nowrap">평균단가</th>
-                  <th class="px-2.5 py-1.5 text-center whitespace-nowrap">매장 (지점+브랜드)</th>
-                  <th class="px-2.5 py-1.5 text-center whitespace-nowrap">주요 옵션</th>
-                  <th class="px-2.5 py-1.5 text-center whitespace-nowrap">매출액 (원)</th>
-                  <th class="px-2.5 py-1.5 text-center whitespace-nowrap">판매량 (개)</th>
+                  <th class="px-3 py-1.5 text-center">순위 & 상품명</th>
+                  <th class="px-2.5 py-1.5 text-center">평균단가</th>
+                  <th class="px-2.5 py-1.5 text-center">매장 (지점명+브랜드)</th>
+                  <th class="px-2.5 py-1.5 text-center">주요 옵션</th>
+                  <th class="px-2.5 py-1.5 text-center">매출액</th>
+                  <th class="px-2.5 py-1.5 text-center">판매량</th>
                 </tr>
               </thead>
               <tbody id="tblProducts" class="divide-y divide-slate-200 dark:divide-slate-800">
@@ -228,65 +224,67 @@
       </div>
     </div>
 
-    <!-- TAB 4: 52주 트렌드 & 재고 예측 -->
-    <div id="tab4" class="tab-content space-y-4">
-      <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-2xl shadow-sm space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">주차별 누적 판매 트렌드 & 4주 권장 확보 재고</h4>
-          <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <div class="w-full sm:w-80">
-              <select id="selectInvProd" onchange="renderTab4()" class="w-full bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none">
-                <option value="">상품 선택</option>
-              </select>
-            </div>
-            <!-- Button to jump directly to Price Analysis -->
-            <button id="btnGoToPrice" onclick="goToPriceAnalysis()" class="hidden bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow-md items-center gap-1.5 whitespace-nowrap">
-              <i class="fa-solid fa-tags"></i> 해당 상품 가격 변동 & 적정가 분석 보러가기 <i class="fa-solid fa-arrow-right text-[10px]"></i>
+    <!-- TAB 3: 52주 트렌드 & 재고 예측 -->
+    <div id="tab3" class="tab-content space-y-4">
+      <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-2xl shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">주차별 누적 판매 트렌드 & 4주 권장 확보 재고</h4>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">베스트 상품 클릭 시 자동 연결되며, 유행 급증 감지 및 YoY 전년동기 비교를 제공합니다.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <input id="searchTrendProd" type="text" placeholder="상품명 직접 검색..." onkeyup="filterTrendProdList()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none w-48">
+            <select id="selectInvProd" onchange="renderTab3()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none max-w-xs">
+              <option value="">상품 선택</option>
+            </select>
+            <button onclick="navigateToPriceTab()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow">
+              <i class="fa-solid fa-tags"></i> 해당 상품 가격 변동 & 적정가 분석 보러가기
             </button>
           </div>
         </div>
 
-        <!-- Inventory Intelligence Banner -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div class="bg-indigo-50 dark:bg-indigo-950/40 p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/50 flex flex-col justify-between">
-            <div>
-              <p class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">향후 4주간 권장 확보 재고량</p>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">최근 판매 추이 & 트렌드 보정치 기반</p>
-            </div>
-            <h3 id="invRecommend" class="text-xl font-bold text-brand-600 dark:text-brand-400 mt-2">0 개</h3>
-          </div>
-
-          <div class="bg-amber-50 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/40 flex flex-col justify-between">
-            <div>
-              <p class="text-xs text-amber-600 dark:text-amber-400 font-semibold">전년 동기(동주차) 비교</p>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">작년 동일 주차 판매량 대비 증감율</p>
-            </div>
-            <h3 id="invYoYCompare" class="text-xl font-bold text-amber-600 dark:text-amber-400 mt-2">비교 데이터 없음</h3>
-          </div>
-
-          <div id="trendAlertCard" class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-            <div>
-              <p class="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1.5">
-                <i id="trendAlertIcon" class="fa-solid fa-chart-line text-brand-500"></i>
-                <span id="trendAlertTitle">트렌드 상태</span>
-              </p>
-              <p id="trendAlertDesc" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">최근 판매 흐름 분석 중</p>
-            </div>
-            <h3 id="trendAlertStatus" class="text-base font-bold text-slate-800 dark:text-slate-200 mt-2">정상 흐름</h3>
+        <!-- Spike Warning Alert Banner -->
+        <div id="spikeAlertBanner" class="hidden bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-center gap-3 text-amber-600 dark:text-amber-400 text-xs">
+          <i class="fa-solid fa-triangle-exclamation text-base"></i>
+          <div>
+            <span class="font-bold">[트렌드 급증 감지]</span> 최근 4주 판매량이 이전 이동평균 대비 +50% 이상 급증했습니다. 유행에 대비하여 안전 재고(+30% 가중치)를 확보할 것을 권장합니다.
           </div>
         </div>
 
-        <div id="chartInvTrend" class="w-full h-72"></div>
+        <!-- Inventory Metric Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="bg-indigo-50 dark:bg-indigo-950/40 p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/50">
+            <p class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">향후 4주간 권장 확보 재고량</p>
+            <h3 id="invRecommend" class="text-xl font-bold text-brand-600 dark:text-brand-400 mt-0.5">0 개</h3>
+            <p id="invRecommendSub" class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">최근 4주 판매 흐름 기반 추정</p>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">최근 4주 평균 주간 판매량</p>
+            <h3 id="invRecent4wAvg" class="text-xl font-bold text-slate-800 dark:text-slate-200 mt-0.5">0 개 / 주</h3>
+            <p id="invYoyText" class="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 mt-1">YoY: 전년동기 데이터 대기 중</p>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">수요 모멘텀 & 유행 상태</p>
+            <h3 id="invTrendStatus" class="text-xl font-bold text-sky-600 dark:text-sky-400 mt-0.5">안정적 판매</h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">단기 판매 변화율 모니터링 중</p>
+          </div>
+        </div>
+
+        <div id="chartInvTrend" class="w-full h-80"></div>
       </div>
     </div>
 
-    <!-- TAB 3: 가격 변동 & 적정가 분석 -->
-    <div id="tab3" class="tab-content space-y-4">
-      <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-2xl shadow-sm space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">상품별 판매가 변동 분석 & 최적 심리가 도출</h4>
-          <div class="w-full sm:w-80">
-            <select id="selectPriceProd" onchange="renderTab3()" class="w-full bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none">
+    <!-- TAB 4: 가격 변동 & 적정가 분석 -->
+    <div id="tab4" class="tab-content space-y-4">
+      <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-2xl shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">상품별 실판매가 변동 분포 & 최적 심리 적정가 도출</h4>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">가격대별 최다 판매 수량 및 최대 매출 창출 구간을 분석합니다.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <input id="searchPriceProd" type="text" placeholder="상품명 직접 검색..." onkeyup="filterPriceProdList()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none w-48">
+            <select id="selectPriceProd" onchange="renderTab4()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none max-w-xs">
               <option value="">상품 선택</option>
             </select>
           </div>
@@ -294,16 +292,18 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
-            <p class="text-xs text-slate-500 dark:text-slate-400">최대 판매 수량 가격대 (Sweet Spot Volume Peak)</p>
-            <h3 id="priceVolPeak" class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">볼륨 피크 (Sweet Spot Volume Peak)</p>
+            <h3 id="priceVolPeak" class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">0 원</h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">최대 수량이 판매된 단가 구간</p>
           </div>
           <div class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
-            <p class="text-xs text-slate-500 dark:text-slate-400">최대 매출액 가격대 (Revenue Peak)</p>
-            <h3 id="priceRevPeak" class="text-lg font-bold text-brand-600 dark:text-brand-400 mt-1">0 원</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">매출 피크 (Revenue Peak)</p>
+            <h3 id="priceRevPeak" class="text-xl font-bold text-brand-600 dark:text-brand-400 mt-0.5">0 원</h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">최대 매출액이 창출된 단가 구간</p>
           </div>
         </div>
 
-        <div id="chartPriceScatter" class="w-full h-72"></div>
+        <div id="chartPriceScatter" class="w-full h-80"></div>
       </div>
     </div>
 
@@ -316,7 +316,7 @@
       <div class="w-16 h-12 text-brand-500 mx-auto flex items-center justify-center text-3xl animate-bounce">
         <i class="fa-solid fa-file-excel"></i>
       </div>
-      <h3 class="text-lg font-bold text-slate-900 dark:text-white">엑셀 빅데이터 전처리 중</h3>
+      <h3 class="text-base font-bold text-slate-900 dark:text-white">엑셀 빅데이터 전처리 중</h3>
       <p id="uploadStatusText" class="text-xs text-slate-500 dark:text-slate-400">파일 구조를 분석하고 로컬 DB에 누적 저장하고 있습니다...</p>
       <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
         <div id="uploadProgressBar" class="bg-brand-500 h-full w-0 transition-all duration-200"></div>
@@ -353,47 +353,19 @@
       8502: '수성점', 8503: '구미점', 8504: '강북점'
     };
 
-    // Plotly Korean Locale Registration
-    if (window.Plotly) {
-      Plotly.register({
-        moduleType: 'locale',
-        name: 'ko',
-        dictionary: {
-          'Autoscale': '자동 축 맞춤',
-          'Box Select': '영역 선택',
-          'Download plot as a png': '차트 이미지 다운로드 (PNG)',
-          'Download plot': '차트 다운로드',
-          'Edit in Chart Studio': '차트 수정',
-          'Lasso Select': '올가미 선택',
-          'Pan': '화면 이동',
-          'Reset axes': '축 초기화',
-          'Toggle Spike Lines': '보조선 표시',
-          'Zoom': '확대/축소',
-          'Zoom in': '확대',
-          'Zoom out': '축소',
-          'produce a png': 'PNG 이미지 생성'
-        },
-        format: {
-          days: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'],
-          shortDays: ['일', '월', '화', '수', '목', '금', '토'],
-          months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
-          shortMonths: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
-          date: '%Y년 %m월 %d일'
-        }
-      });
-    }
-
+    // Plotly config (Disable modebar & crosshair + fix range)
     const getPlotlyConfig = () => ({
       responsive: true,
-      displayModeBar: false, // Completely hide modebar icons
-      locale: 'ko'
+      displayModeBar: false
     });
 
     // State Variables
     let allData = [];
     let filteredData = [];
+    let uniqueProductList = [];
 
     const fmtNum = (num) => Math.round(num || 0).toLocaleString();
+
     const getISOWeek = (d) => {
       const date = new Date(d.getTime());
       date.setHours(0, 0, 0, 0);
@@ -407,28 +379,80 @@
       return {
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
+        dragmode: false,
         font: { color: isDark ? '#94a3b8' : '#475569', family: 'Inter, sans-serif' },
         xaxis: { gridcolor: isDark ? '#334155' : '#e2e8f0', zerolinecolor: isDark ? '#334155' : '#e2e8f0', fixedrange: true },
         yaxis: { gridcolor: isDark ? '#334155' : '#e2e8f0', zerolinecolor: isDark ? '#334155' : '#e2e8f0', fixedrange: true },
         margin: { t: title ? 35 : 15, r: 15, b: 35, l: 50 },
-        dragmode: false, // Disable drag box/pan zoom
         title: title ? { text: title, font: { size: 12, color: isDark ? '#cbd5e1' : '#334155' } } : undefined
       };
     };
+
+    // Advanced Option String Cleaner
+    function cleanOptionString(rawOpt) {
+      if (!rawOpt) return '단품';
+      let s = String(rawOpt).trim();
+      
+      // Remove product title prefix brackets if present
+      s = s.replace(/^\[.*?\]/g, '').trim();
+
+      // Remove labels like 색상:, 사이즈:, 컬러:, 옵션:
+      s = s.replace(/(색상|컬러|사이즈|옵션)\s*[:：]/g, ' ');
+      s = s.replace(/[\/,\-_]/g, ' ');
+
+      // Extract colors and size tokens
+      const words = s.split(/\s+/).filter(Boolean);
+      let cleanedWords = [];
+
+      for (let w of words) {
+        if (w.includes('모던하우스') || w.includes('엘칸토') || w.includes('버커루') || w.includes('스파오')) continue;
+        if (w.length > 25) continue;
+        cleanedWords.push(w);
+      }
+
+      let result = cleanedWords.join(' ').trim();
+      if (!result || result.length > 30) return '단품';
+      return result;
+    }
+
+    // Clean Unit Price calculation algorithm (Filters out 4.56M KRW single-unit outlier records)
+    function calculateCleanAverageUnitPrice(rows) {
+      const validRows = rows.filter(r => r.Revenue > 0 && r.Quantity > 0);
+      if (validRows.length === 0) return 0;
+
+      // Extract individual unit prices
+      const prices = validRows.map(r => r.Revenue / r.Quantity).filter(p => p < 400000); // Filter insane outliers > 40만원
+      if (prices.length === 0) {
+        let totalRev = 0, totalQty = 0;
+        validRows.forEach(r => { totalRev += r.Revenue; totalQty += r.Quantity; });
+        return totalQty > 0 ? (totalRev / totalQty) : 0;
+      }
+
+      // Calculate clean average
+      const sum = prices.reduce((a, b) => a + b, 0);
+      return sum / prices.length;
+    }
 
     function initTheme() {
       const savedTheme = localStorage.getItem('theme');
       if (savedTheme === 'light') {
         document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
         updateThemeUI(false);
       } else {
         document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
         updateThemeUI(true);
       }
     }
 
     function toggleTheme() {
       const isDark = document.documentElement.classList.toggle('dark');
+      if (isDark) {
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.add('light');
+      }
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
       updateThemeUI(isDark);
       if (filteredData && filteredData.length > 0) {
@@ -522,63 +546,6 @@
       return b || '기타 브랜드';
     }
 
-    // Advanced Robust Option Parser (색상+사이즈 엄격 정제)
-    function cleanOptionString(opt) {
-      if (!opt) return '단품';
-      let orig = String(opt).trim();
-      if (!orig || orig === '기본' || orig === '단품' || orig === '0' || orig === '선택없음') return '단품';
-
-      // Explicit check for color or size tokens
-      const hasExplicitKeyword = /(색상|컬러|칼라|사이즈|size|color|옵션)\s*:/i.test(orig);
-      const sizePattern = /\b(XXXS|XXS|XS|S|M|L|XL|XXL|XXXL|FREE|프리)\b|\b(85|90|95|100|105|110|120|130|140|150|160|220|225|230|235|240|245|250|255|260|265|270|275|280|285|290)\b|\d+(cm|mm)|\(\d{2,3}\)/i;
-      const colorPattern = /(블랙|화이트|네이비|그레이|회색|베이지|블루|파랑|레드|빨강|핑크|분홍|카키|브라운|갈색|아이보리|그린|초록|옐로우|노랑|퍼플|보라|차콜|먹색|민트|오렌지|주황|크림|연청|중청|진청|흑청|다크|라이트|스카이|골드|실버|검정|흰색|소라|와인|버건디|black|white|navy|grey|gray|beige|blue|red|pink|khaki|brown|ivory|green|yellow|purple|charcoal|mint|orange|cream|gold|silver)/i;
-
-      const hasColorOrSizeInfo = hasExplicitKeyword || sizePattern.test(orig) || colorPattern.test(orig);
-
-      if (!hasColorOrSizeInfo) {
-        return '단품';
-      }
-
-      // Clean prefix keywords
-      let str = orig.replace(/(색상|컬러|칼라|사이즈|옵션)\s*:\s*/gi, '');
-
-      if (str.includes(',') || str.includes('/')) {
-        let parts = str.split(/[,/]+/).map(p => p.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          let cleanParts = parts.filter(p => {
-            if (p.startsWith('[') || p.includes(']') || p.length > 18) return false;
-            if (p.includes('#') || p.includes('스토어') || p.includes('점') || p.includes('상품')) return false;
-            return true;
-          });
-          if (cleanParts.length > 0) {
-            str = cleanParts.join(' ');
-          }
-        }
-      } else if (str.length > 20) {
-        let tokens = str.split(/\s+/);
-        let matched = tokens.filter(t => sizePattern.test(t) || colorPattern.test(t));
-        if (matched.length > 0) {
-          str = matched.join(' ');
-        }
-      }
-
-      str = str.replace(/[/,]+/g, ' ').replace(/\s+/g, ' ').trim();
-      let tokens = str.split(' ');
-      let seen = new Set();
-      let result = [];
-      for (let t of tokens) {
-        let base = t.replace(/[()]/g, '');
-        if (!seen.has(t) && !seen.has(base) && t.length < 20) {
-          seen.add(t);
-          seen.add(base);
-          result.push(t);
-        }
-      }
-
-      let cleaned = result.join(' ').trim();
-      return cleaned || '단품';
-    }
-
     async function handleExcelUpload(e) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
@@ -619,13 +586,10 @@
 
               if (!dtStr || !prodName || isNaN(rev) || isNaN(qty)) return;
 
-              // Outlier protection: Exclude single transactions with unit price > 400,000 KRW (bulk error entries)
-              if (qty > 0 && (rev / qty) > 400000) return;
-
               let chan = resolveChannel(r, sheetName);
               let store = resolveStoreName(r);
               let brand = resolveBrand(r);
-              let opt = cleanOptionString(r['외부몰 옵션명'] || r['단품명'] || '단품');
+              let opt = r['외부몰 옵션명'] || r['단품명'] || '기본';
 
               let hash = `${dtStr}_${chan}_${store}_${brand}_${prodName}_${opt}_${rev}_${qty}`;
               if (!hashSet.has(hash)) {
@@ -690,89 +654,48 @@
       fillSelect('filterStore', stores);
       fillSelect('filterBrand', brands);
 
-      // Top 100 Best Sellers dropdown population for Tab 3 and Tab 4
+      // Unique products for Tab 3 and Tab 4 dropdowns
       let prodRevMap = {};
       allData.forEach(d => {
-        if (d.Quantity > 0 && (d.Revenue / d.Quantity) <= 400000) {
-          if (!prodRevMap[d.ProductName]) prodRevMap[d.ProductName] = 0;
-          prodRevMap[d.ProductName] += d.Revenue;
+        if (d.Quantity > 0) {
+          prodRevMap[d.ProductName] = (prodRevMap[d.ProductName] || 0) + d.Revenue;
         }
       });
       
-      const top100Prods = Object.entries(prodRevMap)
+      uniqueProductList = Object.entries(prodRevMap)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 100)
         .map(x => x[0]);
 
-      const pSelect3 = document.getElementById('selectPriceProd');
-      const pSelect4 = document.getElementById('selectInvProd');
-      if (top100Prods.length > 0) {
-        const defaultOption = `<option value="">베스트 상품 선택 (Top 100)</option>`;
-        const pOptions = top100Prods.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
-        
-        if (pSelect3) pSelect3.innerHTML = defaultOption + pOptions;
-        if (pSelect4) pSelect4.innerHTML = defaultOption + pOptions;
+      updateProductSelects(uniqueProductList);
+    }
+
+    function updateProductSelects(prodList) {
+      const pSelect3 = document.getElementById('selectInvProd');
+      const pSelect4 = document.getElementById('selectPriceProd');
+      
+      const defaultOption = `<option value="">상품 선택 (${prodList.length}개)</option>`;
+      const pOptions = prodList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
+      
+      if (pSelect3) pSelect3.innerHTML = defaultOption + pOptions;
+      if (pSelect4) pSelect4.innerHTML = defaultOption + pOptions;
+    }
+
+    function filterTrendProdList() {
+      const q = document.getElementById('searchTrendProd').value.toLowerCase().trim();
+      const filtered = uniqueProductList.filter(p => p.toLowerCase().includes(q));
+      const pSelect = document.getElementById('selectInvProd');
+      if (pSelect) {
+        pSelect.innerHTML = `<option value="">상품 선택 (${filtered.length}개)</option>` + filtered.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
       }
     }
 
-    function switchTabByName(tabId) {
-      const btns = document.querySelectorAll('.tab-btn');
-      let targetBtn = null;
-      if (tabId === 'tab1') targetBtn = btns[0];
-      if (tabId === 'tab2') targetBtn = btns[1];
-      if (tabId === 'tab4') targetBtn = btns[2]; // 3rd button: 52주 트렌드 & 재고 예측
-      if (tabId === 'tab3') targetBtn = btns[3]; // 4th button: 가격 변동 & 적정가 분석
-      if (targetBtn) switchTab(tabId, targetBtn);
-    }
-
-    function selectProductAndNavigate(prodName) {
-      if (!prodName) return;
-
-      const sel4 = document.getElementById('selectInvProd');
-      if (sel4) {
-        let exists = Array.from(sel4.options).some(opt => opt.value === prodName);
-        if (!exists) {
-          const opt = document.createElement('option');
-          opt.value = prodName;
-          opt.innerText = prodName;
-          sel4.appendChild(opt);
-        }
-        sel4.value = prodName;
+    function filterPriceProdList() {
+      const q = document.getElementById('searchPriceProd').value.toLowerCase().trim();
+      const filtered = uniqueProductList.filter(p => p.toLowerCase().includes(q));
+      const pSelect = document.getElementById('selectPriceProd');
+      if (pSelect) {
+        pSelect.innerHTML = `<option value="">상품 선택 (${filtered.length}개)</option>` + filtered.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
       }
-
-      const sel3 = document.getElementById('selectPriceProd');
-      if (sel3) {
-        let exists = Array.from(sel3.options).some(opt => opt.value === prodName);
-        if (!exists) {
-          const opt = document.createElement('option');
-          opt.value = prodName;
-          opt.innerText = prodName;
-          sel3.appendChild(opt);
-        }
-        sel3.value = prodName;
-      }
-
-      switchTabByName('tab4');
-    }
-
-    function goToPriceAnalysis() {
-      const sel4 = document.getElementById('selectInvProd');
-      if (!sel4 || !sel4.value) return;
-      const prodName = sel4.value;
-
-      const sel3 = document.getElementById('selectPriceProd');
-      if (sel3) {
-        let exists = Array.from(sel3.options).some(opt => opt.value === prodName);
-        if (!exists) {
-          const opt = document.createElement('option');
-          opt.value = prodName;
-          opt.innerText = prodName;
-          sel3.appendChild(opt);
-        }
-        sel3.value = prodName;
-      }
-
-      switchTabByName('tab3');
     }
 
     function applyFilters() {
@@ -785,9 +708,6 @@
       const b = bEl ? bEl.value : 'ALL';
 
       filteredData = allData.filter(d => {
-        // Exclude single transaction unit price > 400,000 KRW bulk error rows
-        if (d.Quantity > 0 && (d.Revenue / d.Quantity) > 400000) return false;
-
         return (c === 'ALL' || d.Channel === c) &&
                (s === 'ALL' || d.StoreName === s) &&
                (b === 'ALL' || d.Brand === b);
@@ -809,8 +729,16 @@
       });
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       
-      btn.classList.add('active');
-      btn.classList.remove('text-slate-500', 'dark:text-slate-400');
+      if (btn) {
+        btn.classList.add('active');
+        btn.classList.remove('text-slate-500', 'dark:text-slate-400');
+      } else {
+        const targetBtn = document.querySelector(`button[onclick*="'${tabId}'"]`);
+        if (targetBtn) {
+          targetBtn.classList.add('active');
+          targetBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        }
+      }
       
       const tabEl = document.getElementById(tabId);
       if (tabEl) tabEl.classList.add('active');
@@ -819,6 +747,28 @@
       if (tabId === 'tab2') renderTab2();
       if (tabId === 'tab3') renderTab3();
       if (tabId === 'tab4') renderTab4();
+    }
+
+    function selectProductAndNavigate(prodName) {
+      switchTab('tab3');
+      const sel = document.getElementById('selectInvProd');
+      if (sel) {
+        sel.value = prodName;
+        renderTab3();
+      }
+    }
+
+    function navigateToPriceTab() {
+      const sel3 = document.getElementById('selectInvProd');
+      const prodName = sel3 ? sel3.value : '';
+      switchTab('tab4');
+      if (prodName) {
+        const sel4 = document.getElementById('selectPriceProd');
+        if (sel4) {
+          sel4.value = prodName;
+          renderTab4();
+        }
+      }
     }
 
     function renderTab1() {
@@ -861,70 +811,43 @@
       }], getChartLayout(), getPlotlyConfig());
     }
 
-    // Dynamic Clean Average Unit Price Filter (Excluding > 400k outlier rows)
-    function calculateCleanAverageUnitPrice(prodRows) {
-      if (!prodRows || prodRows.length === 0) return 0;
-      
-      const validRows = prodRows.filter(r => r.Quantity > 0 && r.Revenue > 0 && (r.Revenue / r.Quantity) <= 400000);
-      if (validRows.length === 0) return 0;
-
-      const unitPrices = validRows.map(r => r.Revenue / r.Quantity).sort((a, b) => a - b);
-      const medianPrice = unitPrices[Math.floor(unitPrices.length / 2)];
-
-      const cleanRows = validRows.filter(r => {
-        const unit = r.Revenue / r.Quantity;
-        if (medianPrice > 0 && unit > medianPrice * 2.5) return false;
-        return true;
-      });
-
-      if (cleanRows.length > 0) {
-        const cleanRev = cleanRows.reduce((a, r) => a + r.Revenue, 0);
-        const cleanQty = cleanRows.reduce((a, r) => a + r.Quantity, 0);
-        return cleanQty > 0 ? (cleanRev / cleanQty) : medianPrice;
-      }
-      return medianPrice;
-    }
-
     function renderTab2() {
       let bMap = {}, pMap = {};
+      
       filteredData.forEach(d => {
-        // Exclude single transaction > 400,000 KRW bulk error rows
-        if (d.Quantity > 0 && (d.Revenue / d.Quantity) > 400000) return;
-
+        // Brand mapping
         if (!bMap[d.Brand]) bMap[d.Brand] = {rev:0, qty:0};
-        bMap[d.Brand].rev += d.Revenue; bMap[d.Brand].qty += d.Quantity;
-        
+        bMap[d.Brand].rev += d.Revenue;
+        bMap[d.Brand].qty += d.Quantity;
+
+        // Product mapping with outlier check (Ignore > 40만원 single unit errors for rank calculations)
+        let unitPrice = d.Quantity > 0 ? (d.Revenue / d.Quantity) : 0;
+        if (unitPrice > 400000 && d.Quantity === 1) return; // Skip 4.56M KRW single record entry error
+
         let pKey = d.ProductName;
-        if (!pMap[pKey]) {
-          pMap[pKey] = {
-            rev: 0, 
-            qty: 0, 
-            storeMap: {}, 
-            brandMap: {}, 
-            optMap: {},
-            rows: []
-          };
-        }
+        if (!pMap[pKey]) pMap[pKey] = {rev:0, qty:0, rows:[], storeMap:{}, brandMap:{}, optMap:{}};
         pMap[pKey].rev += d.Revenue;
         pMap[pKey].qty += d.Quantity;
         pMap[pKey].rows.push(d);
 
-        if (d.Quantity > 0) {
-          if (d.StoreName) pMap[pKey].storeMap[d.StoreName] = (pMap[pKey].storeMap[d.StoreName] || 0) + d.Quantity;
-          if (d.Brand) pMap[pKey].brandMap[d.Brand] = (pMap[pKey].brandMap[d.Brand] || 0) + d.Quantity;
-          
-          let cleanOpt = cleanOptionString(d.Option);
-          if (cleanOpt) pMap[pKey].optMap[cleanOpt] = (pMap[pKey].optMap[cleanOpt] || 0) + d.Quantity;
-        }
+        pMap[pKey].storeMap[d.StoreName] = (pMap[pKey].storeMap[d.StoreName] || 0) + d.Quantity;
+        pMap[pKey].brandMap[d.Brand] = (pMap[pKey].brandMap[d.Brand] || 0) + d.Quantity;
+        pMap[pKey].optMap[d.Option] = (pMap[pKey].optMap[d.Option] || 0) + d.Quantity;
       });
 
+      // Top 50 Brands table
       const bHtml = Object.entries(bMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,50).map((x,i) => 
-        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-2.5 py-1.5 text-center">${i+1}</td><td class="px-2.5 py-1.5 truncate max-w-[150px]" title="${x[0]}">${x[0]}</td><td class="px-2.5 py-1.5 text-right text-brand-600 dark:text-brand-400 font-medium">${fmtNum(x[1].rev)}</td><td class="px-2.5 py-1.5 text-right">${fmtNum(x[1].qty)}</td></tr>`
+        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40 transition">
+          <td class="px-2 py-1.5 text-center text-slate-400 font-mono">${i+1}</td>
+          <td class="px-2 py-1.5 font-semibold truncate max-w-[120px]" title="${x[0]}">${x[0]}</td>
+          <td class="px-2 py-1.5 text-right font-bold text-brand-600 dark:text-brand-400 whitespace-nowrap">${fmtNum(x[1].rev)} 원</td>
+          <td class="px-2 py-1.5 text-right font-medium whitespace-nowrap">${fmtNum(x[1].qty)} 개</td>
+        </tr>`
       ).join('');
       const tb1 = document.getElementById('tblBrands');
       if (tb1) tb1.innerHTML = bHtml || '<tr><td colspan="4" class="px-4 py-8 text-center">데이터가 없습니다.</td></tr>';
 
-      // Top 100 Products table with IQR Clean Unit Price & Option Cleaning
+      // Top 100 Products table
       const pHtml = Object.entries(pMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,100).map((x,i) => {
         const prodName = x[0];
         const data = x[1];
@@ -945,17 +868,17 @@
 
         const escapedName = prodName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         return `<tr onclick="selectProductAndNavigate('${escapedName}')" class="hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition group" title="클릭 시 52주 트렌드 & 재고 예측 분석으로 이동합니다">
-          <td class="px-3 py-2 truncate max-w-[320px]">
-            <span class="text-xs text-slate-400 dark:text-slate-500 mr-1.5">${i+1}</span>
+          <td class="px-3 py-1.5 truncate max-w-[320px]">
+            <span class="text-xs text-slate-400 dark:text-slate-500 mr-1.5 font-mono">${i+1}</span>
             <span class="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:underline transition">${prodName}</span>
           </td>
-          <td class="px-2.5 py-2 text-right text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">@${fmtNum(unit)}원</td>
-          <td class="px-2.5 py-2 truncate max-w-[120px] text-slate-700 dark:text-slate-300 font-medium" title="${storeBrandStr}">${storeBrandStr}</td>
-          <td class="px-2.5 py-2 truncate max-w-[110px]" title="[옵션 순위]\n1위: ${topOptTooltip}\n${subOptsTooltip}">
+          <td class="px-2.5 py-1.5 text-right text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">@${fmtNum(unit)}원</td>
+          <td class="px-2.5 py-1.5 truncate max-w-[120px] text-slate-700 dark:text-slate-300 font-medium" title="${storeBrandStr}">${storeBrandStr}</td>
+          <td class="px-2.5 py-1.5 truncate max-w-[110px]" title="[옵션 순위]\n1위: ${topOptTooltip}\n${subOptsTooltip}">
             <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[11px]">${topOptName}</span>
           </td>
-          <td class="px-2.5 py-2 text-right text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">${fmtNum(data.rev)} 원</td>
-          <td class="px-2.5 py-2 text-right font-semibold whitespace-nowrap">${fmtNum(data.qty)} 개</td>
+          <td class="px-2.5 py-1.5 text-right text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">${fmtNum(data.rev)} 원</td>
+          <td class="px-2.5 py-1.5 text-right font-semibold whitespace-nowrap">${fmtNum(data.qty)} 개</td>
         </tr>`;
       }).join('');
       const tb2 = document.getElementById('tblProducts');
@@ -963,15 +886,96 @@
     }
 
     function renderTab3() {
+      const sel = document.getElementById('selectInvProd');
+      if (!sel) return;
+      const prod = sel.value;
+      
+      const banner = document.getElementById('spikeAlertBanner');
+      if (!prod) {
+        if (banner) banner.classList.add('hidden');
+        return;
+      }
+
+      const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0);
+      let weekMap = {}, weekStoreMap = {}, weekChanMap = {};
+
+      pData.forEach(d => {
+        let w = d.Week;
+        weekMap[w] = (weekMap[w] || 0) + d.Quantity;
+
+        if (!weekStoreMap[w]) weekStoreMap[w] = {};
+        weekStoreMap[w][d.StoreName] = (weekStoreMap[w][d.StoreName] || 0) + d.Quantity;
+
+        if (!weekChanMap[w]) weekChanMap[w] = {};
+        weekChanMap[w][d.Channel] = (weekChanMap[w][d.Channel] || 0) + d.Quantity;
+      });
+
+      const weeks = Object.keys(weekMap).sort();
+      const weekQtys = weeks.map(w => weekMap[w]);
+      const weekTopStores = weeks.map(w => Object.entries(weekStoreMap[w]).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타');
+      const weekTopChans = weeks.map(w => Object.entries(weekChanMap[w]).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타');
+
+      Plotly.newPlot('chartInvTrend', [{
+        x: weeks, y: weekQtys,
+        type: 'scatter', mode: 'lines+markers',
+        line: {color: '#8b5cf6', width: 3}, marker: {size: 8, color: '#6366f1'},
+        text: weekTopStores,
+        text2: weekTopChans,
+        hovertemplate: '<b>%{x}</b><br>판매량: %{y:,}개<br>주요 지점: %{text}<br>주요 채널: %{customdata}<extra></extra>',
+        customdata: weekTopChans
+      }], getChartLayout(`[${prod}] 주차별 누적 판매 트렌드`), getPlotlyConfig());
+
+      // Trend spike and inventory calculation
+      const last4Weeks = weeks.slice(-4);
+      const last4QtySum = last4Weeks.reduce((acc, w) => acc + weekMap[w], 0);
+      const recent4wAvg = last4Weeks.length ? (last4QtySum / last4Weeks.length) : 0;
+
+      const prevWeeks = weeks.slice(-8, -4);
+      const prev4QtySum = prevWeeks.reduce((acc, w) => acc + weekMap[w], 0);
+      const prev4wAvg = prevWeeks.length ? (prev4QtySum / prevWeeks.length) : 0;
+
+      let isSpike = false;
+      if (prev4wAvg > 5 && (recent4wAvg - prev4wAvg) / prev4wAvg >= 0.5) {
+        isSpike = true;
+      }
+
+      if (banner) {
+        if (isSpike) banner.classList.remove('hidden');
+        else banner.classList.add('hidden');
+      }
+
+      const recQty = isSpike ? Math.round(recent4wAvg * 4 * 1.3) : Math.round(recent4wAvg * 4);
+      
+      const elRec = document.getElementById('invRecommend');
+      const elSub = document.getElementById('invRecommendSub');
+      const elAvg = document.getElementById('invRecent4wAvg');
+      const elStatus = document.getElementById('invTrendStatus');
+
+      if (elRec) elRec.innerText = fmtNum(recQty) + ' 개';
+      if (elSub) elSub.innerText = isSpike ? '트렌드 폭증 반영 (안전재고 +30% 가중치)' : '최근 4주 판매 흐름 기반 추정';
+      if (elAvg) elAvg.innerText = fmtNum(recent4wAvg) + ' 개 / 주';
+      if (elStatus) {
+        if (isSpike) {
+          elStatus.innerText = '🔥 수요 폭증 (Spike)';
+          elStatus.className = 'text-xl font-bold text-amber-500 mt-0.5';
+        } else {
+          elStatus.innerText = '안정적 판매';
+          elStatus.className = 'text-xl font-bold text-sky-600 dark:text-sky-400 mt-0.5';
+        }
+      }
+    }
+
+    function renderTab4() {
       const sel = document.getElementById('selectPriceProd');
       if (!sel) return;
       const prod = sel.value;
       if (!prod) return;
 
-      const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0 && (d.Revenue / d.Quantity) <= 400000);
+      const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0);
       let priceAgg = {};
       pData.forEach(d => {
         let unit = Math.round(d.Revenue / d.Quantity);
+        if (unit > 400000 && d.Quantity === 1) return; // Ignore single-unit 4.56M KRW outlier records
         if (!priceAgg[unit]) priceAgg[unit] = {qty:0, rev:0};
         priceAgg[unit].qty += d.Quantity;
         priceAgg[unit].rev += d.Revenue;
@@ -994,138 +998,10 @@
         x: pData.map(d=>d.Date), y: pData.map(d=>d.Revenue/d.Quantity),
         mode: 'markers', type: 'scatter',
         text: pData.map(d=>d.StoreName),
+        customdata: pData.map(d=>d.Channel),
         marker: { size: pData.map(d=>Math.max(5, Math.min(20, d.Quantity*2))), color: '#38bdf8', opacity: 0.6 },
-        hovertemplate: '일자: %{x}<br>지점: %{text}<br>단가: %{y:,}원<extra></extra>'
-      }], getChartLayout('일자별 판매단가 산포도 (점 크기=수량)'), getPlotlyConfig());
-    }
-
-    function renderTab4() {
-      const sel = document.getElementById('selectInvProd');
-      const btnGo = document.getElementById('btnGoToPrice');
-      if (!sel) return;
-      const prod = sel.value;
-
-      if (!prod) {
-        if (btnGo) btnGo.classList.add('hidden');
-        return;
-      }
-
-      if (btnGo) {
-        btnGo.classList.remove('hidden');
-        btnGo.classList.add('inline-flex');
-      }
-
-      const sel3 = document.getElementById('selectPriceProd');
-      if (sel3 && (!sel3.value || sel3.value !== prod)) {
-        sel3.value = prod;
-        renderTab3();
-      }
-
-      const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0 && (d.Revenue / d.Quantity) <= 400000);
-      
-      let weekAgg = {};
-      pData.forEach(d => {
-        let w = d.Week;
-        if (!weekAgg[w]) {
-          weekAgg[w] = { qty: 0, storeMap: {}, channelMap: {} };
-        }
-        weekAgg[w].qty += d.Quantity;
-        weekAgg[w].storeMap[d.StoreName] = (weekAgg[w].storeMap[d.StoreName] || 0) + d.Quantity;
-        weekAgg[w].channelMap[d.Channel] = (weekAgg[w].channelMap[d.Channel] || 0) + d.Quantity;
-      });
-
-      const weeks = Object.keys(weekAgg).sort();
-      const weekQtys = weeks.map(w => weekAgg[w].qty);
-      
-      const topStores = weeks.map(w => {
-        const sorted = Object.entries(weekAgg[w].storeMap).sort((a,b)=>b[1]-a[1]);
-        return sorted[0] ? `${sorted[0][0]} (${fmtNum(sorted[0][1])}개)` : '-';
-      });
-
-      const topChannels = weeks.map(w => {
-        const sorted = Object.entries(weekAgg[w].channelMap).sort((a,b)=>b[1]-a[1]);
-        return sorted[0] ? `${sorted[0][0]} (${fmtNum(sorted[0][1])}개)` : '-';
-      });
-
-      Plotly.newPlot('chartInvTrend', [{
-        x: weeks, 
-        y: weekQtys,
-        customdata: weeks.map((w, idx) => [topStores[idx], topChannels[idx]]),
-        type: 'scatter', 
-        mode: 'lines+markers',
-        line: {color: '#8b5cf6', width: 3}, 
-        marker: {size: 8},
-        hovertemplate: '<b>%{x}</b><br>총 판매량: <b>%{y:,}개</b><br>📍 주 판매 지점: %{customdata[0]}<br>🛍️ 주 판매 채널: %{customdata[1]}<extra></extra>'
-      }], getChartLayout(`[${prod}] 주차별 누적 판매수량 트렌드`), getPlotlyConfig());
-
-      const last4 = weeks.slice(-4);
-      const sum4 = last4.reduce((acc, w) => acc + weekAgg[w].qty, 0);
-      const avg4 = last4.length ? (sum4 / last4.length) : 0;
-
-      const prior4 = weeks.slice(-8, -4);
-      const sumPrior4 = prior4.reduce((acc, w) => acc + weekAgg[w].qty, 0);
-      const avgPrior4 = prior4.length ? (sumPrior4 / prior4.length) : (avg4 || 1);
-
-      let recQty = avg4 * 4;
-      const alertCard = document.getElementById('trendAlertCard');
-      const alertTitle = document.getElementById('trendAlertTitle');
-      const alertDesc = document.getElementById('trendAlertDesc');
-      const alertStatus = document.getElementById('trendAlertStatus');
-
-      const spikeRatio = avgPrior4 > 0 ? ((avg4 - avgPrior4) / avgPrior4 * 100) : 0;
-
-      if (spikeRatio >= 50 && last4.length >= 2) {
-        recQty = avg4 * 4 * 1.3;
-        if (alertCard) {
-          alertCard.className = 'bg-rose-50 dark:bg-rose-950/40 p-3.5 rounded-xl border border-rose-300 dark:border-rose-900/60 flex flex-col justify-between animate-pulse';
-        }
-        if (alertTitle) alertTitle.innerText = '⚡ 트렌드 급증 감지 (Spike Alert)';
-        if (alertDesc) alertDesc.innerText = `최근 4주 판매량이 이전 대비 +${Math.round(spikeRatio)}% 폭증`;
-        if (alertStatus) {
-          alertStatus.innerText = '사전 재고 추가 확보 권장 (+30%)';
-          alertStatus.className = 'text-sm sm:text-base font-bold text-rose-600 dark:text-rose-400 mt-2';
-        }
-      } else {
-        if (alertCard) {
-          alertCard.className = 'bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between';
-        }
-        if (alertTitle) alertTitle.innerText = '트렌드 상태';
-        if (alertDesc) alertDesc.innerText = '안정적인 판매 흐름 유지 중';
-        if (alertStatus) {
-          alertStatus.innerText = '정상 판매 패턴';
-          alertStatus.className = 'text-base font-bold text-emerald-600 dark:text-emerald-400 mt-2';
-        }
-      }
-
-      const elRec = document.getElementById('invRecommend');
-      if (elRec) elRec.innerText = fmtNum(recQty) + ' 개';
-
-      const elYoY = document.getElementById('invYoYCompare');
-      if (weeks.length > 0) {
-        const latestWeekStr = weeks[weeks.length - 1];
-        const m = latestWeekStr.match(/(\d{4})년\s*(\d+)주차/);
-        if (m) {
-          const currYear = parseInt(m[1]);
-          const weekNum = parseInt(m[2]);
-          const prevYearWeekStr = `${currYear - 1}년 ${weekNum}주차`;
-          const currQty = weekAgg[latestWeekStr] ? weekAgg[latestWeekStr].qty : 0;
-          const prevQty = weekAgg[prevYearWeekStr] ? weekAgg[prevYearWeekStr].qty : undefined;
-
-          if (prevQty !== undefined && prevQty > 0) {
-            const yoyRate = ((currQty - prevQty) / prevQty * 100).toFixed(1);
-            const symbol = yoyRate >= 0 ? '+' : '';
-            if (elYoY) {
-              elYoY.innerText = `${symbol}${yoyRate}%`;
-              elYoY.className = `text-xl font-bold mt-2 ${yoyRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`;
-            }
-          } else {
-            if (elYoY) {
-              elYoY.innerText = '전년 데이터 없음';
-              elYoY.className = 'text-xs font-semibold text-slate-400 mt-2';
-            }
-          }
-        }
-      }
+        hovertemplate: '일자: %{x}<br>지점: %{text}<br>채널: %{customdata}<br>단가: %{y:,}원<extra></extra>'
+      }], getChartLayout('일자별 실판매가 산포도 (점 크기=수량)'), getPlotlyConfig());
     }
   </script>
 </body>
