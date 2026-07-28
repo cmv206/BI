@@ -396,8 +396,9 @@
       let foundSize = '';
 
       // Regex pattern definitions
+      const parenSizeRegex = /(?:^|[^\d\w])([A-Z0-9]{1,5}\s*\([A-Z0-9가-힣]+\)|\d{2,3}\s*\(\d{2,3}\))(?:[^\d\w]|$)/i;
       const shoeSizeRegex = /\b(2[1-9][05])\b/;
-      const clothSizeRegex = /(?:^|[^\d])(0[89][05]|1[0-6][05]|XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[1-5]?XL|FREE\(F\)|FREE|\bF\b|\b80\b|\b85\b|\b90\b|\b95\b|\b100\b|\b105\b|\b110\b|\b120\b|\b130\b|\b140\b|\b150\b|\b160\b)(?:[^\d]|$)/i;
+      const clothSizeRegex = /(?:^|[^\d])(0[89][05]|1[0-6][05]|[1-5]?XL|XXL|XXXL|FREE\(F\)|FREE|\bF\b|\b44\b|\b55\b|\b66\b|\b77\b|\b88\b|\b99\b|\b2[4-9]\b|\b3[0-9]\b|\b4[02]\b|\b78\b|\b80\b|\b82\b|\b84\b|\b85\b|\b86\b|\b88\b|\b90\b|\b92\b|\b94\b|\b95\b|\b96\b|\b98\b|\b100\b|\b102\b|\b104\b|\b105\b|\b108\b|\b110\b|\b115\b|\b120\b|\b130\b|\b140\b|\b150\b|\b160\b)(?:[^\d]|$)/i;
 
       const koreanColorRegex = /(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|오렌지|멜란지|[가-힣]{2,6}(?:색|컬러))/i;
       const englishColorWordRegex = /\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER|MELANGE)\b/i;
@@ -411,9 +412,13 @@
         sOpt = sOpt.replace(/^(?:선택\d*|옵션명?|상품선택|단품명?|Color|Size)\s*[:：]\s*/i, '').trim();
 
         // Extract Size from rawOpt
+        let parenM = sOpt.match(parenSizeRegex);
         let shoeM = sOpt.match(shoeSizeRegex);
         let clothM = sOpt.match(clothSizeRegex);
-        if (shoeM) {
+
+        if (parenM) {
+          foundSize = parenM[1].trim();
+        } else if (shoeM) {
           foundSize = shoeM[0];
         } else if (clothM) {
           foundSize = (clothM[1] || clothM[0]).trim();
@@ -430,11 +435,18 @@
         else if (engWordM) foundColor = engWordM[0].toUpperCase();
         else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
 
-        // If sOpt is short (e.g. <= 20 chars like "DU 095" or "DU/095") and size is found,
-        // use remaining non-numeric token as color code if standard color list missed it
-        if (!foundColor && foundSize && sOpt.length <= 20) {
-          let rem = sOpt.replace(foundSize, '').replace(/[\/\_\-\,\.\:\s]/g, ' ').trim();
-          if (rem && rem.length <= 10 && !/^\d+$/.test(rem)) {
+        // If foundColor exists but size missed, capture remaining text if it's concise
+        if (!foundSize && foundColor && sOpt.length <= 30) {
+          let remaining = sOpt.replace(foundColor, '').replace(/^[\/\_\-\,\.\:\s]+|[\/\_\-\,\.\:\s]+$/g, '').trim();
+          if (remaining && remaining.length <= 15 && !/^(?:무료배송|사은품|당일발송|특가|할인|단품|기본)$/i.test(remaining)) {
+            foundSize = remaining;
+          }
+        }
+
+        // If sOpt is short and size is found, use remaining non-numeric token as color code if standard color list missed it
+        if (!foundColor && foundSize && sOpt.length <= 30) {
+          let rem = sOpt.replace(foundSize, '').replace(/^[\/\_\-\,\.\:\s]+|[\/\_\-\,\.\:\s]+$/g, '').trim();
+          if (rem && rem.length <= 15 && !/^\d+$/.test(rem) && !/^(?:무료배송|사은품|당일발송|특가|할인|단품|기본)$/i.test(rem)) {
             foundColor = rem.toUpperCase();
           }
         }
