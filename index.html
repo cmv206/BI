@@ -522,55 +522,56 @@
       return b || '기타 브랜드';
     }
 
+    // Advanced Robust Option Parser (색상+사이즈 엄격 정제 함수)
     function cleanOptionString(opt) {
       if (!opt) return '단품';
       let orig = String(opt).trim();
       if (!orig || orig === '기본' || orig === '단품' || orig === '0' || orig === '선택없음') return '단품';
 
-      // 1. Check if original string contains explicit color/size keywords or standard patterns
+      // 1. Explicit keyword check for color or size patterns
       const hasExplicitKeyword = /(색상|컬러|칼라|사이즈|size|color|옵션)\s*:/i.test(orig);
-      
-      // Size patterns (Alpha, numeric apparel/shoe sizes, dimensions, or parenthesized numbers)
       const sizePattern = /\b(XXXS|XXS|XS|S|M|L|XL|XXL|XXXL|FREE|프리)\b|\b(85|90|95|100|105|110|120|130|140|150|160|220|225|230|235|240|245|250|255|260|265|270|275|280|285|290)\b|\d+(cm|mm)|\(\d{2,3}\)/i;
-      
-      // Color patterns (Korean & English standard color names)
       const colorPattern = /(블랙|화이트|네이비|그레이|회색|베이지|블루|파랑|레드|빨강|핑크|분홍|카키|브라운|갈색|아이보리|그린|초록|옐로우|노랑|퍼플|보라|차콜|먹색|민트|오렌지|주황|크림|연청|중청|진청|흑청|다크|라이트|스카이|골드|실버|검정|흰색|소라|와인|버건디|black|white|navy|grey|gray|beige|blue|red|pink|khaki|brown|ivory|green|yellow|purple|charcoal|mint|orange|cream|gold|silver)/i;
 
       const hasColorOrSizeInfo = hasExplicitKeyword || sizePattern.test(orig) || colorPattern.test(orig);
 
-      // If text exists but lacks color/size information (e.g. repeated product titles), default to '단품'
       if (!hasColorOrSizeInfo) {
         return '단품';
       }
 
-      // 2. Remove prefixes like 색상:, 컬러:, 칼라:, 사이즈:, 옵션:
+      // 2. Clean prefixes
       let str = orig.replace(/(색상|컬러|칼라|사이즈|옵션)\s*:\s*/gi, '');
 
-      // 3. Strip out product titles/bracketed prefixes when option repeats full item name
+      // 3. Strip long product titles or bracket prefixes
       if (str.includes(',') || str.includes('/')) {
         let parts = str.split(/[,/]+/).map(p => p.trim()).filter(Boolean);
         if (parts.length >= 2) {
           let cleanParts = parts.filter(p => {
-            if (p.startsWith('[') || p.includes(']') || p.length > 22) return false;
-            if (p.includes('#') || p.includes('스토어') || p.includes('점')) return false;
+            if (p.startsWith('[') || p.includes(']') || p.length > 18) return false;
+            if (p.includes('#') || p.includes('스토어') || p.includes('점') || p.includes('상품')) return false;
             return true;
           });
           if (cleanParts.length > 0) {
             str = cleanParts.join(' ');
           }
         }
+      } else if (str.length > 20) {
+        // Handle long title strings without commas by extracting only color/size tokens
+        let tokens = str.split(/\s+/);
+        let matched = tokens.filter(t => sizePattern.test(t) || colorPattern.test(t));
+        if (matched.length > 0) {
+          str = matched.join(' ');
+        }
       }
 
-      // 4. Normalize slashes, commas, and whitespace
+      // 4. Clean formatting and deduplicate
       str = str.replace(/[/,]+/g, ' ').replace(/\s+/g, ' ').trim();
-
-      // 5. Deduplicate redundant tokens (e.g., "130 (130 크림)" -> "크림 130")
       let tokens = str.split(' ');
       let seen = new Set();
       let result = [];
       for (let t of tokens) {
         let base = t.replace(/[()]/g, '');
-        if (!seen.has(t) && !seen.has(base)) {
+        if (!seen.has(t) && !seen.has(base) && t.length < 20) {
           seen.add(t);
           seen.add(base);
           result.push(t);
@@ -689,7 +690,6 @@
       fillSelect('filterStore', stores);
       fillSelect('filterBrand', brands);
 
-      // 브라우저 멈춤(프리징) 완벽 해결:
       // 매출액 기준 상위 Top 100 대표 상품만 드롭다운 옵션에 채워 렌더링 부하를 제거합니다.
       let prodRevMap = {};
       allData.forEach(d => {
@@ -725,7 +725,6 @@
       if (targetBtn) switchTab(tabId, targetBtn);
     }
 
-    // Interactive navigation from Top 100 table to Tab 4
     function selectProductAndNavigate(prodName) {
       if (!prodName) return;
 
@@ -756,7 +755,6 @@
       switchTabByName('tab4');
     }
 
-    // Jump from Tab 4 to Tab 3 (Price Analysis)
     function goToPriceAnalysis() {
       const sel4 = document.getElementById('selectInvProd');
       if (!sel4 || !sel4.value) return;
@@ -860,6 +858,37 @@
       }], getChartLayout(), getPlotlyConfig());
     }
 
+    // Dynamic Clean Average Unit Price (IQR Outlier Filter)
+    function calculateCleanAverageUnitPrice(prodRows) {
+      if (!prodRows || prodRows.length === 0) return 0;
+      
+      const validRows = prodRows.filter(r => r.Quantity > 0 && r.Revenue > 0);
+      if (validRows.length === 0) return 0;
+
+      const rawTotalRev = validRows.reduce((a, r) => a + r.Revenue, 0);
+      const rawTotalQty = validRows.reduce((a, r) => a + r.Quantity, 0);
+      const rawAvg = rawTotalQty > 0 ? (rawTotalRev / rawTotalQty) : 0;
+
+      // Extract single unit prices
+      const unitPrices = validRows.map(r => r.Revenue / r.Quantity).sort((a, b) => a - b);
+      const medianPrice = unitPrices[Math.floor(unitPrices.length / 2)];
+
+      // Filter out extreme outlier rows (e.g. 1 pair entered as 4.56M KRW wholesale sum)
+      const cleanRows = validRows.filter(r => {
+        const unit = r.Revenue / r.Quantity;
+        // If single row price exceeds 3.5x median and is higher than 300,000 KRW, exclude outlier row
+        if (medianPrice > 0 && unit > medianPrice * 3.5 && unit > 300000) return false;
+        return true;
+      });
+
+      if (cleanRows.length > 0) {
+        const cleanRev = cleanRows.reduce((a, r) => a + r.Revenue, 0);
+        const cleanQty = cleanRows.reduce((a, r) => a + r.Quantity, 0);
+        return cleanQty > 0 ? (cleanRev / cleanQty) : medianPrice;
+      }
+      return medianPrice || rawAvg;
+    }
+
     function renderTab2() {
       let bMap = {}, pMap = {};
       filteredData.forEach(d => {
@@ -873,42 +902,50 @@
             qty: 0, 
             storeMap: {}, 
             brandMap: {}, 
-            optMap: {}
+            optMap: {},
+            rows: []
           };
         }
         pMap[pKey].rev += d.Revenue;
         pMap[pKey].qty += d.Quantity;
+        pMap[pKey].rows.push(d);
 
         if (d.Quantity > 0) {
           if (d.StoreName) pMap[pKey].storeMap[d.StoreName] = (pMap[pKey].storeMap[d.StoreName] || 0) + d.Quantity;
           if (d.Brand) pMap[pKey].brandMap[d.Brand] = (pMap[pKey].brandMap[d.Brand] || 0) + d.Quantity;
-          if (d.Option) pMap[pKey].optMap[d.Option] = (pMap[pKey].optMap[d.Option] || 0) + d.Quantity;
+          
+          // Apply secondary option cleaning
+          let cleanOpt = cleanOptionString(d.Option);
+          if (cleanOpt) pMap[pKey].optMap[cleanOpt] = (pMap[pKey].optMap[cleanOpt] || 0) + d.Quantity;
         }
       });
 
       const bHtml = Object.entries(bMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,50).map((x,i) => 
-        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2 truncate max-w-[150px]" title="${x[0]}">${x[0]}</td><td class="px-3 py-2 text-right text-brand-600 dark:text-brand-400 font-medium">${fmtNum(x[1].rev)}</td><td class="px-3 py-2 text-right">${fmtNum(x[1].qty)}</td></tr>`
+        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-3 py-2 text-center">${i+1}</td><td class="px-3 py-2 truncate max-w-[150px]" title="${x[0]}">${x[0]}</td><td class="px-3 py-2 text-right text-brand-600 dark:text-brand-400 font-medium">${fmtNum(x[1].rev)}</td><td class="px-3 py-2 text-right">${fmtNum(x[1].qty)}</td></tr>`
       ).join('');
       const tb1 = document.getElementById('tblBrands');
       if (tb1) tb1.innerHTML = bHtml || '<tr><td colspan="4" class="px-4 py-8 text-center">데이터가 없습니다.</td></tr>';
 
-      // Top 100 Products table with Store (Store + Brand), Option (Top option + Sub-options tooltip)
+      // Top 100 Products table with IQR Clean Unit Price & Option Cleaning
       const pHtml = Object.entries(pMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,100).map((x,i) => {
         const prodName = x[0];
         const data = x[1];
-        const unit = data.qty > 0 ? (data.rev / data.qty) : 0;
         
-        // Find top store & top brand
+        // Clean average unit price (IQR Filter applied)
+        const unit = calculateCleanAverageUnitPrice(data.rows);
+        
+        // Top store & top brand
         const topStore = Object.entries(data.storeMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '본사/기타';
         const topBrand = Object.entries(data.brandMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
         const storeBrandStr = topBrand ? `${topStore} ${topBrand}` : topStore;
 
-        // Find top option & sub-options for hover tooltip
+        // Top option & sub-options
         const sortedOpts = Object.entries(data.optMap).sort((a,b)=>b[1]-a[1]);
-        const topOptName = sortedOpts[0] ? sortedOpts[0][0] : '단품';
-        const topOptTooltip = sortedOpts[0] ? `${sortedOpts[0][0]} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
+        const rawTopOpt = sortedOpts[0] ? sortedOpts[0][0] : '단품';
+        const topOptName = cleanOptionString(rawTopOpt);
+        const topOptTooltip = sortedOpts[0] ? `${topOptName} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
         
-        let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${opt[0]} (${fmtNum(opt[1])}개)`).join('\n');
+        let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${cleanOptionString(opt[0])} (${fmtNum(opt[1])}개)`).join('\n');
         if (!subOptsTooltip) subOptsTooltip = '차순위 옵션 데이터 없음';
 
         const escapedName = prodName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -1018,7 +1055,7 @@
         return sorted[0] ? `${sorted[0][0]} (${fmtNum(sorted[0][1])}개)` : '-';
       });
 
-      // Plotly trend chart with enriched hover template ( 주 판매 지점 & 주 판매 채널 )
+      // Plotly trend chart
       Plotly.newPlot('chartInvTrend', [{
         x: weeks, 
         y: weekQtys,
@@ -1035,7 +1072,7 @@
       const sum4 = last4.reduce((acc, w) => acc + weekAgg[w].qty, 0);
       const avg4 = last4.length ? (sum4 / last4.length) : 0;
 
-      // 2. Trend Spike Detection (Recent 4 weeks vs prior baseline)
+      // 2. Trend Spike Detection
       const prior4 = weeks.slice(-8, -4);
       const sumPrior4 = prior4.reduce((acc, w) => acc + weekAgg[w].qty, 0);
       const avgPrior4 = prior4.length ? (sumPrior4 / prior4.length) : (avg4 || 1);
@@ -1049,7 +1086,6 @@
       const spikeRatio = avgPrior4 > 0 ? ((avg4 - avgPrior4) / avgPrior4 * 100) : 0;
 
       if (spikeRatio >= 50 && last4.length >= 2) {
-        // High trend surge detected! Increase recommended safety stock buffer
         recQty = avg4 * 4 * 1.3;
         if (alertCard) {
           alertCard.className = 'bg-rose-50 dark:bg-rose-950/40 p-4 rounded-xl border border-rose-300 dark:border-rose-900/60 flex flex-col justify-between animate-pulse';
@@ -1061,7 +1097,6 @@
           alertStatus.className = 'text-base sm:text-lg font-bold text-rose-600 dark:text-rose-400 mt-2';
         }
       } else {
-        // Normal steady trend
         if (alertCard) {
           alertCard.className = 'bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between';
         }
@@ -1079,7 +1114,7 @@
       // 3. YoY Same-Week Comparison
       const elYoY = document.getElementById('invYoYCompare');
       if (weeks.length > 0) {
-        const latestWeekStr = weeks[weeks.length - 1]; // e.g. "2026년 23주차"
+        const latestWeekStr = weeks[weeks.length - 1];
         const m = latestWeekStr.match(/(\d{4})년\s*(\d+)주차/);
         if (m) {
           const currYear = parseInt(m[1]);
