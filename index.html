@@ -214,7 +214,7 @@
                   <th class="px-3 py-2.5">순위 / 상품명</th>
                   <th class="px-3 py-2.5 text-right whitespace-nowrap">평균단가</th>
                   <th class="px-3 py-2.5 whitespace-nowrap">매장 (지점+브랜드)</th>
-                  <th class="px-3 py-2.5 whitespace-nowrap">주요 옵션 (1위)</th>
+                  <th class="px-3 py-2.5 whitespace-nowrap">주요 옵션</th>
                   <th class="px-3 py-2.5 text-right whitespace-nowrap">매출액 (원)</th>
                   <th class="px-3 py-2.5 text-right whitespace-nowrap">판매량 (개)</th>
                 </tr>
@@ -522,6 +522,65 @@
       return b || '기타 브랜드';
     }
 
+    function cleanOptionString(opt) {
+      if (!opt) return '단품';
+      let orig = String(opt).trim();
+      if (!orig || orig === '기본' || orig === '단품' || orig === '0' || orig === '선택없음') return '단품';
+
+      // 1. Check if original string contains explicit color/size keywords or standard patterns
+      const hasExplicitKeyword = /(색상|컬러|칼라|사이즈|size|color|옵션)\s*:/i.test(orig);
+      
+      // Size patterns (Alpha, numeric apparel/shoe sizes, dimensions, or parenthesized numbers)
+      const sizePattern = /\b(XXXS|XXS|XS|S|M|L|XL|XXL|XXXL|FREE|프리)\b|\b(85|90|95|100|105|110|120|130|140|150|160|220|225|230|235|240|245|250|255|260|265|270|275|280|285|290)\b|\d+(cm|mm)|\(\d{2,3}\)/i;
+      
+      // Color patterns (Korean & English standard color names)
+      const colorPattern = /(블랙|화이트|네이비|그레이|회색|베이지|블루|파랑|레드|빨강|핑크|분홍|카키|브라운|갈색|아이보리|그린|초록|옐로우|노랑|퍼플|보라|차콜|먹색|민트|오렌지|주황|크림|연청|중청|진청|흑청|다크|라이트|스카이|골드|실버|검정|흰색|소라|와인|버건디|black|white|navy|grey|gray|beige|blue|red|pink|khaki|brown|ivory|green|yellow|purple|charcoal|mint|orange|cream|gold|silver)/i;
+
+      const hasColorOrSizeInfo = hasExplicitKeyword || sizePattern.test(orig) || colorPattern.test(orig);
+
+      // If text exists but lacks color/size information (e.g. repeated product titles), default to '단품'
+      if (!hasColorOrSizeInfo) {
+        return '단품';
+      }
+
+      // 2. Remove prefixes like 색상:, 컬러:, 칼라:, 사이즈:, 옵션:
+      let str = orig.replace(/(색상|컬러|칼라|사이즈|옵션)\s*:\s*/gi, '');
+
+      // 3. Strip out product titles/bracketed prefixes when option repeats full item name
+      if (str.includes(',') || str.includes('/')) {
+        let parts = str.split(/[,/]+/).map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          let cleanParts = parts.filter(p => {
+            if (p.startsWith('[') || p.includes(']') || p.length > 22) return false;
+            if (p.includes('#') || p.includes('스토어') || p.includes('점')) return false;
+            return true;
+          });
+          if (cleanParts.length > 0) {
+            str = cleanParts.join(' ');
+          }
+        }
+      }
+
+      // 4. Normalize slashes, commas, and whitespace
+      str = str.replace(/[/,]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+      // 5. Deduplicate redundant tokens (e.g., "130 (130 크림)" -> "크림 130")
+      let tokens = str.split(' ');
+      let seen = new Set();
+      let result = [];
+      for (let t of tokens) {
+        let base = t.replace(/[()]/g, '');
+        if (!seen.has(t) && !seen.has(base)) {
+          seen.add(t);
+          seen.add(base);
+          result.push(t);
+        }
+      }
+
+      let cleaned = result.join(' ').trim();
+      return cleaned || '단품';
+    }
+
     async function handleExcelUpload(e) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
@@ -565,7 +624,7 @@
               let chan = resolveChannel(r, sheetName);
               let store = resolveStoreName(r);
               let brand = resolveBrand(r);
-              let opt = r['외부몰 옵션명'] || r['단품명'] || '기본';
+              let opt = cleanOptionString(r['외부몰 옵션명'] || r['단품명'] || '단품');
 
               let hash = `${dtStr}_${chan}_${store}_${brand}_${prodName}_${opt}_${rev}_${qty}`;
               if (!hashSet.has(hash)) {
@@ -846,7 +905,7 @@
 
         // Find top option & sub-options for hover tooltip
         const sortedOpts = Object.entries(data.optMap).sort((a,b)=>b[1]-a[1]);
-        const topOpt = sortedOpts[0] ? `${sortedOpts[0][0]} (${fmtNum(sortedOpts[0][1])}개)` : '기본';
+        const topOpt = sortedOpts[0] ? `${sortedOpts[0][0]} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
         
         let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${opt[0]} (${fmtNum(opt[1])}개)`).join('\n');
         if (!subOptsTooltip) subOptsTooltip = '차순위 옵션 데이터 없음';
