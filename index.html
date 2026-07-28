@@ -671,33 +671,63 @@
       updateProductSelects(uniqueProductList);
     }
 
+    // High performance dropdown option updater (Sliced to Top 150 items to prevent DOM freezing)
     function updateProductSelects(prodList) {
       const pSelect3 = document.getElementById('selectInvProd');
       const pSelect4 = document.getElementById('selectPriceProd');
       
-      const defaultOption = `<option value="">상품 선택 (${prodList.length}개)</option>`;
-      const pOptions = prodList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
+      const MAX_DISPLAY = 150;
+      const displayList = prodList.slice(0, MAX_DISPLAY);
+
+      const defaultOption = `<option value="">상품 선택 (${prodList.length.toLocaleString()}개 중 상위 ${displayList.length}개)</option>`;
+      const pOptions = displayList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
       
       if (pSelect3) pSelect3.innerHTML = defaultOption + pOptions;
       if (pSelect4) pSelect4.innerHTML = defaultOption + pOptions;
     }
 
+    let searchDebounceTimer3 = null;
     function filterTrendProdList() {
-      const q = document.getElementById('searchTrendProd').value.toLowerCase().trim();
-      const filtered = uniqueProductList.filter(p => p.toLowerCase().includes(q));
-      const pSelect = document.getElementById('selectInvProd');
-      if (pSelect) {
-        pSelect.innerHTML = `<option value="">상품 선택 (${filtered.length}개)</option>` + filtered.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
-      }
+      clearTimeout(searchDebounceTimer3);
+      searchDebounceTimer3 = setTimeout(() => {
+        const q = document.getElementById('searchTrendProd').value.toLowerCase().trim();
+        const filtered = q ? uniqueProductList.filter(p => p.toLowerCase().includes(q)) : uniqueProductList;
+        const MAX_DISPLAY = 150;
+        const displayList = filtered.slice(0, MAX_DISPLAY);
+        
+        const pSelect = document.getElementById('selectInvProd');
+        if (pSelect) {
+          const currentVal = pSelect.value;
+          const defaultText = q ? `검색 결과 (${filtered.length.toLocaleString()}개)` : `상품 선택 (${uniqueProductList.length.toLocaleString()}개 중 상위 ${displayList.length}개)`;
+          let html = `<option value="">${defaultText}</option>` + displayList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
+          pSelect.innerHTML = html;
+          if (currentVal && Array.from(pSelect.options).some(o => o.value === currentVal)) {
+            pSelect.value = currentVal;
+          }
+        }
+      }, 120);
     }
 
+    let searchDebounceTimer4 = null;
     function filterPriceProdList() {
-      const q = document.getElementById('searchPriceProd').value.toLowerCase().trim();
-      const filtered = uniqueProductList.filter(p => p.toLowerCase().includes(q));
-      const pSelect = document.getElementById('selectPriceProd');
-      if (pSelect) {
-        pSelect.innerHTML = `<option value="">상품 선택 (${filtered.length}개)</option>` + filtered.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
-      }
+      clearTimeout(searchDebounceTimer4);
+      searchDebounceTimer4 = setTimeout(() => {
+        const q = document.getElementById('searchPriceProd').value.toLowerCase().trim();
+        const filtered = q ? uniqueProductList.filter(p => p.toLowerCase().includes(q)) : uniqueProductList;
+        const MAX_DISPLAY = 150;
+        const displayList = filtered.slice(0, MAX_DISPLAY);
+        
+        const pSelect = document.getElementById('selectPriceProd');
+        if (pSelect) {
+          const currentVal = pSelect.value;
+          const defaultText = q ? `검색 결과 (${filtered.length.toLocaleString()}개)` : `상품 선택 (${uniqueProductList.length.toLocaleString()}개 중 상위 ${displayList.length}개)`;
+          let html = `<option value="">${defaultText}</option>` + displayList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
+          pSelect.innerHTML = html;
+          if (currentVal && Array.from(pSelect.options).some(o => o.value === currentVal)) {
+            pSelect.value = currentVal;
+          }
+        }
+      }, 120);
     }
 
     function applyFilters() {
@@ -755,6 +785,13 @@
       switchTab('tab3');
       const sel = document.getElementById('selectInvProd');
       if (sel) {
+        let exists = Array.from(sel.options).some(opt => opt.value === prodName);
+        if (!exists) {
+          const optEl = document.createElement('option');
+          optEl.value = prodName;
+          optEl.innerText = prodName;
+          sel.appendChild(optEl);
+        }
         sel.value = prodName;
         renderTab3();
       }
@@ -767,6 +804,13 @@
       if (prodName) {
         const sel4 = document.getElementById('selectPriceProd');
         if (sel4) {
+          let exists = Array.from(sel4.options).some(opt => opt.value === prodName);
+          if (!exists) {
+            const optEl = document.createElement('option');
+            optEl.value = prodName;
+            optEl.innerText = prodName;
+            sel4.appendChild(optEl);
+          }
           sel4.value = prodName;
           renderTab4();
         }
@@ -800,12 +844,12 @@
       setTxt('kpiQty', fmtNum(qty) + ' 개');
 
       const months = Object.keys(monthMap).sort();
-      Plotly.newPlot('chartMonthly', [
+      Plotly.react('chartMonthly', [
         { x: months, y: months.map(m=>monthMap[m].net), type: 'bar', name: '순매출', marker: {color: '#6366f1'}, hovertemplate: '%{x}<br>순매출: %{y:,}원<extra></extra>' },
         { x: months, y: months.map(m=>monthMap[m].refund), type: 'bar', name: '환불액', marker: {color: '#f43f5e'}, hovertemplate: '%{x}<br>환불액: %{y:,}원<extra></extra>' }
       ], {...getChartLayout(), barmode: 'group'}, getPlotlyConfig());
 
-      Plotly.newPlot('chartChannel', [{
+      Plotly.react('chartChannel', [{
         labels: Object.keys(chanMap), values: Object.values(chanMap),
         type: 'pie', hole: 0.5, textinfo: 'label+percent',
         marker: { colors: ['#6366f1', '#38bdf8', '#10b981', '#f59e0b', '#8b5cf6'] },
@@ -824,7 +868,7 @@
 
         // Product mapping with outlier check (Ignore > 40만원 single unit errors for rank calculations)
         let unitPrice = d.Quantity > 0 ? (d.Revenue / d.Quantity) : 0;
-        if (unitPrice > 400000 && d.Quantity === 1) return; // Skip 4.56M KRW single record entry error
+        if (unitPrice > 400000 && d.Quantity === 1) return; // Skip single record entry error
 
         let pKey = d.ProductName;
         if (!pMap[pKey]) pMap[pKey] = {rev:0, qty:0, rows:[], storeMap:{}, brandMap:{}, optMap:{}};
@@ -837,7 +881,7 @@
         pMap[pKey].optMap[d.Option] = (pMap[pKey].optMap[d.Option] || 0) + d.Quantity;
       });
 
-      // Top 50 Brands table with clean balanced font weight
+      // Top 50 Brands table
       const bHtml = Object.entries(bMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,50).map((x,i) => 
         `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40 transition">
           <td class="px-2.5 py-2.5 text-center text-slate-400 font-mono text-xs font-normal">${i+1}</td>
@@ -849,7 +893,7 @@
       const tb1 = document.getElementById('tblBrands');
       if (tb1) tb1.innerHTML = bHtml || '<tr><td colspan="4" class="px-3 py-10 text-center text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
 
-      // Top 100 Products table with clean balanced font weight
+      // Top 100 Products table
       const pHtml = Object.entries(pMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,100).map((x,i) => {
         const prodName = x[0];
         const data = x[1];
@@ -917,7 +961,7 @@
       const weekTopStores = weeks.map(w => Object.entries(weekStoreMap[w]).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타');
       const weekTopChans = weeks.map(w => Object.entries(weekChanMap[w]).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타');
 
-      Plotly.newPlot('chartInvTrend', [{
+      Plotly.react('chartInvTrend', [{
         x: weeks, y: weekQtys,
         type: 'scatter', mode: 'lines+markers',
         line: {color: '#8b5cf6', width: 3}, marker: {size: 8, color: '#6366f1'},
@@ -996,7 +1040,7 @@
       if (elV) elV.innerText = fmtNum(vPeakPrice) + ' 원';
       if (elR) elR.innerText = fmtNum(rPeakPrice) + ' 원';
 
-      Plotly.newPlot('chartPriceScatter', [{
+      Plotly.react('chartPriceScatter', [{
         x: pData.map(d=>d.Date), y: pData.map(d=>d.Revenue/d.Quantity),
         mode: 'markers', type: 'scatter',
         text: pData.map(d=>d.StoreName),
