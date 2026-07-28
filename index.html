@@ -390,92 +390,105 @@
       };
     };
 
-    // Advanced Option String Cleaner (Extracts Color & Size tokens accurately)
+    // Advanced Option String Cleaner with English/Abbreviated Color Code Support (BK, BE, IV, NV, GY, PK, KH, etc.)
     function cleanOptionString(rawOpt) {
       if (!rawOpt) return '단품';
       let s = String(rawOpt).trim();
       if (!s || s === '기본' || s === '단품') return '단품';
 
-      // 1. Remove product title prefixes in brackets [버커루] [기획] etc.
+      // 1. Remove product title prefixes in brackets [버커루] [기획] [블랙야크] etc.
       s = s.replace(/\[.*?\]/g, ' ').trim();
 
-      // 2. Check for explicit labels: 색상 / 컬러 / 사이즈 / 호수 / Size
+      // 2. Explicit label check: 색상 / 컬러 / Color / 사이즈 / 호수 / Size
       let explicitColor = '';
       let explicitSize = '';
 
-      const colorMatch = s.match(/(?:색상|컬러)\s*[:：]\s*([^\/,\-_]+)/i);
+      const colorMatch = s.match(/(?:색상|컬러|Color|컬러명|색상명)\s*[:：]\s*([^\/,\-_]+)/i);
       if (colorMatch) explicitColor = colorMatch[1].trim();
 
-      const sizeMatch = s.match(/(?:사이즈|호수|Size)\s*[:：]\s*([^\/,\-_]+)/i);
+      const sizeMatch = s.match(/(?:사이즈|호수|Size|사이즈명)\s*[:：]\s*([^\/,\-_]+)/i);
       if (sizeMatch) explicitSize = sizeMatch[1].trim();
 
       if (explicitColor || explicitSize) {
-        let res = [explicitColor, explicitSize].filter(Boolean).join(' ');
-        res = res.replace(/(색상|컬러|사이즈|호수|Size|옵션)\s*[:：]/gi, '').trim();
-        if (res && res.length <= 30) return res;
+        let cleanC = explicitColor.replace(/(색상|컬러|Color|옵션)\s*[:：]/gi, '').trim();
+        let cleanS = explicitSize.replace(/(사이즈|호수|Size|옵션)\s*[:：]/gi, '').trim();
+        let res = [cleanC, cleanS].filter(Boolean).join(' ');
+        if (res && res.length <= 35) return res;
       }
 
-      // 3. Tokenize by separators (comma, slash, pipe, newline)
-      let segments = s.split(/[\/,\n|]+/).map(x => x.trim()).filter(Boolean);
+      // 3. Segment analysis by separators (/, comma, pipe, newline, underscore, hyphen)
+      let segments = s.split(/[\/,\n|_]+/).map(x => x.trim()).filter(Boolean);
 
       let foundColor = '';
       let foundSize = '';
 
-      // Process segments from last to first (since color/size usually appear at the end)
+      // Shoe sizes: 210~295, Clothing sizes: 85~160, XS~5XL, FREE
+      const shoeSizeRegex = /\b(2[1-9][05])\b/;
+      const clothSizeRegex = /\b(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[1-5]?XL|FREE|FREE\(F\)|\bF\b|85|90|95|100|105|110|120|130|140|150|160)\b/i;
+
+      // Color pattern definitions
+      const koreanColorRegex = /(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|오렌지|멜란지|[가-힣]{2,6}(?:색|컬러))/i;
+      const englishColorWordRegex = /\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER|MELANGE)\b/i;
+      const englishColorCodeRegex = /\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR)\b/i;
+
+      // Process segments from last to first
       for (let i = segments.length - 1; i >= 0; i--) {
         let seg = segments[i];
         if (!seg) continue;
 
-        // Skip junk phrases like '1개', '전국 매장...', '동일 가격'
+        // Skip junk phrases unless segment contains color/size
         if (/^[0-9]+개$/.test(seg) || seg.includes('매장') || seg.includes('동일') || seg.includes('가격') || seg.includes('상품')) {
-          // Continue checking if segment contains color/size tokens
+          // continue checking
         }
 
-        // Check for Size token
+        // Check size
         if (!foundSize) {
-          // Shoe size: 210~295
-          let shoeMatch = seg.match(/\b(2[1-9][05])\b/);
-          // Clothing size: 85~160, XS~4XL, or combo like XXL(110), L(100)
-          let clothMatch = seg.match(/\b(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[2-4]?XL|[SML]|85|90|95|100|105|110|120|130|140|150)\b/i);
-
-          if (shoeMatch) {
-            foundSize = shoeMatch[0];
-          } else if (clothMatch) {
-            foundSize = clothMatch[0];
-          }
+          let shoeM = seg.match(shoeSizeRegex);
+          let clothM = seg.match(clothSizeRegex);
+          if (shoeM) foundSize = shoeM[0];
+          else if (clothM) foundSize = clothM[0];
         }
 
-        // Check for Color token
+        // Check color
         if (!foundColor) {
-          // Parenthetical color code like 브라운(61)
-          let colorCodeMatch = seg.match(/([가-힣a-zA-Z]+(?:\s*[가-힣a-zA-Z]+)?\([0-9]+\))/);
-          // Common color words
-          let colorWordMatch = seg.match(/(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|[가-힣]{2,6}(?:색|컬러))/i);
+          let codeParenM = seg.match(/([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/);
+          let korM = seg.match(koreanColorRegex);
+          let engWordM = seg.match(englishColorWordRegex);
+          let engCodeM = seg.match(englishColorCodeRegex);
 
-          if (colorCodeMatch) {
-            foundColor = colorCodeMatch[0];
-          } else if (colorWordMatch) {
-            foundColor = colorWordMatch[0].replace(/\s+/g, '');
+          if (codeParenM) {
+            foundColor = codeParenM[0];
+          } else if (korM) {
+            foundColor = korM[0].replace(/\s+/g, '');
+          } else if (engWordM) {
+            foundColor = engWordM[0].toUpperCase();
+          } else if (engCodeM) {
+            foundColor = engCodeM[0].toUpperCase();
           }
         }
 
         if (foundColor && foundSize) break;
       }
 
-      // 4. Fallback search on entire string if needed
+      // 4. Fallback search on full string if still missing color or size
       if (!foundColor) {
-        let m = s.match(/(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|[가-힣a-zA-Z]+\([0-9]+\)|블랙|화이트|핑크|베이지|브라운|네이비|블루|레드|그린|카키|옐로우|그레이|차콜|아이보리|오렌지|퍼플|크림|와인|민트)/gi);
-        if (m) foundColor = m[m.length - 1].replace(/\s+/g, '');
+        let codeParenM = s.match(/([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/gi);
+        let korM = s.match(/(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|[가-힣a-zA-Z]+\([0-9]+\)|블랙|화이트|핑크|베이지|브라운|네이비|블루|레드|그린|카키|옐로우|그레이|차콜|아이보리|오렌지|퍼플|크림|와인|민트)/gi);
+        let engCodeM = s.match(/\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR)\b/gi);
+        let engWordM = s.match(/\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER)\b/gi);
+
+        if (codeParenM) foundColor = codeParenM[codeParenM.length - 1];
+        else if (korM) foundColor = korM[korM.length - 1].replace(/\s+/g, '');
+        else if (engCodeM) foundColor = engCodeM[engCodeM.length - 1].toUpperCase();
+        else if (engWordM) foundColor = engWordM[engWordM.length - 1].toUpperCase();
       }
 
       if (!foundSize) {
-        let m = s.match(/(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[2-4]?XL|\b(2[1-9][05])\b|\b(85|90|95|100|105|110|120|130|140)\b)/gi);
+        let m = s.match(/(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[1-5]?XL|FREE|FREE\(F\)|\b(2[1-9][05])\b|\b(85|90|95|100|105|110|120|130|140|150|160)\b)/gi);
         if (m) foundSize = m[m.length - 1];
       }
 
-      if (foundColor && foundSize) {
-        return `${foundColor} ${foundSize}`;
-      }
+      if (foundColor && foundSize) return `${foundColor} ${foundSize}`;
       if (foundColor) return foundColor;
       if (foundSize) return foundSize;
 
@@ -936,14 +949,17 @@
         if (unitPrice > 400000 && d.Quantity === 1) return; // Skip single record entry error
 
         let pKey = d.ProductName;
-        if (!pMap[pKey]) pMap[pKey] = {rev:0, qty:0, rows:[], storeMap:{}, brandMap:{}, optMap:{}};
+        if (!pMap[pKey]) pMap[pKey] = {rev:0, qty:0, rows:[], storeMap:{}, brandMap:{}, cleanedOptMap:{}};
         pMap[pKey].rev += d.Revenue;
         pMap[pKey].qty += d.Quantity;
         pMap[pKey].rows.push(d);
 
         pMap[pKey].storeMap[d.StoreName] = (pMap[pKey].storeMap[d.StoreName] || 0) + d.Quantity;
         pMap[pKey].brandMap[d.Brand] = (pMap[pKey].brandMap[d.Brand] || 0) + d.Quantity;
-        pMap[pKey].optMap[d.Option] = (pMap[pKey].optMap[d.Option] || 0) + d.Quantity;
+
+        // Clean option string immediately and aggregate by cleaned option name!
+        let cleanedOpt = cleanOptionString(d.Option);
+        pMap[pKey].cleanedOptMap[cleanedOpt] = (pMap[pKey].cleanedOptMap[cleanedOpt] || 0) + d.Quantity;
       });
 
       // Top 50 Brands table
@@ -969,12 +985,12 @@
         const topBrand = Object.entries(data.brandMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
         const storeBrandStr = topBrand ? `${topStore} ${topBrand}` : topStore;
 
-        const sortedOpts = Object.entries(data.optMap).sort((a,b)=>b[1]-a[1]);
-        const rawTopOpt = sortedOpts[0] ? sortedOpts[0][0] : '단품';
-        const topOptName = cleanOptionString(rawTopOpt);
+        // Grouping & sorting derived from cleanedOptMap for clean non-duplicate rankings!
+        const sortedOpts = Object.entries(data.cleanedOptMap).sort((a,b)=>b[1]-a[1]);
+        const topOptName = sortedOpts[0] ? sortedOpts[0][0] : '단품';
         const topOptTooltip = sortedOpts[0] ? `${topOptName} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
         
-        let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${cleanOptionString(opt[0])} (${fmtNum(opt[1])}개)`).join('\n');
+        let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${opt[0]} (${fmtNum(opt[1])}개)`).join('\n');
         if (!subOptsTooltip) subOptsTooltip = '차순위 옵션 데이터 없음';
 
         const escapedName = prodName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -983,13 +999,13 @@
             <span class="text-xs font-normal text-slate-400 dark:text-slate-500 mr-1.5 font-mono">${i+1}</span>
             <span class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:underline transition">${prodName}</span>
           </td>
-          <td class="px-2 py-2.5 text-right text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-mono whitespace-nowrap font-normal">@${fmtNum(unit)}원</td>
-          <td class="px-2 py-2.5 truncate max-w-[120px] text-slate-700 dark:text-slate-300 font-normal text-xs sm:text-sm" title="${storeBrandStr}">${storeBrandStr}</td>
-          <td class="px-2 py-2.5 truncate max-w-[110px]" title="[옵션 순위]\n1위: ${topOptTooltip}\n${subOptsTooltip}">
+          <td class="px-2.5 py-2.5 text-right text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-mono whitespace-nowrap font-normal">@${fmtNum(unit)}원</td>
+          <td class="px-2.5 py-2.5 truncate max-w-[120px] text-slate-700 dark:text-slate-300 font-normal text-xs sm:text-sm" title="${storeBrandStr}">${storeBrandStr}</td>
+          <td class="px-2.5 py-2.5 truncate max-w-[110px]" title="[옵션 순위]\n1위: ${topOptTooltip}\n${subOptsTooltip}">
             <span class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-xs font-normal">${topOptName}</span>
           </td>
-          <td class="px-2 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm whitespace-nowrap">${fmtNum(data.rev)} 원</td>
-          <td class="px-2 py-2.5 text-right font-medium text-xs sm:text-sm whitespace-nowrap">${fmtNum(data.qty)} 개</td>
+          <td class="px-2.5 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm whitespace-nowrap">${fmtNum(data.rev)} 원</td>
+          <td class="px-2.5 py-2.5 text-right font-medium text-xs sm:text-sm whitespace-nowrap">${fmtNum(data.qty)} 개</td>
         </tr>`;
       }).join('');
       const tb2 = document.getElementById('tblProducts');
