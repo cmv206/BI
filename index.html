@@ -53,14 +53,14 @@
 <body class="bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 font-sans min-h-screen flex flex-col selection:bg-brand-500 selection:text-white transition-colors duration-200">
 
   <!-- Header -->
-  <header class="bg-white dark:bg-panelbg border-b border-slate-200 dark:border-panelborder px-6 xl:px-12 py-3.5 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors duration-200">
+  <header class="bg-white dark:bg-panelbg border-b border-slate-200 dark:border-panelborder px-6 xl:px-12 py-2 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors duration-200">
     <div class="flex items-center gap-3">
-      <div class="bg-gradient-to-br from-brand-500 to-indigo-700 text-white p-2.5 rounded-xl shadow-lg shadow-brand-500/30">
-        <i class="fa-solid fa-chart-line text-xl"></i>
+      <div class="bg-gradient-to-br from-brand-500 to-indigo-700 text-white p-2 rounded-xl shadow-lg shadow-brand-500/30">
+        <i class="fa-solid fa-chart-line text-lg"></i>
       </div>
       <div>
-        <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">O2O Sales Analytics AI</h1>
-        <p class="text-xs text-brand-600 dark:text-brand-400 font-medium">Enterprise Data Intelligence Platform</p>
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">O2O Sales Analytics AI</h1>
+        <p class="text-[11px] text-brand-600 dark:text-brand-400 font-medium">Enterprise Data Intelligence Platform</p>
       </div>
     </div>
     
@@ -86,10 +86,10 @@
   </header>
 
   <!-- Global Filters Bar (Expanded max-w-[1800px] for full desktop experience) -->
-  <section class="bg-white dark:bg-panelbg/60 border-b border-slate-200 dark:border-panelborder/80 px-6 xl:px-12 py-2.5">
-    <div class="max-w-[1800px] w-full mx-auto flex flex-wrap items-center justify-between gap-4">
+  <section class="bg-white dark:bg-panelbg/60 border-b border-slate-200 dark:border-panelborder/80 px-6 xl:px-12 py-1.5">
+    <div class="max-w-[1800px] w-full mx-auto flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-3">
-        <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold">
+        <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold">
           <i class="fa-solid fa-filter text-brand-500"></i>
           <span class="text-slate-500 dark:text-slate-400">필터:</span>
         </div>
@@ -117,20 +117,20 @@
   </section>
 
   <!-- Main Container (Expanded max-w-[1800px] w-full) -->
-  <main class="flex-1 max-w-[1800px] w-full mx-auto px-6 xl:px-12 py-6 space-y-6">
+  <main class="flex-1 max-w-[1800px] w-full mx-auto px-6 xl:px-12 py-3 space-y-3.5">
 
     <!-- Navigation Tabs -->
     <div class="flex items-center gap-2 border-b border-slate-200 dark:border-panelborder overflow-x-auto text-xs sm:text-sm">
-      <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-3 flex items-center gap-2 transition whitespace-nowrap">
+      <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 flex items-center gap-2 transition whitespace-nowrap">
         <i class="fa-solid fa-chart-pie"></i> 종합 대시보드
       </button>
-      <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
+      <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-trophy"></i> 베스트 상품 & 브랜드
       </button>
-      <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
+      <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-boxes-stacked"></i> 52주 트렌드 & 재고 예측
       </button>
-      <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
+      <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-tags"></i> 가격 변동 & 적정가 분석
       </button>
     </div>
@@ -175,21 +175,21 @@
     </div>
 
     <!-- TAB 2: 베스트 상품 & 브랜드 -->
-    <div id="tab2" class="tab-content space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div id="tab2" class="tab-content space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <!-- Top Brands (Shifted Left - 4 cols) -->
-        <div class="lg:col-span-4 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="lg:col-span-4 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-4 shadow-sm space-y-2.5">
           <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <i class="fa-solid fa-award text-amber-500"></i> 브랜드별 매출 순위 Top 50
           </h4>
-          <div class="max-h-[600px] overflow-y-auto pr-1">
+          <div class="max-h-[calc(100vh-210px)] min-h-[380px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
               <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
                 <tr>
-                  <th class="px-3 py-2.5">순위</th>
-                  <th class="px-3 py-2.5">브랜드</th>
-                  <th class="px-3 py-2.5 text-right">순매출액 (원)</th>
-                  <th class="px-3 py-2.5 text-right">수량 (개)</th>
+                  <th class="px-3 py-2">순위</th>
+                  <th class="px-3 py-2">브랜드</th>
+                  <th class="px-3 py-2 text-right">순매출액 (원)</th>
+                  <th class="px-3 py-2 text-right">수량 (개)</th>
                 </tr>
               </thead>
               <tbody id="tblBrands" class="divide-y divide-slate-200 dark:divide-slate-800">
@@ -200,23 +200,23 @@
         </div>
 
         <!-- Top Products (Wider - 8 cols with Store & Option detail) -->
-        <div class="lg:col-span-8 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="lg:col-span-8 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-4 shadow-sm space-y-2.5">
           <div class="flex items-center justify-between">
             <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <i class="fa-solid fa-box-open text-brand-500"></i> 베스트 상품 순위 Top 100
             </h4>
             <span class="text-[11px] text-slate-400 dark:text-slate-500">💡 행 클릭 시 52주 트렌드 & 재고 예측으로 이동합니다</span>
           </div>
-          <div class="max-h-[600px] overflow-y-auto pr-1">
+          <div class="max-h-[calc(100vh-210px)] min-h-[380px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
               <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
                 <tr>
-                  <th class="px-3 py-2.5">순위 / 상품명</th>
-                  <th class="px-3 py-2.5 text-right whitespace-nowrap">평균단가</th>
-                  <th class="px-3 py-2.5 whitespace-nowrap">매장 (지점+브랜드)</th>
-                  <th class="px-3 py-2.5 whitespace-nowrap">주요 옵션</th>
-                  <th class="px-3 py-2.5 text-right whitespace-nowrap">매출액 (원)</th>
-                  <th class="px-3 py-2.5 text-right whitespace-nowrap">판매량 (개)</th>
+                  <th class="px-3 py-2">순위 / 상품명</th>
+                  <th class="px-3 py-2 text-right whitespace-nowrap">평균단가</th>
+                  <th class="px-3 py-2 whitespace-nowrap">매장 (지점+브랜드)</th>
+                  <th class="px-3 py-2 whitespace-nowrap">주요 옵션</th>
+                  <th class="px-3 py-2 text-right whitespace-nowrap">매출액 (원)</th>
+                  <th class="px-3 py-2 text-right whitespace-nowrap">판매량 (개)</th>
                 </tr>
               </thead>
               <tbody id="tblProducts" class="divide-y divide-slate-200 dark:divide-slate-800">
@@ -905,7 +905,8 @@
 
         // Find top option & sub-options for hover tooltip
         const sortedOpts = Object.entries(data.optMap).sort((a,b)=>b[1]-a[1]);
-        const topOpt = sortedOpts[0] ? `${sortedOpts[0][0]} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
+        const topOptName = sortedOpts[0] ? sortedOpts[0][0] : '단품';
+        const topOptTooltip = sortedOpts[0] ? `${sortedOpts[0][0]} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
         
         let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${opt[0]} (${fmtNum(opt[1])}개)`).join('\n');
         if (!subOptsTooltip) subOptsTooltip = '차순위 옵션 데이터 없음';
@@ -918,8 +919,8 @@
           </td>
           <td class="px-3 py-2.5 text-right text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">@${fmtNum(unit)}원</td>
           <td class="px-3 py-2.5 truncate max-w-[140px] text-slate-700 dark:text-slate-300 font-medium" title="${storeBrandStr}">${storeBrandStr}</td>
-          <td class="px-3 py-2.5 truncate max-w-[160px]" title="[옵션 순위]\n1위: ${topOpt}\n${subOptsTooltip}">
-            <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[11px]">${topOpt}</span>
+          <td class="px-3 py-2.5 truncate max-w-[160px]" title="[옵션 순위]\n1위: ${topOptTooltip}\n${subOptsTooltip}">
+            <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[11px]">${topOptName}</span>
           </td>
           <td class="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">${fmtNum(data.rev)} 원</td>
           <td class="px-3 py-2.5 text-right font-semibold whitespace-nowrap">${fmtNum(data.qty)} 개</td>
