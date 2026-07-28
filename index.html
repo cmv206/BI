@@ -390,31 +390,96 @@
       };
     };
 
-    // Advanced Option String Cleaner
+    // Advanced Option String Cleaner (Extracts Color & Size tokens accurately)
     function cleanOptionString(rawOpt) {
       if (!rawOpt) return '단품';
       let s = String(rawOpt).trim();
-      
-      // Remove product title prefix brackets if present
-      s = s.replace(/^\[.*?\]/g, '').trim();
+      if (!s || s === '기본' || s === '단품') return '단품';
 
-      // Remove labels like 색상:, 사이즈:, 컬러:, 옵션:
-      s = s.replace(/(색상|컬러|사이즈|옵션)\s*[:：]/g, ' ');
-      s = s.replace(/[\/,\-_]/g, ' ');
+      // 1. Remove product title prefixes in brackets [버커루] [기획] etc.
+      s = s.replace(/\[.*?\]/g, ' ').trim();
 
-      // Extract colors and size tokens
-      const words = s.split(/\s+/).filter(Boolean);
-      let cleanedWords = [];
+      // 2. Check for explicit labels: 색상 / 컬러 / 사이즈 / 호수 / Size
+      let explicitColor = '';
+      let explicitSize = '';
 
-      for (let w of words) {
-        if (w.includes('모던하우스') || w.includes('엘칸토') || w.includes('버커루') || w.includes('스파오')) continue;
-        if (w.length > 25) continue;
-        cleanedWords.push(w);
+      const colorMatch = s.match(/(?:색상|컬러)\s*[:：]\s*([^\/,\-_]+)/i);
+      if (colorMatch) explicitColor = colorMatch[1].trim();
+
+      const sizeMatch = s.match(/(?:사이즈|호수|Size)\s*[:：]\s*([^\/,\-_]+)/i);
+      if (sizeMatch) explicitSize = sizeMatch[1].trim();
+
+      if (explicitColor || explicitSize) {
+        let res = [explicitColor, explicitSize].filter(Boolean).join(' ');
+        res = res.replace(/(색상|컬러|사이즈|호수|Size|옵션)\s*[:：]/gi, '').trim();
+        if (res && res.length <= 30) return res;
       }
 
-      let result = cleanedWords.join(' ').trim();
-      if (!result || result.length > 30) return '단품';
-      return result;
+      // 3. Tokenize by separators (comma, slash, pipe, newline)
+      let segments = s.split(/[\/,\n|]+/).map(x => x.trim()).filter(Boolean);
+
+      let foundColor = '';
+      let foundSize = '';
+
+      // Process segments from last to first (since color/size usually appear at the end)
+      for (let i = segments.length - 1; i >= 0; i--) {
+        let seg = segments[i];
+        if (!seg) continue;
+
+        // Skip junk phrases like '1개', '전국 매장...', '동일 가격'
+        if (/^[0-9]+개$/.test(seg) || seg.includes('매장') || seg.includes('동일') || seg.includes('가격') || seg.includes('상품')) {
+          // Continue checking if segment contains color/size tokens
+        }
+
+        // Check for Size token
+        if (!foundSize) {
+          // Shoe size: 210~295
+          let shoeMatch = seg.match(/\b(2[1-9][05])\b/);
+          // Clothing size: 85~160, XS~4XL, or combo like XXL(110), L(100)
+          let clothMatch = seg.match(/\b(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[2-4]?XL|[SML]|85|90|95|100|105|110|120|130|140|150)\b/i);
+
+          if (shoeMatch) {
+            foundSize = shoeMatch[0];
+          } else if (clothMatch) {
+            foundSize = clothMatch[0];
+          }
+        }
+
+        // Check for Color token
+        if (!foundColor) {
+          // Parenthetical color code like 브라운(61)
+          let colorCodeMatch = seg.match(/([가-힣a-zA-Z]+(?:\s*[가-힣a-zA-Z]+)?\([0-9]+\))/);
+          // Common color words
+          let colorWordMatch = seg.match(/(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|[가-힣]{2,6}(?:색|컬러))/i);
+
+          if (colorCodeMatch) {
+            foundColor = colorCodeMatch[0];
+          } else if (colorWordMatch) {
+            foundColor = colorWordMatch[0].replace(/\s+/g, '');
+          }
+        }
+
+        if (foundColor && foundSize) break;
+      }
+
+      // 4. Fallback search on entire string if needed
+      if (!foundColor) {
+        let m = s.match(/(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|[가-힣a-zA-Z]+\([0-9]+\)|블랙|화이트|핑크|베이지|브라운|네이비|블루|레드|그린|카키|옐로우|그레이|차콜|아이보리|오렌지|퍼플|크림|와인|민트)/gi);
+        if (m) foundColor = m[m.length - 1].replace(/\s+/g, '');
+      }
+
+      if (!foundSize) {
+        let m = s.match(/(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[2-4]?XL|\b(2[1-9][05])\b|\b(85|90|95|100|105|110|120|130|140)\b)/gi);
+        if (m) foundSize = m[m.length - 1];
+      }
+
+      if (foundColor && foundSize) {
+        return `${foundColor} ${foundSize}`;
+      }
+      if (foundColor) return foundColor;
+      if (foundSize) return foundSize;
+
+      return '단품';
     }
 
     // Clean Unit Price calculation algorithm (Filters out 40만원 single-unit outlier records)
