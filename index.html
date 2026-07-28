@@ -19,8 +19,8 @@
         extend: {
           colors: {
             brand: { 50: '#eef2ff', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 900: '#312e81' },
-            darkbg: '#0f172a',    // Deep slate
-            panelbg: '#1e293b',   // Lighter slate for cards
+            darkbg: '#0b1120',    // Deeper slate for rich contrast
+            panelbg: '#1e293b',   // Premium slate card background
             panelborder: '#334155'
           }
         }
@@ -28,21 +28,32 @@
     }
   </script>
   <style>
-    /* Custom Scrollbar for inner tables */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0f172a; }
-    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-    .tab-btn.active { border-bottom: 2px solid #818cf8; color: #818cf8; font-weight: 600; }
+    /* Thicker, prominent scrollbars designed for easy mouse click-and-drag */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 8px; }
+    ::-webkit-scrollbar-thumb { 
+      background: #475569; 
+      border-radius: 8px; 
+      border: 2px solid transparent; 
+      background-clip: padding-box; 
+    }
+    ::-webkit-scrollbar-thumb:hover { background: #818cf8; }
+
+    /* Light mode scrollbar adaptation */
+    html:not(.dark) ::-webkit-scrollbar-track { background: #f1f5f9; }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #94a3b8; }
+    html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+
+    .tab-btn.active { border-bottom: 2px solid #818cf8; color: #818cf8; font-weight: 700; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
   </style>
 </head>
 
-<body class="bg-slate-100 dark:bg-darkbg text-slate-800 dark:text-slate-200 font-sans min-h-screen flex flex-col selection:bg-brand-500 selection:text-white transition-colors duration-200">
+<body class="bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-200 font-sans min-h-screen flex flex-col selection:bg-brand-500 selection:text-white transition-colors duration-200">
 
   <!-- Header -->
-  <header class="bg-white dark:bg-panelbg border-b border-slate-200 dark:border-panelborder px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors duration-200">
+  <header class="bg-white dark:bg-panelbg border-b border-slate-200 dark:border-panelborder px-6 xl:px-12 py-3.5 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors duration-200">
     <div class="flex items-center gap-3">
       <div class="bg-gradient-to-br from-brand-500 to-indigo-700 text-white p-2.5 rounded-xl shadow-lg shadow-brand-500/30">
         <i class="fa-solid fa-chart-line text-xl"></i>
@@ -59,24 +70,24 @@
       </div>
       
       <!-- Theme Toggle Button -->
-      <button id="themeToggleBtn" onclick="toggleTheme()" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold px-3 py-2.5 rounded-lg transition border border-slate-300 dark:border-slate-700 flex items-center gap-2">
+      <button id="themeToggleBtn" onclick="toggleTheme()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg transition border border-slate-300 dark:border-slate-700 flex items-center gap-2">
         <i id="themeIcon" class="fa-solid fa-sun text-amber-500"></i>
         <span id="themeText" class="hidden sm:inline">라이트 모드</span>
       </button>
 
-      <label class="cursor-pointer bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg flex items-center gap-2 transition shadow-md">
+      <label class="cursor-pointer bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-md">
         <i class="fa-solid fa-file-excel"></i> <span class="hidden sm:inline">엑셀 파일 누적 업로드</span>
         <input type="file" id="excelInput" multiple accept=".xlsx, .xls" class="hidden">
       </label>
-      <button onclick="showClearModal()" class="bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-rose-900/80 dark:text-slate-300 dark:hover:text-rose-300 dark:border-slate-700 dark:hover:border-rose-800 text-sm font-semibold px-3 py-2.5 rounded-lg transition">
+      <button onclick="showClearModal()" class="bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-rose-900/80 dark:text-slate-300 dark:hover:text-rose-300 dark:border-slate-700 dark:hover:border-rose-800 text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg transition">
         <i class="fa-solid fa-trash-can"></i> <span class="hidden sm:inline">DB 초기화</span>
       </button>
     </div>
   </header>
 
-  <!-- Global Filters Bar -->
-  <section class="bg-white dark:bg-panelbg/60 border-b border-slate-200 dark:border-panelborder/80 px-6 py-3">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+  <!-- Global Filters Bar (Expanded max-w-[1800px] for full desktop experience) -->
+  <section class="bg-white dark:bg-panelbg/60 border-b border-slate-200 dark:border-panelborder/80 px-6 xl:px-12 py-2.5">
+    <div class="max-w-[1800px] w-full mx-auto flex flex-wrap items-center justify-between gap-4">
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold">
           <i class="fa-solid fa-filter text-brand-500"></i>
@@ -105,8 +116,8 @@
     </div>
   </section>
 
-  <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+  <!-- Main Container (Expanded max-w-[1800px] w-full) -->
+  <main class="flex-1 max-w-[1800px] w-full mx-auto px-6 xl:px-12 py-6 space-y-6">
 
     <!-- Navigation Tabs -->
     <div class="flex items-center gap-2 border-b border-slate-200 dark:border-panelborder overflow-x-auto text-xs sm:text-sm">
@@ -116,14 +127,11 @@
       <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-trophy"></i> 베스트 상품 & 브랜드
       </button>
-      <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
-        <i class="fa-solid fa-tags"></i> 가격 변동 & 적정가 분석
-      </button>
       <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-boxes-stacked"></i> 52주 트렌드 & 재고 예측
       </button>
-      <button onclick="switchTab('tab5', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
-        <i class="fa-solid fa-triangle-exclamation"></i> 매출 폭증 & 고환불 알림
+      <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-3 flex items-center gap-2 transition whitespace-nowrap text-slate-500 dark:text-slate-400">
+        <i class="fa-solid fa-tags"></i> 가격 변동 & 적정가 분석
       </button>
     </div>
 
@@ -133,23 +141,23 @@
       <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">순매출액 (Net)</p>
-          <h3 id="kpiNet" class="text-lg sm:text-xl font-bold text-brand-600 dark:text-brand-400 mt-1">0 원</h3>
+          <h3 id="kpiNet" class="text-lg sm:text-xl xl:text-2xl font-bold text-brand-600 dark:text-brand-400 mt-1">0 원</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">총매출액 (Gross)</p>
-          <h3 id="kpiGross" class="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
+          <h3 id="kpiGross" class="text-lg sm:text-xl xl:text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">환불액 (Refund)</p>
-          <h3 id="kpiRefund" class="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 mt-1">0 원</h3>
+          <h3 id="kpiRefund" class="text-lg sm:text-xl xl:text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">0 원</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">환불율 (Refund Rate)</p>
-          <h3 id="kpiRefundRate" class="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">0.0 %</h3>
+          <h3 id="kpiRefundRate" class="text-lg sm:text-xl xl:text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">0.0 %</h3>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-4 rounded-xl shadow-sm col-span-2 md:col-span-1">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">총 판매 수량</p>
-          <h3 id="kpiQty" class="text-lg sm:text-xl font-bold text-sky-600 dark:text-sky-400 mt-1">0 개</h3>
+          <h3 id="kpiQty" class="text-lg sm:text-xl xl:text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1">0 개</h3>
         </div>
       </div>
 
@@ -157,11 +165,11 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-sm">
           <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-3">월별 매출 및 환불 추이</h4>
-          <div id="chartMonthly" class="w-full h-72"></div>
+          <div id="chartMonthly" class="w-full h-80"></div>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-sm">
           <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-3">채널별 매출 점유율</h4>
-          <div id="chartChannel" class="w-full h-72"></div>
+          <div id="chartChannel" class="w-full h-80"></div>
         </div>
       </div>
     </div>
@@ -174,9 +182,9 @@
           <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <i class="fa-solid fa-award text-amber-500"></i> 브랜드별 매출 순위 Top 50
           </h4>
-          <div class="max-h-[500px] overflow-y-auto">
+          <div class="max-h-[600px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0">
+              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
                 <tr>
                   <th class="px-4 py-2.5">순위</th>
                   <th class="px-4 py-2.5">브랜드</th>
@@ -196,9 +204,9 @@
           <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <i class="fa-solid fa-box-open text-brand-500"></i> 베스트 상품 순위 Top 100
           </h4>
-          <div class="max-h-[500px] overflow-y-auto">
+          <div class="max-h-[600px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0">
+              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
                 <tr>
                   <th class="px-4 py-2.5">상품명</th>
                   <th class="px-4 py-2.5 text-right">순매출액</th>
@@ -215,7 +223,59 @@
       </div>
     </div>
 
-    <!-- TAB 3: 가격 변동 & 적정가 분석 -->
+    <!-- TAB 4: 52주 트렌드 & 재고 예측 (3rd tab position) -->
+    <div id="tab4" class="tab-content space-y-6">
+      <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <h4 class="text-sm font-bold text-slate-900 dark:text-white">주차별 누적 판매 트렌드 & 4주 권장 확보 재고</h4>
+          <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <div class="w-full sm:w-96">
+              <select id="selectInvProd" onchange="renderTab4()" class="w-full bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-2 focus:outline-none">
+                <option value="">상품 선택</option>
+              </select>
+            </div>
+            <!-- Button to jump directly to Price Analysis -->
+            <button id="btnGoToPrice" onclick="goToPriceAnalysis()" class="hidden bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow-md items-center gap-1.5 whitespace-nowrap">
+              <i class="fa-solid fa-tags"></i> 해당 상품 가격 변동 & 적정가 분석 보러가기 <i class="fa-solid fa-arrow-right text-[10px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Inventory Intelligence Banner -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-indigo-50 dark:bg-indigo-950/40 p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 flex flex-col justify-between">
+            <div>
+              <p class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">향후 4주간 권장 확보 재고량</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">최근 판매 추이 & 트렌드 보정치 기반</p>
+            </div>
+            <h3 id="invRecommend" class="text-2xl font-bold text-brand-600 dark:text-brand-400 mt-2">0 개</h3>
+          </div>
+
+          <div class="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-xl border border-amber-200 dark:border-amber-900/40 flex flex-col justify-between">
+            <div>
+              <p class="text-xs text-amber-600 dark:text-amber-400 font-semibold">전년 동기(동주차) 비교</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">작년 동일 주차 판매량 대비 증감율</p>
+            </div>
+            <h3 id="invYoYCompare" class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-2">비교 데이터 없음</h3>
+          </div>
+
+          <div id="trendAlertCard" class="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+            <div>
+              <p class="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1.5">
+                <i id="trendAlertIcon" class="fa-solid fa-chart-line text-brand-500"></i>
+                <span id="trendAlertTitle">트렌드 상태</span>
+              </p>
+              <p id="trendAlertDesc" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">최근 판매 흐름 분석 중</p>
+            </div>
+            <h3 id="trendAlertStatus" class="text-lg font-bold text-slate-800 dark:text-slate-200 mt-2">정상 흐름</h3>
+          </div>
+        </div>
+
+        <div id="chartInvTrend" class="w-full h-80"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: 가격 변동 & 적정가 분석 (4th tab position) -->
     <div id="tab3" class="tab-content space-y-6">
       <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-4">
@@ -239,77 +299,6 @@
         </div>
 
         <div id="chartPriceScatter" class="w-full h-80"></div>
-      </div>
-    </div>
-
-    <!-- TAB 4: 52주 트렌드 & 재고 예측 -->
-    <div id="tab4" class="tab-content space-y-6">
-      <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-sm space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <h4 class="text-sm font-bold text-slate-900 dark:text-white">주차별 누적 판매 트렌드 & 4주 권장 확보 재고</h4>
-          <div class="w-full sm:w-96">
-            <select id="selectInvProd" onchange="renderTab4()" class="w-full bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-2 focus:outline-none">
-              <option value="">상품 선택</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="bg-indigo-50 dark:bg-indigo-950/40 p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between">
-          <div>
-            <p class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">향후 4주간 권장 확보 재고량</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400">최근 4주 주간 평균 판매량 기반 추정치</p>
-          </div>
-          <h3 id="invRecommend" class="text-2xl font-bold text-brand-600 dark:text-brand-400">0 개</h3>
-        </div>
-
-        <div id="chartInvTrend" class="w-full h-80"></div>
-      </div>
-    </div>
-
-    <!-- TAB 5: 매출 폭증 & 고환불 알림 -->
-    <div id="tab5" class="tab-content space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Sales Spikes -->
-        <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-5 shadow-sm space-y-4">
-          <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <i class="fa-solid fa-bolt text-amber-500"></i> 최근 매출 폭증 상품 (Spike Alerts)
-          </h4>
-          <div class="max-h-[400px] overflow-y-auto">
-            <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0">
-                <tr>
-                  <th class="px-4 py-2.5">상품명</th>
-                  <th class="px-4 py-2.5 text-right">총 판매 수량</th>
-                </tr>
-              </thead>
-              <tbody id="tblSpikes" class="divide-y divide-slate-200 dark:divide-slate-800">
-                <tr><td colspan="2" class="px-4 py-8 text-center text-slate-400">데이터가 없습니다.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- High Refund Risk -->
-        <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-5 shadow-sm space-y-4">
-          <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <i class="fa-solid fa-triangle-exclamation text-rose-500"></i> 고환불 위험 상품 알림
-          </h4>
-          <div class="max-h-[400px] overflow-y-auto">
-            <table class="w-full text-xs text-left text-slate-600 dark:text-slate-300">
-              <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0">
-                <tr>
-                  <th class="px-4 py-2.5">상품명</th>
-                  <th class="px-4 py-2.5 text-right">총매출</th>
-                  <th class="px-4 py-2.5 text-right">환불액</th>
-                  <th class="px-4 py-2.5 text-right">환불율</th>
-                </tr>
-              </thead>
-              <tbody id="tblRefunds" class="divide-y divide-slate-200 dark:divide-slate-800">
-                <tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">데이터가 없습니다.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -491,7 +480,6 @@
       }
     };
 
-    // Date parsing helper
     function parseExcelDate(val) {
       if (!val) return '';
       if (val instanceof Date) return val.toISOString().split('T')[0];
@@ -643,8 +631,7 @@
       fillSelect('filterStore', stores);
       fillSelect('filterBrand', brands);
 
-      // 브라우저 멈춤(프리징) 방지: 
-      // 1만 개 이상의 <option> 렌더링 시 UI가 멈추는 현상을 방지하기 위해 매출 기준 상위 300개 상품만 드롭다운에 노출합니다.
+      // Aggregate revenue per product to populate dropdown options
       let prodRevMap = {};
       allData.forEach(d => {
         if (d.Quantity > 0) {
@@ -653,20 +640,81 @@
         }
       });
       
-      const topProds = Object.entries(prodRevMap)
-        .sort((a, b) => b[1] - a[1]) // 매출액 기준 내림차순 정렬
-        .slice(0, 300) // 상위 300개만 추출
+      const sortedProds = Object.entries(prodRevMap)
+        .sort((a, b) => b[1] - a[1])
         .map(x => x[0]);
 
       const pSelect3 = document.getElementById('selectPriceProd');
       const pSelect4 = document.getElementById('selectInvProd');
-      if (topProds.length > 0) {
-        const defaultOption = `<option value="">상품 선택 (매출 상위 300개)</option>`;
-        const pOptions = topProds.map(p => `<option value="${p}">${p}</option>`).join('');
+      if (sortedProds.length > 0) {
+        const defaultOption = `<option value="">상품 선택 (${sortedProds.length}개 상품 중 선택)</option>`;
+        const pOptions = sortedProds.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
         
         if (pSelect3) pSelect3.innerHTML = defaultOption + pOptions;
         if (pSelect4) pSelect4.innerHTML = defaultOption + pOptions;
       }
+    }
+
+    function switchTabByName(tabId) {
+      const btns = document.querySelectorAll('.tab-btn');
+      let targetBtn = null;
+      if (tabId === 'tab1') targetBtn = btns[0];
+      if (tabId === 'tab2') targetBtn = btns[1];
+      if (tabId === 'tab4') targetBtn = btns[2]; // 3rd button: 52주 트렌드 & 재고 예측
+      if (tabId === 'tab3') targetBtn = btns[3]; // 4th button: 가격 변동 & 적정가 분석
+      if (targetBtn) switchTab(tabId, targetBtn);
+    }
+
+    // Interactive navigation from Top 100 table to Tab 4
+    function selectProductAndNavigate(prodName) {
+      if (!prodName) return;
+
+      const sel4 = document.getElementById('selectInvProd');
+      if (sel4) {
+        let exists = Array.from(sel4.options).some(opt => opt.value === prodName);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = prodName;
+          opt.innerText = prodName;
+          sel4.appendChild(opt);
+        }
+        sel4.value = prodName;
+      }
+
+      const sel3 = document.getElementById('selectPriceProd');
+      if (sel3) {
+        let exists = Array.from(sel3.options).some(opt => opt.value === prodName);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = prodName;
+          opt.innerText = prodName;
+          sel3.appendChild(opt);
+        }
+        sel3.value = prodName;
+      }
+
+      switchTabByName('tab4');
+    }
+
+    // Jump from Tab 4 to Tab 3 (Price Analysis)
+    function goToPriceAnalysis() {
+      const sel4 = document.getElementById('selectInvProd');
+      if (!sel4 || !sel4.value) return;
+      const prodName = sel4.value;
+
+      const sel3 = document.getElementById('selectPriceProd');
+      if (sel3) {
+        let exists = Array.from(sel3.options).some(opt => opt.value === prodName);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = prodName;
+          opt.innerText = prodName;
+          sel3.appendChild(opt);
+        }
+        sel3.value = prodName;
+      }
+
+      switchTabByName('tab3');
     }
 
     function applyFilters() {
@@ -691,7 +739,6 @@
       renderTab2();
       renderTab3();
       renderTab4();
-      renderTab5();
     }
 
     function switchTab(tabId, btn) {
@@ -711,7 +758,6 @@
       if (tabId === 'tab2') renderTab2();
       if (tabId === 'tab3') renderTab3();
       if (tabId === 'tab4') renderTab4();
-      if (tabId === 'tab5') renderTab5();
     }
 
     function renderTab1() {
@@ -766,14 +812,25 @@
       });
 
       const bHtml = Object.entries(bMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,50).map((x,i) => 
-        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-4 py-2">${i+1}</td><td class="px-4 py-2 truncate max-w-[150px]" title="${x[0]}">${x[0]}</td><td class="px-4 py-2 text-right text-brand-600 dark:text-brand-400 font-medium">${fmtNum(x[1].rev)}</td><td class="px-4 py-2 text-right">${fmtNum(x[1].qty)}</td></tr>`
+        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-4 py-2">${i+1}</td><td class="px-4 py-2 truncate max-w-[200px]" title="${x[0]}">${x[0]}</td><td class="px-4 py-2 text-right text-brand-600 dark:text-brand-400 font-medium">${fmtNum(x[1].rev)}</td><td class="px-4 py-2 text-right">${fmtNum(x[1].qty)}</td></tr>`
       ).join('');
       const tb1 = document.getElementById('tblBrands');
       if (tb1) tb1.innerHTML = bHtml || '<tr><td colspan="4" class="px-4 py-8 text-center">데이터가 없습니다.</td></tr>';
 
+      // Top 100 Products table with clickable rows for drill-down to 52-week trend
       const pHtml = Object.entries(pMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,100).map((x,i) => {
         const unit = x[1].qty > 0 ? (x[1].rev / x[1].qty) : 0;
-        return `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-4 py-2 truncate max-w-[200px]" title="${x[0]}"><span class="text-xs text-slate-400 dark:text-slate-500 mr-2">${i+1}</span>${x[0]}</td><td class="px-4 py-2 text-right text-emerald-600 dark:text-emerald-400 font-medium">${fmtNum(x[1].rev)}</td><td class="px-4 py-2 text-right">${fmtNum(x[1].qty)}</td><td class="px-4 py-2 text-right text-xs text-slate-500 dark:text-slate-400">@${fmtNum(unit)}</td></tr>`;
+        const escapedName = x[0].replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        return `<tr onclick="selectProductAndNavigate('${escapedName}')" class="hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition group" title="클릭 시 52주 트렌드 & 재고 예측 분석으로 이동합니다">
+          <td class="px-4 py-2.5 truncate max-w-[300px]">
+            <span class="text-xs text-slate-400 dark:text-slate-500 mr-2">${i+1}</span>
+            <span class="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:underline transition">${x[0]}</span>
+            <i class="fa-solid fa-arrow-right-to-bracket text-[10px] text-brand-500 opacity-0 group-hover:opacity-100 ml-1.5 transition"></i>
+          </td>
+          <td class="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-bold">${fmtNum(x[1].rev)}</td>
+          <td class="px-4 py-2.5 text-right font-medium">${fmtNum(x[1].qty)}</td>
+          <td class="px-4 py-2.5 text-right text-xs text-slate-500 dark:text-slate-400">@${fmtNum(unit)}</td>
+        </tr>`;
       }).join('');
       const tb2 = document.getElementById('tblProducts');
       if (tb2) tb2.innerHTML = pHtml || '<tr><td colspan="4" class="px-4 py-8 text-center">데이터가 없습니다.</td></tr>';
@@ -818,9 +875,26 @@
 
     function renderTab4() {
       const sel = document.getElementById('selectInvProd');
+      const btnGo = document.getElementById('btnGoToPrice');
       if (!sel) return;
       const prod = sel.value;
-      if (!prod) return;
+
+      if (!prod) {
+        if (btnGo) btnGo.classList.add('hidden');
+        return;
+      }
+
+      if (btnGo) {
+        btnGo.classList.remove('hidden');
+        btnGo.classList.add('inline-flex');
+      }
+
+      // Sync selectPriceProd dropdown value
+      const sel3 = document.getElementById('selectPriceProd');
+      if (sel3 && (!sel3.value || sel3.value !== prod)) {
+        sel3.value = prod;
+        renderTab3();
+      }
 
       const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0);
       let weekMap = {};
@@ -832,39 +906,81 @@
         type: 'scatter', mode: 'lines+markers',
         line: {color: '#8b5cf6', width: 3}, marker: {size: 8},
         hovertemplate: '주차: %{x}<br>판매량: %{y:,}개<extra></extra>'
-      }], getChartLayout('주차별 누적 판매수량 트렌드'), getPlotlyConfig());
+      }], getChartLayout(`[${prod}] 주차별 누적 판매수량 트렌드`), getPlotlyConfig());
 
+      // 1. Recent 4 weeks average base stock
       const last4 = weeks.slice(-4);
       const sum4 = last4.reduce((acc, w) => acc + weekMap[w], 0);
-      const avg = last4.length ? (sum4 / last4.length) : 0;
+      const avg4 = last4.length ? (sum4 / last4.length) : 0;
+
+      // 2. Trend Spike Detection (Recent 4 weeks vs prior baseline)
+      const prior4 = weeks.slice(-8, -4);
+      const sumPrior4 = prior4.reduce((acc, w) => acc + weekMap[w], 0);
+      const avgPrior4 = prior4.length ? (sumPrior4 / prior4.length) : (avg4 || 1);
+
+      let recQty = avg4 * 4;
+      const alertCard = document.getElementById('trendAlertCard');
+      const alertTitle = document.getElementById('trendAlertTitle');
+      const alertDesc = document.getElementById('trendAlertDesc');
+      const alertStatus = document.getElementById('trendAlertStatus');
+
+      const spikeRatio = avgPrior4 > 0 ? ((avg4 - avgPrior4) / avgPrior4 * 100) : 0;
+
+      if (spikeRatio >= 50 && last4.length >= 2) {
+        // High trend surge detected! Increase recommended safety stock buffer
+        recQty = avg4 * 4 * 1.3;
+        if (alertCard) {
+          alertCard.className = 'bg-rose-50 dark:bg-rose-950/40 p-4 rounded-xl border border-rose-300 dark:border-rose-900/60 flex flex-col justify-between animate-pulse';
+        }
+        if (alertTitle) alertTitle.innerText = '⚡ 트렌드 급증 감지 (Spike Alert)';
+        if (alertDesc) alertDesc.innerText = `최근 4주 판매량이 이전 대비 +${Math.round(spikeRatio)}% 폭증`;
+        if (alertStatus) {
+          alertStatus.innerText = '사전 재고 추가 확보 권장 (+30%)';
+          alertStatus.className = 'text-base sm:text-lg font-bold text-rose-600 dark:text-rose-400 mt-2';
+        }
+      } else {
+        // Normal steady trend
+        if (alertCard) {
+          alertCard.className = 'bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between';
+        }
+        if (alertTitle) alertTitle.innerText = '트렌드 상태';
+        if (alertDesc) alertDesc.innerText = '안정적인 판매 흐름 유지 중';
+        if (alertStatus) {
+          alertStatus.innerText = '정상 판매 패턴';
+          alertStatus.className = 'text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-2';
+        }
+      }
+
       const elRec = document.getElementById('invRecommend');
-      if (elRec) elRec.innerText = fmtNum(avg * 4) + ' 개';
-    }
+      if (elRec) elRec.innerText = fmtNum(recQty) + ' 개';
 
-    function renderTab5() {
-      let pMap = {};
-      filteredData.forEach(d => {
-        let pKey = d.ProductName;
-        if (!pMap[pKey]) pMap[pKey] = {gross:0, refund:0, qty:0};
-        if (d.Revenue > 0) { pMap[pKey].gross += d.Revenue; pMap[pKey].qty += d.Quantity; }
-        else pMap[pKey].refund += Math.abs(d.Revenue);
-      });
+      // 3. YoY Same-Week Comparison
+      const elYoY = document.getElementById('invYoYCompare');
+      if (weeks.length > 0) {
+        const latestWeekStr = weeks[weeks.length - 1]; // e.g. "2026년 23주차"
+        const m = latestWeekStr.match(/(\d{4})년\s*(\d+)주차/);
+        if (m) {
+          const currYear = parseInt(m[1]);
+          const weekNum = parseInt(m[2]);
+          const prevYearWeekStr = `${currYear - 1}년 ${weekNum}주차`;
+          const currQty = weekMap[latestWeekStr] || 0;
+          const prevQty = weekMap[prevYearWeekStr];
 
-      const spikes = Object.entries(pMap).sort((a,b)=>b[1].qty - a[1].qty).slice(0, 10);
-      const tbS = document.getElementById('tblSpikes');
-      if (tbS) tbS.innerHTML = spikes.map(x => 
-        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-4 py-2 truncate max-w-[250px]" title="${x[0]}">${x[0]}</td><td class="px-4 py-2 text-right font-bold text-amber-600 dark:text-amber-400">${fmtNum(x[1].qty)} 개</td></tr>`
-      ).join('') || '<tr><td colspan="2" class="px-4 py-8 text-center">데이터가 없습니다.</td></tr>';
-
-      const refunds = Object.entries(pMap)
-        .map(x => ({name: x[0], gross: x[1].gross, refund: x[1].refund, rate: x[1].gross>0 ? (x[1].refund/x[1].gross*100):0}))
-        .filter(x => x.gross > 500000 && x.rate > 0)
-        .sort((a,b)=>b.rate - a.rate).slice(0, 10);
-        
-      const tbR = document.getElementById('tblRefunds');
-      if (tbR) tbR.innerHTML = refunds.map(x => 
-        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40"><td class="px-4 py-2 truncate max-w-[200px]" title="${x.name}">${x.name}</td><td class="px-4 py-2 text-right">${fmtNum(x.gross)}</td><td class="px-4 py-2 text-right text-rose-600 dark:text-rose-400">${fmtNum(x.refund)}</td><td class="px-4 py-2 text-right font-bold text-rose-600 dark:text-rose-400">${x.rate.toFixed(1)}%</td></tr>`
-      ).join('') || '<tr><td colspan="4" class="px-4 py-8 text-center">데이터가 없습니다.</td></tr>';
+          if (prevQty !== undefined && prevQty > 0) {
+            const yoyRate = ((currQty - prevQty) / prevQty * 100).toFixed(1);
+            const symbol = yoyRate >= 0 ? '+' : '';
+            if (elYoY) {
+              elYoY.innerText = `${symbol}${yoyRate}%`;
+              elYoY.className = `text-2xl font-bold mt-2 ${yoyRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`;
+            }
+          } else {
+            if (elYoY) {
+              elYoY.innerText = '전년 데이터 없음';
+              elYoY.className = 'text-sm font-semibold text-slate-400 mt-2';
+            }
+          }
+        }
+      }
     }
   </script>
 </body>
