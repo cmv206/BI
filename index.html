@@ -28,7 +28,7 @@
     }
   </script>
   <style>
-    /* Prominent 10px customized scrollbars for easy click-and-drag */
+    /* Prominent customized scrollbars for easy click-and-drag */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: #0f172a; border-radius: 6px; }
     ::-webkit-scrollbar-thumb { background: #475569; border-radius: 6px; border: 2px solid #0f172a; }
@@ -390,108 +390,79 @@
       };
     };
 
-    // Advanced Option String Cleaner with English/Abbreviated Color Code Support (BK, BE, IV, NV, GY, PK, KH, etc.)
-    function cleanOptionString(rawOpt) {
-      if (!rawOpt) return '단품';
-      let s = String(rawOpt).trim();
-      if (!s || s === '기본' || s === '단품') return '단품';
-
-      // 1. Remove product title prefixes in brackets [버커루] [기획] [블랙야크] etc.
-      s = s.replace(/\[.*?\]/g, ' ').trim();
-
-      // 2. Explicit label check: 색상 / 컬러 / Color / 사이즈 / 호수 / Size
-      let explicitColor = '';
-      let explicitSize = '';
-
-      const colorMatch = s.match(/(?:색상|컬러|Color|컬러명|색상명)\s*[:：]\s*([^\/,\-_]+)/i);
-      if (colorMatch) explicitColor = colorMatch[1].trim();
-
-      const sizeMatch = s.match(/(?:사이즈|호수|Size|사이즈명)\s*[:：]\s*([^\/,\-_]+)/i);
-      if (sizeMatch) explicitSize = sizeMatch[1].trim();
-
-      if (explicitColor || explicitSize) {
-        let cleanC = explicitColor.replace(/(색상|컬러|Color|옵션)\s*[:：]/gi, '').trim();
-        let cleanS = explicitSize.replace(/(사이즈|호수|Size|옵션)\s*[:：]/gi, '').trim();
-        let res = [cleanC, cleanS].filter(Boolean).join(' ');
-        if (res && res.length <= 35) return res;
-      }
-
-      // 3. Segment analysis by separators (/, comma, pipe, newline, underscore, hyphen)
-      let segments = s.split(/[\/,\n|_]+/).map(x => x.trim()).filter(Boolean);
-
+    // High Precision 4-Tier Priority Hierarchy Option Parser
+    function cleanOptionString(rawOpt, prodName = '', rawColor = '', rawSize = '') {
       let foundColor = '';
       let foundSize = '';
 
-      // Shoe sizes: 210~295, Clothing sizes: 85~160, XS~5XL, FREE
+      // Regex pattern definitions
       const shoeSizeRegex = /\b(2[1-9][05])\b/;
       const clothSizeRegex = /\b(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[1-5]?XL|FREE|FREE\(F\)|\bF\b|85|90|95|100|105|110|120|130|140|150|160)\b/i;
 
-      // Color pattern definitions
       const koreanColorRegex = /(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|오렌지|멜란지|[가-힣]{2,6}(?:색|컬러))/i;
       const englishColorWordRegex = /\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER|MELANGE)\b/i;
       const englishColorCodeRegex = /\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR)\b/i;
+      const codeWithParenRegex = /([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/;
 
-      // Process segments from last to first
-      for (let i = segments.length - 1; i >= 0; i--) {
-        let seg = segments[i];
-        if (!seg) continue;
+      // Tier 1 & 2: Extract Color & Size from '외부몰 옵션명' (rawOpt)
+      let sOpt = String(rawOpt || '').trim();
+      if (sOpt && sOpt !== '기본' && sOpt !== '단품' && sOpt !== '없음' && sOpt !== '-') {
+        sOpt = sOpt.replace(/\[.*?\]/g, ' ').trim();
+        sOpt = sOpt.replace(/^(?:선택\d*|옵션명?|상품선택|단품명?|Color|Size)\s*[:：]\s*/i, '').trim();
 
-        // Skip junk phrases unless segment contains color/size
-        if (/^[0-9]+개$/.test(seg) || seg.includes('매장') || seg.includes('동일') || seg.includes('가격') || seg.includes('상품')) {
-          // continue checking
-        }
+        // Extract Size from rawOpt
+        let shoeM = sOpt.match(shoeSizeRegex);
+        let clothM = sOpt.match(clothSizeRegex);
+        if (shoeM) foundSize = shoeM[0];
+        else if (clothM) foundSize = clothM[0];
 
-        // Check size
+        // Extract Color from rawOpt
+        let codeParenM = sOpt.match(codeWithParenRegex);
+        let korM = sOpt.match(koreanColorRegex);
+        let engWordM = sOpt.match(englishColorWordRegex);
+        let engCodeM = sOpt.match(englishColorCodeRegex);
+
+        if (codeParenM) foundColor = codeParenM[0];
+        else if (korM) foundColor = korM[0].replace(/\s+/g, '');
+        else if (engWordM) foundColor = engWordM[0].toUpperCase();
+        else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
+      }
+
+      // Tier 3: If Color or Size is missing, cross-reference dedicated columns (rawColor, rawSize) & prodName
+      if (!foundColor && rawColor && String(rawColor).trim() && String(rawColor).trim() !== '-') {
+        let cleanC = String(rawColor).trim().replace(/^(색상|컬러|Color|칼라)\s*[:：]\s*/i, '');
+        if (cleanC) foundColor = cleanC;
+      }
+      if (!foundSize && rawSize && String(rawSize).trim() && String(rawSize).trim() !== '-') {
+        let cleanS = String(rawSize).trim().replace(/^(사이즈|호수|Size)\s*[:：]\s*/i, '');
+        if (cleanS) foundSize = cleanS;
+      }
+
+      // Check prodName if still missing Color or Size
+      let sProd = String(prodName || '').trim();
+      if (sProd && (!foundColor || !foundSize)) {
         if (!foundSize) {
-          let shoeM = seg.match(shoeSizeRegex);
-          let clothM = seg.match(clothSizeRegex);
+          let shoeM = sProd.match(shoeSizeRegex);
+          let clothM = sProd.match(clothSizeRegex);
           if (shoeM) foundSize = shoeM[0];
           else if (clothM) foundSize = clothM[0];
         }
-
-        // Check color
         if (!foundColor) {
-          let codeParenM = seg.match(/([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/);
-          let korM = seg.match(koreanColorRegex);
-          let engWordM = seg.match(englishColorWordRegex);
-          let engCodeM = seg.match(englishColorCodeRegex);
-
-          if (codeParenM) {
-            foundColor = codeParenM[0];
-          } else if (korM) {
-            foundColor = korM[0].replace(/\s+/g, '');
-          } else if (engWordM) {
-            foundColor = engWordM[0].toUpperCase();
-          } else if (engCodeM) {
-            foundColor = engCodeM[0].toUpperCase();
-          }
+          let korM = sProd.match(koreanColorRegex);
+          let engWordM = sProd.match(englishColorWordRegex);
+          let engCodeM = sProd.match(englishColorCodeRegex);
+          if (korM) foundColor = korM[0].replace(/\s+/g, '');
+          else if (engWordM) foundColor = engWordM[0].toUpperCase();
+          else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
         }
-
-        if (foundColor && foundSize) break;
       }
 
-      // 4. Fallback search on full string if still missing color or size
-      if (!foundColor) {
-        let codeParenM = s.match(/([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/gi);
-        let korM = s.match(/(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|[가-힣a-zA-Z]+\([0-9]+\)|블랙|화이트|핑크|베이지|브라운|네이비|블루|레드|그린|카키|옐로우|그레이|차콜|아이보리|오렌지|퍼플|크림|와인|민트)/gi);
-        let engCodeM = s.match(/\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR)\b/gi);
-        let engWordM = s.match(/\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER)\b/gi);
-
-        if (codeParenM) foundColor = codeParenM[codeParenM.length - 1];
-        else if (korM) foundColor = korM[korM.length - 1].replace(/\s+/g, '');
-        else if (engCodeM) foundColor = engCodeM[engCodeM.length - 1].toUpperCase();
-        else if (engWordM) foundColor = engWordM[engWordM.length - 1].toUpperCase();
-      }
-
-      if (!foundSize) {
-        let m = s.match(/(XXL\(110\)|XL\(105\)|L\(100\)|M\(95\)|S\(90\)|[1-5]?XL|FREE|FREE\(F\)|\b(2[1-9][05])\b|\b(85|90|95|100|105|110|120|130|140|150|160)\b)/gi);
-        if (m) foundSize = m[m.length - 1];
-      }
-
+      // Output construction
       if (foundColor && foundSize) return `${foundColor} ${foundSize}`;
       if (foundColor) return foundColor;
       if (foundSize) return foundSize;
 
+      // Tier 4: Fallback to '단품' when no valid color or size can be extracted
       return '단품';
     }
 
@@ -669,7 +640,9 @@
               let chan = resolveChannel(r, sheetName);
               let store = resolveStoreName(r);
               let brand = resolveBrand(r);
-              let opt = r['외부몰 옵션명'] || r['단품명'] || '기본';
+              let opt = r['외부몰 옵션명'] || r['외부몰옵션명'] || r['단품명'] || r['옵션명'] || r['옵션'] || '기본';
+              let rawColor = r['칼라명'] || r['컬러명'] || r['색상'] || r['칼라'] || '';
+              let rawSize = r['사이즈명'] || r['사이즈'] || r['호수'] || '';
 
               let hash = `${dtStr}_${chan}_${store}_${brand}_${prodName}_${opt}_${rev}_${qty}`;
               if (!hashSet.has(hash)) {
@@ -687,6 +660,8 @@
                   Brand: brand,
                   ProductName: String(prodName).trim(),
                   Option: String(opt).trim(),
+                  RawColor: String(rawColor).trim(),
+                  RawSize: String(rawSize).trim(),
                   Revenue: rev,
                   Quantity: qty
                 });
@@ -957,8 +932,8 @@
         pMap[pKey].storeMap[d.StoreName] = (pMap[pKey].storeMap[d.StoreName] || 0) + d.Quantity;
         pMap[pKey].brandMap[d.Brand] = (pMap[pKey].brandMap[d.Brand] || 0) + d.Quantity;
 
-        // Clean option string immediately and aggregate by cleaned option name!
-        let cleanedOpt = cleanOptionString(d.Option);
+        // Clean option string immediately with 4-tier hierarchy and aggregate!
+        let cleanedOpt = cleanOptionString(d.Option, d.ProductName, d.RawColor, d.RawSize);
         pMap[pKey].cleanedOptMap[cleanedOpt] = (pMap[pKey].cleanedOptMap[cleanedOpt] || 0) + d.Quantity;
       });
 
