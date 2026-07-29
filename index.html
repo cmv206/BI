@@ -49,9 +49,21 @@
     .stat-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 12px; padding: 18px 16px; }
     .stat-card:hover { transform: translateY(-2px); }
     
+    /* Top Bar Navigation Tab Styling */
     .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; }
-    .tab-btn.active { color: #2563eb; background-color: #eff6ff; border-bottom-color: #2563eb; font-weight: 700; border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; }
-    .dark .tab-btn.active { color: #60a5fa; background-color: rgba(30, 58, 138, 0.3); border-bottom-color: #60a5fa; }
+    .tab-btn.active { 
+      color: #2563eb; 
+      background-color: #eff6ff; 
+      border-bottom-color: #2563eb; 
+      font-weight: 700; 
+      border-top-left-radius: 0.5rem; 
+      border-top-right-radius: 0.5rem; 
+    }
+    .dark .tab-btn.active { 
+      color: #60a5fa; 
+      background-color: rgba(30, 58, 138, 0.3); 
+      border-bottom-color: #60a5fa; 
+    }
   </style>
   <script>
     tailwind.config = {
@@ -62,7 +74,6 @@
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 h-screen flex flex-col transition-colors duration-300">
 
-  <!-- Header -->
   <header class="flex-shrink-0 z-40 glass-panel shadow-sm relative">
     <div class="px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -86,7 +97,7 @@
     </div>
   </header>
 
-  <!-- Clear DB Confirmation Modal -->
+  <!-- Clear DB Modal -->
   <div id="clearModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
     <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-2xl max-w-sm w-full space-y-3 text-center">
       <div class="w-10 h-10 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-full mx-auto flex items-center justify-center text-lg">
@@ -110,9 +121,7 @@
     </div>
   </div>
 
-  <!-- Main Workspace -->
   <div class="flex-1 flex overflow-hidden relative">
-    <!-- Sidebar Control Center -->
     <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-y-auto transition-all duration-300 z-30 absolute md:relative -translate-x-full md:translate-x-0">
       <div class="p-5 space-y-6">
         <div>
@@ -174,8 +183,8 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
-      <!-- Top Navigation Menu -->
       <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- Top Navigation Bar matching image_8eb855.png exactly -->
         <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
           <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-chart-pie text-brand-600"></i>
@@ -210,7 +219,6 @@
           </div>
         </div>
 
-        <!-- TAB 1: 종합 대시보드 -->
         <div id="tab1" class="tab-content space-y-6">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-brand-500">
@@ -251,7 +259,6 @@
           </div>
         </div>
 
-        <!-- TAB 2: 베스트 상품 & 브랜드 -->
         <div id="tab2" class="tab-content space-y-6 hidden h-full">
           <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
             <div class="flex-1 glass-panel p-4 rounded-xl flex flex-col">
@@ -279,7 +286,6 @@
           </div>
         </div>
 
-        <!-- TAB 3: 52주 차주 재고 예측 -->
         <div id="tab3" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
             <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 차주(다음 주) 권장 재고 예측</h3>
@@ -321,7 +327,6 @@
           </div>
         </div>
 
-        <!-- TAB 4: 가격 변동 & 적정가 분석 (Sweet Spot) -->
         <div id="tab4" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
             <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 경제학적 최적 가격 (Optimal Price) 분석</h3>
@@ -365,7 +370,6 @@
   </div>
 
   <script>
-    // Global Regex Constants for Option Cleaning
     const rangeSizeRegex = /[SMLXLXXL3XL]+|[0-9]{2,3}/g;
     const shoeSizeRegex = /2[2-9]0|3[0-2]0/g;
     const clothSizeRegex = /XS|S|M|L|XL|XXL|FREE/gi;
@@ -389,7 +393,6 @@
       }
     }
 
-    // Sidebar & Theme Toggles
     function toggleTheme() { document.documentElement.classList.toggle('dark'); }
     function toggleSidebar() {
       const sb = document.getElementById('sidebar');
@@ -400,15 +403,10 @@
       }
     }
 
-    // Modal Control
     const clearModal = document.getElementById('clearModal');
     function showClearModal() { clearModal.classList.remove('hidden'); }
     function hideClearModal() { clearModal.classList.add('hidden'); }
     
-    // ==========================================
-    // BUG FIX 1: Removed the 12-second hard cap in showLoading
-    // The UI will NEVER unexpectedly turn off during file uploads.
-    // ==========================================
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
     const loadingProgress = document.getElementById('loadingProgress');
@@ -424,15 +422,13 @@
       setTimeout(() => { loadingProgress.style.width = '0%'; }, 300);
     }
 
-    // ==========================================
-    // BUG FIX 2 & 3: Reliable DB connection with strict 3000ms safety fuse.
-    // Prevents "통합 데이터베이스 조회 중..." infinite lock.
-    // ==========================================
     let db = null;
-    const DB_NAME = 'O2O_Enterprise_DB_v4'; 
+    const DB_NAME = 'O2O_Enterprise_DB_v5'; 
     const STORE_NAME = 'sales_data';
     const STORE_MAPPING = { 7204:'중계점', 8206:'강남점', 8224:'송파점', 8230:'전주점', 8501:'쇼핑점' };
     
+    const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
     function getDB() {
       return new Promise((resolve) => {
         if (db) return resolve(db);
@@ -444,11 +440,10 @@
           }
         };
 
-        // Strict timeout to prevent hanging forever
         const timer = setTimeout(() => {
-          console.warn("DB connection timed out (3s). Proceeding to memory fallback.");
+          console.warn("DB connection timed out. Using fallback.");
           done(null);
-        }, 3000);
+        }, 2500);
 
         try {
           if (!window.indexedDB) { done(null); return; }
@@ -469,8 +464,7 @@
           };
           req.onerror = req.onblocked = (e) => {
             clearTimeout(timer);
-            console.error("DB connection error/blocked.");
-            done(null); // Immediate exit if blocked by browser
+            done(null);
           };
         } catch(err) {
           clearTimeout(timer);
@@ -509,7 +503,6 @@
     let globalData = []; 
     let fd = []; 
 
-    // Helper functions for parsing
     const fastNumHelper = (v) => {
       if (typeof v === 'number') return v;
       if (!v) return 0;
@@ -573,14 +566,14 @@
           try {
             importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
           } catch(err) {
-            self.postMessage({ result: null, error: 'ImportScriptsError' });
+            self.postMessage({ result: null });
             return;
           }
           
           let wb;
           try {
             wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellText: false });
-          } catch(err) { self.postMessage({ result: null, error: 'ReadError' }); return; }
+          } catch(err) { self.postMessage({ result: null }); return; }
           
           const ws = wb.Sheets[wb.SheetNames[0]];
           if (!ws) { self.postMessage({ result: [] }); return; }
@@ -664,7 +657,7 @@
       return new Worker(URL.createObjectURL(blob));
     }
 
-    function parseFileMainThread(fileBuffer, applyIqr) {
+    async function parseFileMainThreadAsync(fileBuffer, applyIqr) {
       try {
         if (typeof XLSX === 'undefined') return [];
         const wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellText: false });
@@ -709,6 +702,7 @@
 
         let parsed = [];
         for (let i = headerRowIdx + 1; i < rows.length; i++) {
+           if (i % 2000 === 0) await yieldToMain();
            const row = rows[i];
            if(!row || !Array.isArray(row)) continue;
            
@@ -747,20 +741,12 @@
       }
     }
 
-    // ==========================================
-    // BUG FIX 4: Replaced Memory-hogging chained Promise queue
-    // with sequential direct-to-DB saving and immediate memory freeing.
-    // ==========================================
-    async function saveToDBDirect(chunk) {
+    async function saveToDBDirectAsync(chunk) {
       if (!chunk || !chunk.length) return;
       const database = await getDB();
-      if (!database) {
-        console.warn("DB connection missing. Temporarily holding chunk in memory.");
-        globalData.push(...chunk);
-        return;
-      }
+      if (!database) return;
       
-      const BATCH_SIZE = 2000;
+      const BATCH_SIZE = 1500;
       for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
         const subChunk = chunk.slice(i, i + BATCH_SIZE);
         await new Promise((res) => {
@@ -773,9 +759,10 @@
               store.put(item);
             }
             tx.oncomplete = () => res();
-            tx.onerror = tx.onabort = () => res(); // Do not throw, move onto next batch
+            tx.onerror = tx.onabort = () => res();
           } catch(err) { res(); }
         });
+        await yieldToMain();
       }
     }
 
@@ -786,9 +773,12 @@
       const applyIqr = document.getElementById('applyIqr').checked;
       showLoading(`[0 / ${files.length}] 파싱 및 병합 준비 중...`);
       
+      const newlyParsedRecords = [];
+
       try {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
+          await yieldToMain();
           loadingProgress.style.width = Math.min(((i + 1) / files.length) * 100, 100) + '%';
           loadingText.textContent = `[${i + 1} / ${files.length}] 파싱 및 병합 중... (${file.name})`;
           
@@ -796,53 +786,55 @@
           try {
             const buffer = await file.arrayBuffer();
             parsedData = await new Promise((resolve) => {
-              // 30 second safety timer for a single file in Worker
-              const pTimer = setTimeout(() => resolve(null), 30000);
+              const pTimer = setTimeout(() => resolve(null), 15000);
               try {
                 const worker = createWorker();
                 worker.onmessage = (msg) => {
                   clearTimeout(pTimer);
                   worker.terminate();
-                  resolve(msg.data.result);
+                  resolve(msg.data ? msg.data.result : null);
                 };
                 worker.onerror = () => {
                   clearTimeout(pTimer);
                   worker.terminate();
                   resolve(null);
                 };
-                // We do NOT transfer buffer to allow fallback usage
                 worker.postMessage({ fileBuffer: buffer, applyIqr });
               } catch(e) { clearTimeout(pTimer); resolve(null); }
             });
 
-            // If Worker failed, crashed, or timed out, fallback to Main Thread immediately
             if (!parsedData || !Array.isArray(parsedData) || parsedData.length === 0) {
               const fallbackBuffer = await file.arrayBuffer();
-              parsedData = parseFileMainThread(fallbackBuffer, applyIqr);
+              parsedData = await parseFileMainThreadAsync(fallbackBuffer, applyIqr);
             }
           } catch(fileErr) {
             console.error("File Buffer Error:", fileErr);
           }
 
-          // Directly save and free memory immediately to prevent "Out of Memory"
           if (parsedData && parsedData.length > 0) {
-            loadingText.textContent = `[${i + 1} / ${files.length}] DB에 안전하게 저장 중...`;
-            await saveToDBDirect(parsedData);
+            newlyParsedRecords.push(...parsedData);
+            saveToDBDirectAsync(parsedData);
           }
-          parsedData = null; // FORCE GARBAGE COLLECTION
+          parsedData = null;
         }
 
         loadingText.textContent = "데이터 인덱싱 완료! 화면 갱신 중...";
+        await yieldToMain();
         
+        globalData = [...globalData, ...newlyParsedRecords];
+        globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
+
+        document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
         document.getElementById('filterStartDate').value = '';
         document.getElementById('filterEndDate').value = '';
-        
-        await loadData();
+
+        populateFilterOptions();
+        applyFilters();
       } catch (err) {
         console.error("Upload Error:", err);
       } finally {
         document.getElementById('fileUpload').value = "";
-        hideLoading(); // Guaranteed to run after loop ends
+        hideLoading();
       }
     }
 
@@ -850,13 +842,12 @@
       showLoading("통합 데이터베이스 조회 중...");
       
       let isLoaded = false;
-      // Absolute safety timeout: force hide loading overlay after 5s if DB deadlocks
       const safetyTimer = setTimeout(() => {
         if (!isLoaded) {
-           console.warn("DB Deadlock detected. Force closing loading screen.");
+           console.warn("DB Deadlock fallback triggered.");
            hideLoading();
         }
-      }, 5000);
+      }, 3000);
 
       try {
         const database = await getDB();
@@ -876,7 +867,6 @@
         }
 
         if (!globalData) globalData = [];
-        // Safe Locale Compare
         globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
         
         document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
@@ -1124,8 +1114,8 @@
       fd.forEach(d => { if(!d.IsRefund) map[d.ProductName] = (map[d.ProductName] || 0) + d.Quantity; });
       const tops = Object.keys(map).sort((a,b)=>map[b]-map[a]).slice(0, 500);
       const html = tops.map(p => `<option value="${String(p).replace(/"/g, '&quot;')}">${p}</option>`).join('');
-      document.getElementById('trendProdSelect').innerHTML = html; // Tab3
-      document.getElementById('priceProdSelect').innerHTML = html; // Tab4
+      document.getElementById('trendProdSelect').innerHTML = html; 
+      document.getElementById('priceProdSelect').innerHTML = html; 
     }
 
     function getWeekString(dateStr) {
@@ -1140,7 +1130,6 @@
        return `${y}년<br>${parseInt(m)}월 ${wNum}주차`;
     }
 
-    // TAB 3: 52주 차주 재고 예측
     function renderTab3() {
       const prodSelect = document.getElementById('trendProdSelect');
       if (!prodSelect) return;
@@ -1262,7 +1251,6 @@
       }
     }
 
-    // TAB 4: 가격 변동 & 적정가 분석 (Sweet Spot)
     function renderTab4() {
       const prodSelect = document.getElementById('priceProdSelect');
       if (!prodSelect) return;
