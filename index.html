@@ -416,7 +416,7 @@
       loadingOverlay.classList.remove('hidden');
       
       if (loadingTimer) clearTimeout(loadingTimer);
-      loadingTimer = setTimeout(() => { hideLoading(); }, 12000);
+      loadingTimer = setTimeout(() => { hideLoading(); }, 15000);
     }
     
     function hideLoading() { 
@@ -441,7 +441,7 @@
             console.warn("DB Connection Timeout, using memory fallback");
             resolve(null);
           }
-        }, 2500);
+        }, 3000);
 
         try {
           const req = indexedDB.open(DB_NAME, 1);
@@ -508,7 +508,7 @@
     let globalData = []; 
     let fd = []; 
 
-    // Helper functions for Main Thread parsing fallback
+    // Helper functions for parsing
     const fastNumHelper = (v) => {
       if (typeof v === 'number') return v;
       if (!v) return 0;
