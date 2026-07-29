@@ -435,19 +435,29 @@
     
     function initDB() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, 3);
-        req.onupgradeneeded = (e) => {
-          let database = e.target.result;
-          if (!database.objectStoreNames.contains(STORE_NAME)) {
-            database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-          }
-        };
-        req.onsuccess = (e) => { db = e.target.result; resolve(db); };
-        req.onerror = (e) => reject(e);
-        req.onblocked = (e) => {
-          console.warn("DB blocked:", e);
-          if (e.target.result) { db = e.target.result; resolve(db); }
-        };
+        // [핵심 해결] 3초 이상 DB가 응답하지 않으면 무한 로딩을 방지하고 강제로 에러 처리(로딩 해제)
+        const timeoutId = setTimeout(() => { reject(new Error("DB Connection Timeout")); }, 3000);
+        try {
+          const req = indexedDB.open(DB_NAME, 5); // 버전 업그레이드로 꼬인 스키마 강제 초기화
+          req.onupgradeneeded = (e) => {
+            let database = e.target.result;
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+              database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            }
+          };
+          req.onsuccess = (e) => { 
+            clearTimeout(timeoutId);
+            db = e.target.result; 
+            // 탭 여러개 열림 방지: 다른 탭에서 업데이트 시도 시 내 연결을 즉시 끊어줌
+            db.onversionchange = () => { db.close(); db = null; };
+            resolve(db); 
+          };
+          req.onerror = (e) => { clearTimeout(timeoutId); reject(e); };
+          req.onblocked = (e) => { console.warn("DB Blocked by another tab"); };
+        } catch(err) {
+          clearTimeout(timeoutId);
+          reject(err);
+        }
       });
     }
 
@@ -724,20 +734,20 @@
             const req = store.getAll();
             req.onsuccess = () => res(req.result || []);
             req.onerror = rej;
-            tx.onerror = rej;
-            tx.onabort = rej;
-          } catch (e) { rej(e); }
+          } catch (e) { rej(e); } // [핵심 해결] DB 조회 중 에러 발생 시 무한 로딩 방지
         });
 
+        if (!globalData) globalData = [];
+        // 날짜가 빈 값이어도 정렬 시 스크립트가 터지지 않도록 방어 로직 추가
         globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
-        document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
         
+        document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
         populateFilterOptions();
         applyFilters();
       } catch (err) {
         console.error("Load Data Error:", err);
       } finally {
-        hideLoading();
+        hideLoading(); // 어떤 에러가 발생해도 무조건 로딩 오버레이를 해제
       }
     }
 
