@@ -302,16 +302,29 @@
           </div>
         </div>
 
+        <!-- Selected Product Title Display Banner -->
+        <div id="selectedPriceProdTitleContainer" class="hidden bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3 transition">
+          <div class="flex items-center gap-2.5 overflow-hidden w-full">
+            <span class="bg-brand-500/10 text-brand-600 dark:text-brand-400 p-2.5 rounded-lg shrink-0">
+              <i class="fa-solid fa-box-archive text-lg"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-[10px] uppercase font-semibold text-brand-600 dark:text-brand-400 tracking-wider">선택 분석 상품명</p>
+              <h3 id="selectedPriceProdTitle" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate select-text cursor-text"></h3>
+            </div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
-            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">볼륨 피크 (Sweet Spot Volume Peak)</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">마케팅 최적 적정가 (Optimal Price)</p>
             <h3 id="priceVolPeak" class="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">최대 수량이 판매된 단가 구간</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">수요탄력성 및 판매 회전율 최적 균형 구간</p>
           </div>
           <div class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
-            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">매출 피크 (Revenue Peak)</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">경제학적 매출 극대화 최적가 (Revenue Max Price)</p>
             <h3 id="priceRevPeak" class="text-xl sm:text-2xl font-bold text-brand-600 dark:text-brand-400 mt-1">0 원</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">최대 매출액이 창출된 단가 구간</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">수요곡선 Q(P) 회귀 산출 모델 도출가</p>
           </div>
         </div>
 
@@ -1390,41 +1403,121 @@
       const sel = document.getElementById('selectPriceProd');
       if (!sel) return;
       const prod = sel.value;
-      if (!prod) return;
+
+      const elTitle = document.getElementById('selectedPriceProdTitle');
+      const elTitleContainer = document.getElementById('selectedPriceProdTitleContainer');
+      if (prod) {
+        if (elTitle) elTitle.innerText = prod;
+        if (elTitleContainer) elTitleContainer.classList.remove('hidden');
+      } else {
+        if (elTitleContainer) elTitleContainer.classList.add('hidden');
+        return;
+      }
 
       const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0);
+      if (pData.length === 0) return;
+
+      // Group transactions by price points
       let priceAgg = {};
       pData.forEach(d => {
         let unit = Math.round(d.Revenue / d.Quantity);
-        if (unit > 400000 && d.Quantity === 1) return;
-        if (!priceAgg[unit]) priceAgg[unit] = {qty:0, rev:0};
+        if (unit > 400000 && d.Quantity === 1) return; // filter outliers
+        if (!priceAgg[unit]) priceAgg[unit] = { qty: 0, rev: 0, count: 0 };
         priceAgg[unit].qty += d.Quantity;
         priceAgg[unit].rev += d.Revenue;
+        priceAgg[unit].count += 1;
       });
 
-      let vPeakPrice = 0, vPeakQty = -1;
-      let rPeakPrice = 0, rPeakRev = -1;
-      
-      for (let [p, v] of Object.entries(priceAgg)) {
-        if (v.qty > vPeakQty) { vPeakQty = v.qty; vPeakPrice = p; }
-        if (v.rev > rPeakRev) { rPeakRev = v.rev; rPeakPrice = p; }
+      const pricePoints = Object.keys(priceAgg).map(Number).sort((a, b) => a - b);
+      if (pricePoints.length === 0) return;
+
+      // 1. Empirical Maxima Baseline
+      let maxQtyPrice = pricePoints[0], maxQty = -1;
+      let maxRevPrice = pricePoints[0], maxRev = -1;
+      pricePoints.forEach(p => {
+        if (priceAgg[p].qty > maxQty) { maxQty = priceAgg[p].qty; maxQtyPrice = p; }
+        if (priceAgg[p].rev > maxRev) { maxRev = priceAgg[p].rev; maxRevPrice = p; }
+      });
+
+      // 2. Econometric Demand Curve ML Model (Q(P) = a - b*P & Price Elasticity Ep = -1)
+      let optimalPrice = maxRevPrice;
+      let sweetSpotPrice = maxQtyPrice;
+
+      if (pricePoints.length >= 2) {
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        let n = pricePoints.length;
+
+        pricePoints.forEach(p => {
+          let x = p;
+          let y = priceAgg[p].qty;
+          sumX += x;
+          sumY += y;
+          sumXY += x * y;
+          sumX2 += x * x;
+        });
+
+        let denominator = (n * sumX2 - sumX * sumX);
+        if (denominator !== 0) {
+          let slopeB = (n * sumXY - sumX * sumY) / denominator; // b in Q = a + b*P
+          let interceptA = (sumY - slopeB * sumX) / n;
+
+          // Downward-sloping demand curve Q(P) = a - b*P
+          if (slopeB < 0) {
+            let b = -slopeB;
+            let a = interceptA;
+            // Revenue Function R(P) = P * Q(P) = a*P - b*P^2
+            // First Derivative dR/dP = a - 2*b*P = 0 => P* = a / (2b) (Point of Unitary Elasticity Ep = -1)
+            let theoreticalOptimal = a / (2 * b);
+
+            let minP = pricePoints[0];
+            let maxP = pricePoints[pricePoints.length - 1];
+            if (theoreticalOptimal >= minP * 0.7 && theoreticalOptimal <= maxP * 1.3) {
+              optimalPrice = Math.round(theoreticalOptimal);
+            }
+          }
+        }
       }
+
+      // 3. Marketing Balanced Sweet Spot (Revenue Velocity vs. Volume Elasticity)
+      let bestScore = -1;
+      pricePoints.forEach(p => {
+        let revShare = priceAgg[p].rev / (maxRev || 1);
+        let qtyShare = priceAgg[p].qty / (maxQty || 1);
+        let score = (2 * revShare * qtyShare) / (revShare + qtyShare + 0.0001);
+        if (score > bestScore) {
+          bestScore = score;
+          sweetSpotPrice = p;
+        }
+      });
 
       const elV = document.getElementById('priceVolPeak');
       const elR = document.getElementById('priceRevPeak');
-      if (elV) elV.innerText = fmtKoreanNum(vPeakPrice) + ' 원';
-      if (elR) elR.innerText = fmtKoreanNum(rPeakPrice) + ' 원';
+      if (elV) elV.innerText = fmtNum(sweetSpotPrice) + ' 원';
+      if (elR) elR.innerText = fmtNum(optimalPrice) + ' 원';
+
+      let yValues = pData.map(d => Math.round(d.Revenue / d.Quantity));
+      let minY = Math.min(...yValues);
+      let maxY = Math.max(...yValues);
+
+      let scatterLayout = getChartLayout('일자별 실판매가 산포도 (점 크기=수량)');
+      scatterLayout.yaxis.ticksuffix = '';
+      if (minY === maxY) {
+        let pad = Math.max(5000, Math.round(minY * 0.1));
+        scatterLayout.yaxis.range = [Math.max(0, minY - pad), maxY + pad];
+      } else if (maxY - minY < 10) {
+        scatterLayout.yaxis.range = [Math.max(0, minY - 10), maxY + 10];
+      }
 
       Plotly.react('chartPriceScatter', [{
         x: pData.map(d => fmtExactDate(d.Date)),
-        y: pData.map(d => Math.round(d.Revenue / d.Quantity)),
+        y: yValues,
         mode: 'markers', type: 'scatter',
         text: pData.map(d => d.StoreName),
         customdata: pData.map(d => d.Channel),
-        customdata2: pData.map(d => fmtKoreanNum(d.Revenue / d.Quantity) + '원'),
+        customdata2: pData.map(d => fmtNum(d.Revenue / d.Quantity) + '원'),
         marker: { size: pData.map(d => Math.max(6, Math.min(22, d.Quantity * 2))), color: '#38bdf8', opacity: 0.65 },
         hovertemplate: '일자: %{x}<br>지점: %{text}<br>채널: %{customdata}<br>단가: %{customdata2}<extra></extra>'
-      }], getChartLayout('일자별 실판매가 산포도 (점 크기=수량)'), getPlotlyConfig());
+      }], scatterLayout, getPlotlyConfig());
     }
   </script>
 </body>
