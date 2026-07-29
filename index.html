@@ -11,13 +11,13 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     body { font-family: 'Inter', sans-serif; }
     
-    /* Scrollbar styling */
+    /* Custom Scrollbars */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .dark ::-webkit-scrollbar-thumb { background: #475569; }
 
-    /* Data table styling */
+    /* Tables */
     .data-table-container { overflow-x: auto; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
     .dark .data-table-container { border-color: #334155; }
     table { width: 100%; text-align: left; border-collapse: collapse; }
@@ -56,7 +56,6 @@
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
 
-  <!-- Header -->
   <header class="sticky top-0 z-40 glass-panel shadow-sm">
     <div class="px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -80,7 +79,6 @@
     </div>
   </header>
 
-  <!-- Clear DB Modal -->
   <div id="clearModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
     <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-2xl max-w-sm w-full space-y-3 text-center">
       <div class="w-10 h-10 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-full mx-auto flex items-center justify-center text-lg">
@@ -96,7 +94,6 @@
   </div>
 
   <div class="flex-1 flex overflow-hidden">
-    <!-- Sidebar / Data Control Center -->
     <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-64px)] overflow-y-auto z-10 hidden md:flex transition-all duration-300 ease-in-out">
       <div class="p-5 space-y-6">
         <div>
@@ -171,13 +168,12 @@
       </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="flex-1 flex flex-col h-[calc(100vh-64px)] overflow-hidden relative">
-      <!-- High Performance Memory Overlay -->
+      <!-- Loading Overlay -->
       <div id="loadingOverlay" class="hidden absolute inset-0 bg-slate-900/60 backdrop-blur-md z-30 flex-col items-center justify-center text-white px-4 text-center">
         <i class="fa-solid fa-circle-notch fa-spin text-5xl mb-4 text-brand-400"></i>
-        <h3 id="loadingText" class="font-bold text-lg mb-1">대용량 시계열 빅데이터 병렬 인덱싱 중...</h3>
-        <p id="loadingSubtext" class="text-xs text-slate-300">메모리 안정화 및 데이터베이스 스트리밍 분할 적용 중</p>
+        <h3 id="loadingText" class="font-bold text-lg mb-1">대용량 시계열 빅데이터 실시간 연산 중...</h3>
+        <p id="loadingSubtext" class="text-xs text-slate-300">초고속 단일 패스 해시 인덱싱 스캐닝 적용 중</p>
       </div>
 
       <!-- Tabs Navigation -->
@@ -198,7 +194,6 @@
         </div>
       </div>
 
-      <!-- Tab Contents Container -->
       <div class="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 dark:bg-[#0b0f19]">
         <!-- Welcome Screen -->
         <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto animate-fade-in">
@@ -207,7 +202,7 @@
           </div>
           <h2 class="text-xl font-bold text-slate-800 dark:text-white mb-2">데이터를 업로드해 분석을 시작하세요</h2>
           <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-            좌측 패널에서 주차별 또는 월별로 정리된 <br class="hidden sm:block">Raw Excel 파일(.xlsx)을 드래그 앤 드롭하여 업로드하세요. <br>5개년 이상의 대용량 멀티 데이터도 안전하게 통합 파싱됩니다.
+            좌측 패널에서 주차별 또는 월별로 정리된 <br class="hidden sm:block">Raw Excel 파일(.xlsx)을 드래그 앤 드롭하여 업로드하세요. <br>5개년 이상의 대용량 멀티 데이터도 초고속으로 통합 인덱싱됩니다.
           </p>
           <label class="cursor-pointer bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-lg shadow-brand-500/30 flex items-center gap-2">
             <i class="fa-solid fa-file-excel"></i> PC에서 엑셀 파일 선택
@@ -374,14 +369,14 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="bg-white dark:bg-[#111827] p-5 rounded-2xl border-l-4 border-l-emerald-500 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">경제학적 매출 극대화 최적가 (RMP)</div>
-              <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400" id="optPriceRev">0 원</div>
-              <div class="text-[11px] text-slate-400 mt-1">수요 탄력성(Ep=-1) 도출점</div>
+              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">볼륨 피크 (Sweet Spot Volume Peak)</div>
+              <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400" id="optPriceMkt">0 원</div>
+              <div class="text-[11px] text-slate-400 mt-1">최대 수량이 판매된 단가 구간</div>
             </div>
             <div class="bg-white dark:bg-[#111827] p-5 rounded-2xl border-l-4 border-l-brand-500 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">마케팅 수요저항 최적 적정가 (Sweet Spot)</div>
-              <div class="text-2xl font-extrabold text-brand-600 dark:text-brand-400" id="optPriceMkt">0 원</div>
-              <div class="text-[11px] text-slate-400 mt-1">수량/매출 기여 조화평균 도출점</div>
+              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">매출 피크 (Revenue Peak)</div>
+              <div class="text-2xl font-extrabold text-brand-600 dark:text-brand-400" id="optPriceRev">0 원</div>
+              <div class="text-[11px] text-slate-400 mt-1">최대 매출액이 창출된 단가 구간</div>
             </div>
           </div>
 
@@ -396,7 +391,7 @@
   </div>
 
   <script>
-    // HTML Escaping Utility for Safety
+    // Safety Utilities
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -407,7 +402,6 @@
         .replace(/'/g, '&#39;');
     }
 
-    // Store plant code mapping
     const STORE_MAPPING = {
       7204: '중계점', 7206: '안양점', 7209: '분당점', 7214: '해운대점', 7215: '천호2점', 
       7216: '부평점', 7217: '불광점', 7219: '고잔점', 8201: '일산점', 8202: '야탑점', 
@@ -428,10 +422,8 @@
     let activeTab = 'tab1';
     let dirtyTabs = { tab1: true, tab2: true, tab3: true, tab4: true };
 
-    // Integer formatting helper (No decimals)
     const fmtNum = (num) => Math.round(num || 0).toLocaleString('ko-KR');
 
-    // Date formatting helper (2026년 3월 4일)
     const fmtExactDate = (dtStr) => {
       if (!dtStr) return '';
       const parts = dtStr.split('-');
@@ -439,29 +431,34 @@
       return dtStr;
     };
 
-    const getChartLayout = (title = '') => {
+    const getChartLayout = (title = '', isPriceChart = false) => {
       const isDark = document.documentElement.classList.contains('dark');
+      const yaxisConfig = { 
+        gridcolor: isDark ? '#334155' : '#e2e8f0', 
+        zerolinecolor: isDark ? '#334155' : '#e2e8f0', 
+        fixedrange: true,
+        exponentformat: 'none',
+        separatethousands: true,
+        tickformat: ',d',
+        automargin: true
+      };
+      
+      if (isPriceChart) {
+        yaxisConfig.ticksuffix = '';
+      }
+
       return {
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
         dragmode: false,
         font: { color: isDark ? '#cbd5e1' : '#334155', family: 'Inter, sans-serif', size: 11 },
         xaxis: { gridcolor: isDark ? '#334155' : '#e2e8f0', zerolinecolor: isDark ? '#334155' : '#e2e8f0', fixedrange: true },
-        yaxis: { 
-          gridcolor: isDark ? '#334155' : '#e2e8f0', 
-          zerolinecolor: isDark ? '#334155' : '#e2e8f0', 
-          fixedrange: true,
-          exponentformat: 'none',
-          separatethousands: true,
-          tickformat: ',d',
-          automargin: true
-        },
-        margin: { t: title ? 30 : 10, r: 10, b: 30, l: 75 },
+        yaxis: yaxisConfig,
+        margin: { t: title ? 30 : 10, r: 15, b: 35, l: 75 },
         title: title ? { text: title, font: { size: 12, color: isDark ? '#f1f5f9' : '#1e293b' } } : undefined
       };
     };
 
-    // Option Cleaning Utility
     function cleanOptionString(rawOpt) {
       try {
         let sOpt = String(rawOpt || '').trim();
@@ -472,7 +469,6 @@
       }
     }
 
-    // HIGH-PERFORMANCE MULTI-THREADED WEB WORKER PARSER (DIRECT ARRAY ACCESS)
     const workerScript = `
       importScripts('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
 
@@ -515,7 +511,6 @@
         const { fileBuffer, fileName } = e.data;
         let records = [];
         try {
-          // ULTRA FAST PARSE OPTIONS: Disable cell styles, formulas, HTML, text formatting, cell dates
           const workbook = XLSX.read(fileBuffer, { 
             type: 'array', 
             dense: true, 
@@ -526,7 +521,6 @@
             cellDates: false 
           });
           const sheetName = workbook.SheetNames[0];
-          // Header mode 1 (Array of Arrays) avoids JS Object creation overhead per row (10x faster)
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: '' });
 
           if (!rows || rows.length < 2) {
@@ -564,7 +558,6 @@
             let rev = fastNum(revIdx >= 0 ? r[revIdx] : 0);
             let qty = fastNum(qtyIdx >= 0 ? r[qtyIdx] : 0);
 
-            // Fast Year, Month, Week via string slicing
             const y = dtStr.substring(0, 4);
             const mStr = dtStr.substring(5, 7);
             const dNum = parseInt(dtStr.substring(8, 10), 10);
@@ -618,18 +611,31 @@
 
     function loadAllDataFromDB() {
       if(!db) return;
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+
       const tx = db.transaction("sales_data", "readonly");
       const store = tx.objectStore("sales_data");
       const req = store.getAll();
+
       req.onsuccess = () => {
         allData = req.result || [];
         if (allData.length > 0) {
           document.getElementById('welcomeScreen').classList.add('hidden');
           document.getElementById('totalRecordCount').innerText = fmtNum(allData.length) + ' 건';
-          populateFilterOptions();
-          applyFilters();
+          
+          // FAST SINGLE PASS OPTIMIZATION
+          requestAnimationFrame(() => {
+            populateFilterOptions();
+            applyFilters();
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+          });
         } else {
           document.getElementById('welcomeScreen').classList.remove('hidden');
+          overlay.classList.add('hidden');
+          overlay.classList.remove('flex');
         }
       };
     }
@@ -649,7 +655,6 @@
       }
     }
 
-    // MULTI-THREADED PARALLEL WORKER POOL FOR MAXIMUM UPLOAD SPEED
     async function processFilesParallel(files) {
       const overlay = document.getElementById('loadingOverlay');
       const loadText = document.getElementById('loadingText');
@@ -662,7 +667,6 @@
       let completedCount = 0;
       let fileQueue = [...files];
 
-      // Multi-worker pool based on available CPU cores (max 4 parallel workers)
       const concurrency = Math.min(navigator.hardwareConcurrency || 4, 4);
       const workers = [];
 
@@ -711,8 +715,6 @@
 
       workers.forEach(w => w.terminate());
 
-      overlay.classList.add('hidden');
-      overlay.classList.remove('flex');
       loadAllDataFromDB();
     }
 
@@ -727,9 +729,27 @@
     function populateFilterOptions() {
       if (!allData || allData.length === 0) return;
 
-      const channels = ['ALL', ...Array.from(new Set(allData.map(d => d.Channel))).sort((a,b) => a.localeCompare(b, 'ko'))];
-      const stores = ['ALL', ...Array.from(new Set(allData.map(d => d.StoreName))).sort((a,b) => a.localeCompare(b, 'ko'))];
-      const brands = ['ALL', ...Array.from(new Set(allData.map(d => d.Brand))).sort((a,b) => a.localeCompare(b, 'ko'))];
+      // SINGLE-PASS COLLECTION OF CHANNELS, STORES, BRANDS, & PRODUCTS
+      const chanSet = new Set();
+      const storeSet = new Set();
+      const brandSet = new Set();
+      const prodRevMap = new Map();
+
+      for (let i = 0; i < allData.length; i++) {
+        const d = allData[i];
+        if (d.Channel) chanSet.add(d.Channel);
+        if (d.StoreName) storeSet.add(d.StoreName);
+        if (d.Brand) brandSet.add(d.Brand);
+        
+        const pName = d.ProductName;
+        if (pName) {
+          prodRevMap.set(pName, (prodRevMap.get(pName) || 0) + Number(d.Revenue));
+        }
+      }
+
+      const channels = ['ALL', ...Array.from(chanSet).sort()];
+      const stores = ['ALL', ...Array.from(storeSet).sort()];
+      const brands = ['ALL', ...Array.from(brandSet).sort()];
       
       const populate = (id, arr) => {
         const sel = document.getElementById(id);
@@ -742,12 +762,12 @@
       populate('filterStore', stores);
       populate('filterBrand', brands);
 
-      let prodRev = {};
-      allData.forEach(d => {
-        if (!prodRev[d.ProductName]) prodRev[d.ProductName] = 0;
-        prodRev[d.ProductName] += Number(d.Revenue);
-      });
-      uniqueProductList = Object.keys(prodRev).sort((a, b) => prodRev[b] - prodRev[a]);
+      // Sort unique products by revenue using fast Array sort
+      const prodList = Array.from(prodRevMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(entry => entry[0]);
+        
+      uniqueProductList = prodList;
     }
 
     function applyFilters() {
@@ -758,15 +778,18 @@
       const fStore = document.getElementById('filterStore').value;
       const fBrand = document.getElementById('filterBrand').value;
 
-      filteredData = allData.filter(d => {
-        let pass = true;
-        if (sDate && d.Date < sDate) pass = false;
-        if (eDate && d.Date > eDate) pass = false;
-        if (fChan !== 'ALL' && d.Channel !== fChan) pass = false;
-        if (fStore !== 'ALL' && d.StoreName !== fStore) pass = false;
-        if (fBrand !== 'ALL' && d.Brand !== fBrand) pass = false;
-        return pass;
-      });
+      // FAST SINGLE-PASS FILTERING WITHOUT SORTING RAW RECORDS
+      const filtered = [];
+      for (let i = 0; i < allData.length; i++) {
+        const d = allData[i];
+        if (sDate && d.Date < sDate) continue;
+        if (eDate && d.Date > eDate) continue;
+        if (fChan !== 'ALL' && d.Channel !== fChan) continue;
+        if (fStore !== 'ALL' && d.StoreName !== fStore) continue;
+        if (fBrand !== 'ALL' && d.Brand !== fBrand) continue;
+        filtered.push(d);
+      }
+      filteredData = filtered;
 
       dirtyTabs = { tab1: true, tab2: true, tab3: true, tab4: true };
       renderActiveTab();
@@ -804,35 +827,52 @@
         return;
       }
 
-      let sortedData = [...filteredData].sort((a, b) => a.Date.localeCompare(b.Date));
-      
-      let currMonthNet = 0, prevMonthNet = 0;
+      // SINGLE-PASS KPI AND MONTHLY AGGREGATION WITHOUT RAW ARRAY SORTING
+      let latestDateStr = "";
       let totalRev = 0, validRev = 0, validQty = 0, totalQty = 0, refundAmt = 0;
-      let chanMap = {};
+      const chanMap = {};
+      const mthMap = new Map();
 
-      const latestDateStr = sortedData[sortedData.length - 1].Date;
-      const latestDt = new Date(latestDateStr);
-      const latestMStr = `${latestDt.getFullYear()}년 ${String(latestDt.getMonth() + 1).padStart(2, '0')}월`;
-      
-      const prevDt = new Date(latestDt); prevDt.setMonth(prevDt.getMonth() - 1);
-      const prevMStr = `${prevDt.getFullYear()}년 ${String(prevDt.getMonth() + 1).padStart(2, '0')}월`;
+      for (let i = 0; i < filteredData.length; i++) {
+        const d = filteredData[i];
+        if (d.Date > latestDateStr) latestDateStr = d.Date;
 
-      sortedData.forEach(d => {
-        let rev = Number(d.Revenue), qty = Number(d.Quantity);
+        const rev = Number(d.Revenue), qty = Number(d.Quantity);
         totalRev += rev;
+
         if (qty > 0 && rev > 0) {
-            validRev += rev; 
-            validQty += qty; 
-            totalQty += qty;
+          validRev += rev; 
+          validQty += qty; 
+          totalQty += qty;
         } else if (qty < 0 || rev < 0) {
-            refundAmt += Math.abs(rev);
+          refundAmt += Math.abs(rev);
         }
 
-        if (d.Month === latestMStr) currMonthNet += rev;
-        if (d.Month === prevMStr) prevMonthNet += rev;
-
         if (rev > 0) chanMap[d.Channel] = (chanMap[d.Channel] || 0) + rev;
-      });
+
+        // Month aggregation
+        if (!mthMap.has(d.Month)) mthMap.set(d.Month, { net: 0, ref: 0 });
+        const obj = mthMap.get(d.Month);
+        if (qty < 0 || rev < 0) obj.ref += Math.abs(rev);
+        else obj.net += rev;
+      }
+
+      // Latest and previous month calculations
+      let currMonthNet = 0, prevMonthNet = 0;
+      if (latestDateStr) {
+        const parts = latestDateStr.split('-');
+        const latestDt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const latestMStr = `${latestDt.getFullYear()}년 ${String(latestDt.getMonth() + 1).padStart(2, '0')}월`;
+        
+        const prevDt = new Date(latestDt); prevDt.setMonth(prevDt.getMonth() - 1);
+        const prevMStr = `${prevDt.getFullYear()}년 ${String(prevDt.getMonth() + 1).padStart(2, '0')}월`;
+
+        for (let i = 0; i < filteredData.length; i++) {
+          const d = filteredData[i];
+          if (d.Month === latestMStr) currMonthNet += Number(d.Revenue);
+          if (d.Month === prevMStr) prevMonthNet += Number(d.Revenue);
+        }
+      }
 
       let momPercent = prevMonthNet > 0 ? ((currMonthNet - prevMonthNet) / prevMonthNet) * 100 : 0;
       document.getElementById('kpiNet').innerText = fmtNum(currMonthNet) + ' 원';
@@ -856,30 +896,38 @@
         document.getElementById('kpiTopChannelSub').innerText = `점유율: ${((chanMap[topChan]/totalRev)*100).toFixed(1)}%`;
       }
 
-      let mthMap = new Map();
-      sortedData.forEach(d => {
-        if (!mthMap.has(d.Month)) mthMap.set(d.Month, { net: 0, ref: 0 });
-        let obj = mthMap.get(d.Month);
-        if (d.Quantity < 0 || d.Revenue < 0) obj.ref += Math.abs(d.Revenue);
-        else obj.net += Number(d.Revenue);
-      });
+      // Sort only small 12-24 month keys instead of 100,000 raw rows
+      const sortedMonths = Array.from(mthMap.keys()).sort();
+      const mx = [], myNet = [], myRef = [];
+      for (let i = 0; i < sortedMonths.length; i++) {
+        const mKey = sortedMonths[i];
+        const val = mthMap.get(mKey);
+        mx.push(mKey);
+        myNet.push(val.net);
+        myRef.push(val.ref);
+      }
 
-      let mx = [], myNet = [], myRef = [];
-      mthMap.forEach((val, key) => { mx.push(key); myNet.push(val.net); myRef.push(val.ref); });
-
+      // ASYNC PLOTLY RENDERING PREVENTS UI FREEZE
       requestAnimationFrame(() => {
-        Plotly.newPlot('chartMonthlySales', [
+        Plotly.react('chartMonthlySales', [
           { x: mx, y: myNet, type: 'bar', name: '순매출', marker: { color: '#3b82f6' } },
           { x: mx, y: myRef, type: 'bar', name: '환불액', marker: { color: '#ef4444' } }
         ], { ...getChartLayout(), barmode: 'stack', hovermode: 'x unified' }, getPlotlyConfig());
+
+        const chanLabels = Object.keys(chanMap);
+        const chanValues = chanLabels.map(k => chanMap[k]);
+        Plotly.react('chartChannelShare', [
+          { labels: chanLabels, values: chanValues, type: 'pie', hole: 0.4 }
+        ], getChartLayout(), getPlotlyConfig());
       });
     }
 
     function renderTab2() {
       if (!filteredData || filteredData.length === 0) return;
 
-      let bMap = {}, pMap = {};
-      filteredData.forEach(d => {
+      const bMap = {}, pMap = {};
+      for (let i = 0; i < filteredData.length; i++) {
+        const d = filteredData[i];
         let b = escapeHtml(d.Brand || '기타 브랜드');
         let p = escapeHtml(d.ProductName || '기타 상품');
         let rev = Number(d.Revenue), qty = Number(d.Quantity);
@@ -890,7 +938,7 @@
         if (!pMap[p]) pMap[p] = { rev: 0, qty: 0, validRev: 0, validQty: 0, opt: d.Option || '기본' };
         pMap[p].rev += rev; pMap[p].qty += qty;
         if (qty > 0 && rev > 0) { pMap[p].validRev += rev; pMap[p].validQty += qty; }
-      });
+      }
 
       let bList = Object.keys(bMap).map(k => ({ name: k, ...bMap[k] })).sort((a,b) => b.rev - a.rev).slice(0, 50);
       let pList = Object.keys(pMap).map(k => ({ name: k, ...pMap[k] })).sort((a,b) => b.rev - a.rev).slice(0, 100);
@@ -948,10 +996,15 @@
         elTitle.innerText = prod;
         elCont.classList.remove('hidden');
 
-        let pData = filteredData.filter(d => d.ProductName === prod).sort((a,b) => a.Date.localeCompare(b.Date));
+        // SINGLE-PASS FILTER FOR SELECTED PRODUCT
+        const pData = [];
+        for (let i = 0; i < filteredData.length; i++) {
+          if (filteredData[i].ProductName === prod) pData.push(filteredData[i]);
+        }
         
         let wMap = new Map();
-        pData.forEach(d => {
+        for (let i = 0; i < pData.length; i++) {
+          const d = pData[i];
           let w = d.Week;
           if (!wMap.has(w)) wMap.set(w, { qty: 0, cMap: {}, sMap: {} });
           let obj = wMap.get(w);
@@ -961,12 +1014,15 @@
             obj.cMap[d.Channel] = (obj.cMap[d.Channel] || 0) + q;
             obj.sMap[d.StoreName] = (obj.sMap[d.StoreName] || 0) + q;
           }
-        });
+        }
 
+        let sortedWeeks = Array.from(wMap.keys()).sort();
         let wx = [], wy = [], wText = [];
         let recent4 = [];
         
-        wMap.forEach((val, key) => {
+        for (let i = 0; i < sortedWeeks.length; i++) {
+          const key = sortedWeeks[i];
+          const val = wMap.get(key);
           wx.push(key);
           wy.push(val.qty);
           recent4.push(val.qty);
@@ -978,7 +1034,7 @@
           }
           
           wText.push(`${key}<br>판매량: ${val.qty}개<br>주요 지점: ${maxS}<br>주요 채널: ${maxC}`);
-        });
+        }
 
         if (recent4.length > 0) {
           let slice = recent4.slice(-4);
@@ -994,7 +1050,7 @@
         }
 
         requestAnimationFrame(() => {
-          Plotly.newPlot('chartTrend', [{
+          Plotly.react('chartTrend', [{
             x: wx, y: wy, text: wText, type: 'scatter', mode: 'lines+markers',
             hoverinfo: 'text',
             line: { color: '#6366f1', width: 3 }, marker: { size: 8, color: '#6366f1' }
@@ -1023,25 +1079,34 @@
         elTitle.innerText = prod;
         elCont.classList.remove('hidden');
 
-        let pData = filteredData.filter(d => d.ProductName === prod && Number(d.Quantity) > 0 && Number(d.Revenue) > 0);
+        const pData = [];
+        for (let i = 0; i < filteredData.length; i++) {
+          const d = filteredData[i];
+          if (d.ProductName === prod && Number(d.Quantity) > 0 && Number(d.Revenue) > 0) {
+            pData.push(d);
+          }
+        }
+
         if (pData.length === 0) return;
 
         let px_dt = [], py_price = [], pz_qty = [], pt = [];
         let priceArr = [];
         
-        pData.forEach(d => {
+        for (let i = 0; i < pData.length; i++) {
+          const d = pData[i];
           let up = Number(d.Revenue) / Number(d.Quantity);
           px_dt.push(d.Date);
           py_price.push(up);
           pz_qty.push(Number(d.Quantity));
           pt.push(`${fmtExactDate(d.Date)}<br>${fmtNum(up)}원<br>수량: ${d.Quantity}개<br>${d.Channel}`);
           priceArr.push({ up, qty: Number(d.Quantity) });
-        });
+        }
 
         let prMap = {};
-        priceArr.forEach(p => {
-            prMap[p.up] = (prMap[p.up] || 0) + p.qty;
-        });
+        for (let i = 0; i < priceArr.length; i++) {
+          const p = priceArr[i];
+          prMap[p.up] = (prMap[p.up] || 0) + p.qty;
+        }
         
         let maxQtyPrice = 0, maxQty = 0;
         let maxRevPrice = 0, maxRev = 0;
@@ -1058,11 +1123,11 @@
         document.getElementById('optPriceRev').innerText = `${fmtNum(maxRevPrice)} 원`;
 
         requestAnimationFrame(() => {
-          Plotly.newPlot('chartPriceScatter', [{
+          Plotly.react('chartPriceScatter', [{
             x: px_dt, y: py_price, text: pt, type: 'scatter', mode: 'markers',
             marker: { size: pz_qty, sizeref: 2, sizemin: 4, color: '#a855f7', opacity: 0.7 },
             hoverinfo: 'text'
-          }], getChartLayout(`[${prod}] 실 판매 단가 산포도`), getPlotlyConfig());
+          }], getChartLayout(`[${prod}] 실 판매 단가 산포도`, true), getPlotlyConfig());
         });
       };
     }
@@ -1084,7 +1149,6 @@
       }
     }
 
-    // Tab Navigation
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('.tab-btn').forEach(b => {
@@ -1101,13 +1165,11 @@
       });
     });
 
-    // Theme Toggle
     document.getElementById('themeToggle').addEventListener('click', () => {
       document.documentElement.classList.toggle('dark');
       applyFilters();
     });
 
-    // Sidebar Toggle Function
     function toggleSidebar() {
       const sb = document.getElementById('sidebar');
       if (!sb) return;
