@@ -620,7 +620,7 @@
     function queueSaveToDB(chunk) {
       saveQueue = saveQueue.then(async () => {
         if (!db) await initDB();
-        return new Promise((res, rej) => {
+        return new Promise((res) => {
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const store = tx.objectStore(STORE_NAME);
           for (let i = 0; i < chunk.length; i++) {
@@ -706,21 +706,24 @@
           req.onerror = rej;
         });
 
-        // Safe Date Sorting
-        globalData.sort((a, b) => (a.Date || '').localeCompare(b.Date || ''));
+        // Safe String Date Sorting
+        globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
         document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
         
         populateFilterOptions();
         applyFilters();
       } catch (err) {
         console.error("Load Data Error:", err);
-      } finally {
         hideLoading();
+      } finally {
+        if (!globalData || globalData.length === 0) {
+          hideLoading();
+        }
       }
     }
 
     function populateFilterOptions() {
-      if (!globalData.length) return;
+      if (!globalData || !globalData.length) return;
       const channels = new Set(), stores = new Set(), brands = new Set();
       globalData.forEach(d => {
         if (d.Channel) channels.add(d.Channel);
@@ -747,8 +750,10 @@
     }
 
     function applyFilters() {
-      if (!globalData.length) {
+      if (!globalData || !globalData.length) {
         document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('filteredCount').textContent = '0';
+        hideLoading();
         return;
       }
       showLoading("대시보드 실시간 집계 중...");
@@ -782,6 +787,8 @@
             renderTab3();
             renderTab4();
           }
+        } catch (err) {
+          console.error("Apply Filters Error:", err);
         } finally {
           hideLoading();
         }
@@ -944,7 +951,6 @@
       document.getElementById('trendProdSelect').innerHTML = html;
     }
 
-    /* STREAMING_CHUNK:Rendering Tab 3 Econometric Optimal Price ($P^*$) regression... */
     function renderTab3() {
       const prod = document.getElementById('priceProdSelect').value;
       if(!prod) return;
