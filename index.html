@@ -46,12 +46,12 @@
     .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
     .dark .glass-panel { background: rgba(15, 23, 42, 0.95); border-color: rgba(51, 65, 85, 0.8); }
     
-    .stat-card { transition: transform 0.2s, box-shadow 0.2s; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
-    .stat-card:hover { transform: translateY(-2px); border-color: #3b82f6; }
+    .stat-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 12px; padding: 18px 16px; }
+    .stat-card:hover { transform: translateY(-2px); }
     
     .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; }
-    .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
-    .dark .tab-btn.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+    .tab-btn.active { color: #2563eb; background-color: #eff6ff; border-bottom-color: #2563eb; font-weight: 700; }
+    .dark .tab-btn.active { color: #60a5fa; background-color: rgba(30, 58, 138, 0.3); border-bottom-color: #60a5fa; }
   </style>
   <script>
     tailwind.config = {
@@ -171,12 +171,25 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
-      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-transparent flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- Top Menu Tabs directly matching image_8eb855.png -->
         <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
-          <button onclick="switchTab('tab1')" class="tab-btn active px-4 py-2 text-sm text-slate-500 whitespace-nowrap">📊 종합 대시보드</button>
-          <button onclick="switchTab('tab2')" class="tab-btn px-4 py-2 text-sm text-slate-500 whitespace-nowrap">🏆 베스트 상품 & 브랜드</button>
-          <button onclick="switchTab('tab3')" class="tab-btn px-4 py-2 text-sm text-slate-500 whitespace-nowrap">💰 가격 분석 (Sweet Spot)</button>
-          <button onclick="switchTab('tab4')" class="tab-btn px-4 py-2 text-sm text-slate-500 whitespace-nowrap">📦 52주 재고 예측</button>
+          <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2 rounded-t-lg">
+            <i class="fa-solid fa-chart-pie text-brand-600 dark:text-brand-400"></i>
+            <span>종합 대시보드</span>
+          </button>
+          <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2 rounded-t-lg">
+            <i class="fa-solid fa-trophy text-amber-500"></i>
+            <span>베스트 상품 & 브랜드</span>
+          </button>
+          <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2 rounded-t-lg">
+            <i class="fa-solid fa-box-archive text-emerald-500"></i>
+            <span>52주 트렌드 & 재고 예측</span>
+          </button>
+          <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2 rounded-t-lg">
+            <i class="fa-solid fa-tag text-purple-500"></i>
+            <span>가격 변동 & 적정가 분석</span>
+          </button>
         </div>
         <div class="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
           분석 데이터: <span id="filteredCount" class="text-brand-600 dark:text-brand-400 font-bold">0</span>건
@@ -194,28 +207,33 @@
           </div>
         </div>
 
-        <!-- TAB 1: 종합 대시보드 -->
+        <!-- TAB 1: 종합 대시보드 (KPI Cards updated to Theme Adaptive & 5 Specific Items) -->
         <div id="tab1" class="tab-content space-y-6">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="stat-card">
-              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">월평균 순매출액</div>
-              <div class="text-2xl font-black text-white mb-1" id="kpiSales">0원</div>
-              <div class="text-xs text-slate-400" id="kpiSalesSub">조회 기간 월평균 순매출</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-brand-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 순매출</div>
+              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1" id="kpiSales">0원</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiSalesSub">최근월 실적</div>
             </div>
-            <div class="stat-card border-t-2 border-t-emerald-500">
-              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">월평균 판매 수량</div>
-              <div class="text-2xl font-black text-white mb-1" id="kpiQty">0개</div>
-              <div class="text-xs text-slate-400" id="kpiQtySub">조회 기간 월평균 거래량</div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-emerald-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 판매 수량</div>
+              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1" id="kpiQty">0개</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiQtySub">최근월 거래량</div>
             </div>
-            <div class="stat-card border-t-2 border-t-brand-500">
-              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">실판매 평균 단가 (AOV)</div>
-              <div class="text-2xl font-black text-brand-400 mb-1" id="kpiAov">@ 0원</div>
-              <div class="text-xs text-slate-400">총매출액 ÷ 총수량</div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-blue-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">실판매 평균 단가</div>
+              <div class="text-xl sm:text-2xl font-black text-brand-600 dark:text-blue-400 mb-1" id="kpiAov">@ 0원</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">총매출액 ÷ 총수량</div>
             </div>
-            <div class="stat-card border-t-2 border-t-rose-500">
-              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">평균 환불율 (Return Rate)</div>
-              <div class="text-2xl font-black text-rose-400 mb-1" id="kpiRefund">0.0%</div>
-              <div class="text-xs text-slate-400" id="kpiRefundSub">환불액 0원 (총매출 대비)</div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-indigo-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">주간 판매 속도</div>
+              <div class="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mb-1" id="kpiWeeklySpeed">0개 / 주</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiWeeklySpeedSub">주당 평균 거래속도</div>
+            </div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-rose-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">환불율 & 건강도</div>
+              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1 flex items-center justify-between" id="kpiRefund">0.0%</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiRefundSub">환불액 0원</div>
             </div>
           </div>
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -709,15 +727,23 @@
       });
     }
 
+    // Render Tab 1: Executive Dashboard (Updated with 5 requested KPI metrics)
     function renderTab1() {
       let netSales = 0, totalQty = 0, refundAmt = 0;
-      const dailyMap = {}, chanMap = {};
-      const uniqueMonths = new Set();
+      const dailyMap = {}, chanMap = {}, monthMap = {};
+      const weekSet = new Set();
 
       for (let i = 0; i < fd.length; i++) {
         const d = fd[i];
         const dt = d.Date;
-        if (dt && dt.length >= 7) uniqueMonths.add(dt.substring(0, 7));
+        if (!dt) continue;
+        
+        const mStr = dt.substring(0, 7); // YYYY-MM
+        if (!monthMap[mStr]) monthMap[mStr] = { sales: 0, qty: 0 };
+
+        const wStr = getWeekString(dt);
+        weekSet.add(wStr);
+
         if (!dailyMap[dt]) dailyMap[dt] = { sales: 0, refund: 0 };
         
         if (d.IsRefund) {
@@ -728,24 +754,51 @@
           totalQty += d.Quantity;
           dailyMap[dt].sales += d.Revenue;
           chanMap[d.Channel] = (chanMap[d.Channel] || 0) + d.Revenue;
+
+          monthMap[mStr].sales += d.Revenue;
+          monthMap[mStr].qty += d.Quantity;
         }
       }
 
-      const mCount = Math.max(1, uniqueMonths.size);
-      const monthlyAvgSales = Math.round(netSales / mCount);
-      const monthlyAvgQty = Math.round(totalQty / mCount);
+      const sortedMonths = Object.keys(monthMap).sort();
+      const latestMonth = sortedMonths.length > 0 ? sortedMonths[sortedMonths.length - 1] : '';
+      const recentMonthSales = latestMonth ? monthMap[latestMonth].sales : 0;
+      const recentMonthQty = latestMonth ? monthMap[latestMonth].qty : 0;
+
+      const [lY, lM] = latestMonth ? latestMonth.split('-') : ['', ''];
+      const monthLabel = latestMonth ? `${lY}년 ${parseInt(lM)}월` : '최근월';
+
       const aov = totalQty > 0 ? Math.round(netSales / totalQty) : 0;
+      const totalWeeks = Math.max(1, weekSet.size);
+      const weeklySpeed = Math.round(totalQty / totalWeeks);
       const refRate = netSales > 0 ? (refundAmt / netSales * 100) : 0;
 
-      document.getElementById('kpiSales').textContent = monthlyAvgSales.toLocaleString() + '원';
-      document.getElementById('kpiSalesSub').textContent = `조회 기간 월평균 순매출 (총 ${mCount}개월)`;
-      
-      document.getElementById('kpiQty').textContent = monthlyAvgQty.toLocaleString() + '개';
-      document.getElementById('kpiQtySub').textContent = `조회 기간 월평균 거래량`;
-      
+      let healthStatus = '양호';
+      let healthClass = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800';
+      if (refRate > 10) {
+        healthStatus = '위험';
+        healthClass = 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800';
+      } else if (refRate > 5) {
+        healthStatus = '주의';
+        healthClass = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800';
+      }
+
+      document.getElementById('kpiSales').textContent = recentMonthSales.toLocaleString() + '원';
+      document.getElementById('kpiSalesSub').textContent = `${monthLabel} 순매출액`;
+
+      document.getElementById('kpiQty').textContent = recentMonthQty.toLocaleString() + '개';
+      document.getElementById('kpiQtySub').textContent = `${monthLabel} 판매 수량`;
+
       document.getElementById('kpiAov').textContent = '@ ' + aov.toLocaleString() + '원';
-      document.getElementById('kpiRefund').textContent = refRate.toFixed(1) + '%';
-      document.getElementById('kpiRefundSub').textContent = `환불액 ${Math.round(refundAmt).toLocaleString()}원 (총매출 대비)`;
+
+      document.getElementById('kpiWeeklySpeed').textContent = weeklySpeed.toLocaleString() + '개 / 주';
+      document.getElementById('kpiWeeklySpeedSub').textContent = `총 ${totalWeeks}개 주차 평균 속도`;
+
+      document.getElementById('kpiRefund').innerHTML = `
+        <span>${refRate.toFixed(1)}%</span>
+        <span class="text-xs px-2 py-0.5 rounded-md border font-bold ${healthClass}">${healthStatus}</span>
+      `;
+      document.getElementById('kpiRefundSub').textContent = `환불액 ${Math.round(refundAmt).toLocaleString()}원`;
 
       const dates = Object.keys(dailyMap).sort();
       const sVals = dates.map(dt => dailyMap[dt].sales);
@@ -758,8 +811,7 @@
         { x: dates, y: rVals, name: '환불액', type: 'bar', marker: { color: '#ef4444' } }
       ], {
         barmode: 'stack', margin: { t: 10, l: 40, r: 10, b: 30 },
-        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: fontCol },
-        xaxis: { tickformat: '%Y-%m-%d' }
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: fontCol }
       }, { displayModeBar: false, responsive: true });
 
       const cKeys = Object.keys(chanMap).sort((a,b)=>chanMap[b]-chanMap[a]);
@@ -818,6 +870,7 @@
       document.getElementById('trendProdSelect').innerHTML = html;
     }
 
+    // Render Tab 3: Price Analysis & Sweet Spot
     function renderTab3() {
       const prod = document.getElementById('priceProdSelect').value;
       if(!prod) return;
@@ -899,7 +952,6 @@
         marker: { size: qtys, sizemode: 'area', sizeref: 2, sizemin: 4, color: '#3b82f6', opacity: 0.6 }
       }], {
         margin: { t: 20, l: 50, r: 20, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: isDark ? '#94a3b8' : '#64748b' },
-        xaxis: { tickformat: '%Y-%m-%d' },
         shapes: [
           { type: 'line', y0: bpVol, y1: bpVol, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#10b981', dash: 'dash', width: 2 } },
           { type: 'line', y0: bpRev, y1: bpRev, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#f59e0b', dash: 'dot', width: 2 } },
@@ -916,6 +968,7 @@
        return `${y}년<br>${parseInt(m)}월 ${wNum}주차`;
     }
 
+    // Render Tab 4: 52-Week Trend & Stock Forecast
     function renderTab4() {
       const prod = document.getElementById('trendProdSelect').value;
       if(!prod) return;
@@ -1030,11 +1083,19 @@
       }, { displayModeBar: false, responsive: true });
     }
 
-    function switchTab(t) {
+    function switchTab(t, btn) {
       document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(e => {
+        e.classList.remove('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-bold', 'text-brand-600', 'dark:text-brand-400');
+        e.classList.add('text-slate-600', 'dark:text-slate-300', 'font-medium');
+      });
+      
       document.getElementById(t).classList.remove('hidden');
-      event.currentTarget.classList.add('active');
+      const targetBtn = btn || event.currentTarget;
+      if (targetBtn) {
+        targetBtn.classList.add('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-bold', 'text-brand-600', 'dark:text-brand-400');
+        targetBtn.classList.remove('text-slate-600', 'dark:text-slate-300', 'font-medium');
+      }
     }
 
     window.onload = async () => { await loadData(); };
