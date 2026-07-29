@@ -375,6 +375,8 @@
     const clothSizeRegex = /XS|S|M|L|XL|XXL|FREE/gi;
     const koreanColorRegex = /블랙|화이트|네이비|그레이|베이지|레드|블루|그린|옐로우|핑크|퍼플|브라운|카키|아이보리|와인/g;
 
+    const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
     function cleanOptionString(opt, prod) {
       let sOpt = String(opt || '').trim();
       let sProd = String(prod || '').trim();
@@ -423,11 +425,9 @@
     }
 
     let db = null;
-    const DB_NAME = 'O2O_Enterprise_DB_v5'; 
+    const DB_NAME = 'O2O_Enterprise_DB_v8'; 
     const STORE_NAME = 'sales_data';
     const STORE_MAPPING = { 7204:'중계점', 8206:'강남점', 8224:'송파점', 8230:'전주점', 8501:'쇼핑점' };
-    
-    const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
     function getDB() {
       return new Promise((resolve) => {
@@ -441,9 +441,9 @@
         };
 
         const timer = setTimeout(() => {
-          console.warn("DB connection timed out. Using fallback.");
+          console.warn("DB connection timed out. Proceeding in-memory.");
           done(null);
-        }, 2500);
+        }, 1500);
 
         try {
           if (!window.indexedDB) { done(null); return; }
@@ -556,111 +556,11 @@
       return null;
     };
 
-    function createWorker() {
-      const workerCode = `
-        const fastNum = ${fastNumHelper.toString()};
-        const parseDateStr = ${parseDateStrHelper.toString()};
-
-        self.onmessage = function(e) {
-          const { fileBuffer, applyIqr } = e.data;
-          try {
-            importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
-          } catch(err) {
-            self.postMessage({ result: null });
-            return;
-          }
-          
-          let wb;
-          try {
-            wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellText: false });
-          } catch(err) { self.postMessage({ result: null }); return; }
-          
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          if (!ws) { self.postMessage({ result: [] }); return; }
-
-          let rows = null;
-          if (ws['!data'] && Array.isArray(ws['!data']) && ws['!data'].length > 0) {
-             rows = ws['!data'].map(r => (r || []).map(c => (c && c.v !== undefined && c.v !== null) ? c.v : null));
-          } else {
-             rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
-          }
-
-          if(!rows || rows.length < 2) { self.postMessage({ result: [] }); return; }
-
-          let headerRowIdx = -1;
-          let hMap = { date: -1, revenue: -1, quantity: -1, brand: -1, product: -1, option: -1, channel: -1, store: -1 };
-
-          for (let r = 0; r < Math.min(rows.length, 25); r++) {
-            if (!rows[r] || !Array.isArray(rows[r])) continue;
-            const rowCells = rows[r].map(c => (c !== null && c !== undefined) ? String(c).replace(/\\s/g,'').toLowerCase() : '');
-            
-            const dIdx = rowCells.findIndex(h => h.includes('결제일자') || h.includes('출고확정일') || h.includes('확정일') || h.includes('출고일자') || h.includes('일자') || h.includes('날짜') || h.includes('date'));
-            const rIdx = rowCells.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액') || h.includes('매출') || h.includes('금액') || h.includes('amount') || h.includes('revenue'));
-            const qIdx = rowCells.findIndex(h => h.includes('오더수량') || h.includes('주문수량') || h.includes('실주문') || h.includes('수량') || h.includes('qty') || h.includes('quantity'));
-
-            if (dIdx !== -1 && (rIdx !== -1 || qIdx !== -1)) {
-              headerRowIdx = r;
-              hMap.date = dIdx;
-              hMap.revenue = rIdx;
-              hMap.quantity = qIdx;
-              hMap.brand = rowCells.findIndex(h => h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드') || h.includes('brand'));
-              hMap.product = rowCells.findIndex(h => h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명') || h.includes('상품') || h.includes('product'));
-              hMap.option = rowCells.findIndex(h => h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명') || h.includes('옵션') || h.includes('option'));
-              hMap.channel = rowCells.findIndex(h => h.includes('채널명') || h.includes('유통채널') || h.includes('채널') || h.includes('channel'));
-              hMap.store = rowCells.findIndex(h => h.includes('플랜트') || h.includes('점포') || h.includes('지점') || h.includes('매장') || h.includes('store'));
-              break;
-            }
-          }
-
-          if (headerRowIdx === -1 || hMap.date === -1) {
-             self.postMessage({ result: [] }); return;
-          }
-
-          let parsed = [];
-          for (let i = headerRowIdx + 1; i < rows.length; i++) {
-             const row = rows[i];
-             if(!row || !Array.isArray(row)) continue;
-             
-             const v = (idx) => (idx !== -1 && row[idx] !== undefined && row[idx] !== null) ? row[idx] : null;
-             
-             const dateStr = parseDateStr(v(hMap.date));
-             const revenue = fastNum(v(hMap.revenue));
-             const quantity = fastNum(v(hMap.quantity));
-             
-             if (!dateStr || (revenue === 0 && quantity === 0)) continue;
-
-             const brand = String(v(hMap.brand) || '기타 브랜드');
-             const product = String(v(hMap.product) || '기타 상품');
-             const option = String(v(hMap.option) || '기본');
-             const channel = String(v(hMap.channel) || '본사채널');
-             const storeVal = v(hMap.store);
-             const store = storeVal ? String(storeVal) : '0';
-
-             const isRefund = (revenue < 0 || quantity < 0);
-             const unitPrice = (!isRefund && quantity > 0) ? (revenue / quantity) : 0;
-
-             parsed.push({ Date: dateStr, Revenue: revenue, Quantity: quantity, Brand: brand, ProductName: product, Option: option, Channel: channel, StoreCode: store, IsRefund: isRefund, UnitPrice: unitPrice });
-          }
-
-          if (applyIqr && parsed.length > 0) {
-             let valid = parsed.filter(d => !d.IsRefund && d.UnitPrice > 0).map(d => d.UnitPrice).sort((a,b)=>a-b);
-             if (valid.length > 4) {
-               const q1 = valid[Math.floor(valid.length * 0.25)], q3 = valid[Math.floor(valid.length * 0.75)], iqr = q3 - q1;
-               const lb = q1 - 1.5 * iqr, ub = q3 + 1.5 * iqr;
-               parsed = parsed.filter(d => d.IsRefund || (d.UnitPrice >= lb && d.UnitPrice <= ub));
-             }
-          }
-          self.postMessage({ result: parsed });
-        };
-      `;
-      const blob = new Blob([workerCode], {type: 'application/javascript'});
-      return new Worker(URL.createObjectURL(blob));
-    }
-
-    async function parseFileMainThreadAsync(fileBuffer, applyIqr) {
+    async function parseFileAsync(fileBuffer, applyIqr) {
       try {
         if (typeof XLSX === 'undefined') return [];
-        const wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellText: false });
+        // Bare minimum parsing flags for maximum speed
+        const wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellHTML: false, cellText: false, cellDates: false });
         const ws = wb.Sheets[wb.SheetNames[0]];
         if (!ws) return [];
 
@@ -702,7 +602,7 @@
 
         let parsed = [];
         for (let i = headerRowIdx + 1; i < rows.length; i++) {
-           if (i % 2000 === 0) await yieldToMain();
+           if (i % 2000 === 0) await yieldToMain(); // Micro-yield to keep UI 100% smooth
            const row = rows[i];
            if(!row || !Array.isArray(row)) continue;
            
@@ -746,7 +646,7 @@
       const database = await getDB();
       if (!database) return;
       
-      const BATCH_SIZE = 1500;
+      const BATCH_SIZE = 2000;
       for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
         const subChunk = chunk.slice(i, i + BATCH_SIZE);
         await new Promise((res) => {
@@ -772,6 +672,7 @@
       
       const applyIqr = document.getElementById('applyIqr').checked;
       showLoading(`[0 / ${files.length}] 파싱 및 병합 준비 중...`);
+      await yieldToMain();
       
       const newlyParsedRecords = [];
 
@@ -785,37 +686,17 @@
           let parsedData = null;
           try {
             const buffer = await file.arrayBuffer();
-            parsedData = await new Promise((resolve) => {
-              const pTimer = setTimeout(() => resolve(null), 15000);
-              try {
-                const worker = createWorker();
-                worker.onmessage = (msg) => {
-                  clearTimeout(pTimer);
-                  worker.terminate();
-                  resolve(msg.data ? msg.data.result : null);
-                };
-                worker.onerror = () => {
-                  clearTimeout(pTimer);
-                  worker.terminate();
-                  resolve(null);
-                };
-                worker.postMessage({ fileBuffer: buffer, applyIqr });
-              } catch(e) { clearTimeout(pTimer); resolve(null); }
-            });
-
-            if (!parsedData || !Array.isArray(parsedData) || parsedData.length === 0) {
-              const fallbackBuffer = await file.arrayBuffer();
-              parsedData = await parseFileMainThreadAsync(fallbackBuffer, applyIqr);
-            }
+            parsedData = await parseFileAsync(buffer, applyIqr);
           } catch(fileErr) {
             console.error("File Buffer Error:", fileErr);
           }
 
           if (parsedData && parsedData.length > 0) {
             newlyParsedRecords.push(...parsedData);
-            saveToDBDirectAsync(parsedData);
+            saveToDBDirectAsync(parsedData); // Non-blocking background save
           }
           parsedData = null;
+          await yieldToMain();
         }
 
         loadingText.textContent = "데이터 인덱싱 완료! 화면 갱신 중...";
@@ -829,6 +710,7 @@
         document.getElementById('filterEndDate').value = '';
 
         populateFilterOptions();
+        await yieldToMain();
         applyFilters();
       } catch (err) {
         console.error("Upload Error:", err);
@@ -847,7 +729,7 @@
            console.warn("DB Deadlock fallback triggered.");
            hideLoading();
         }
-      }, 3000);
+      }, 2000);
 
       try {
         const database = await getDB();
@@ -871,6 +753,7 @@
         
         document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
         populateFilterOptions();
+        await yieldToMain();
         applyFilters(); 
       } catch (err) {
         console.error("Load Data Error:", err);
@@ -908,7 +791,7 @@
       applyFilters();
     }
 
-    function applyFilters() {
+    async function applyFilters() {
       if (!globalData || !globalData.length) {
         document.getElementById('emptyState').classList.remove('hidden');
         document.getElementById('filteredCount').textContent = '0';
@@ -938,10 +821,16 @@
           document.getElementById('emptyState').classList.remove('hidden');
         } else {
           document.getElementById('emptyState').classList.add('hidden');
+          
+          // Yield between heavy rendering micro-tasks to guarantee zero responsiveness popups
           renderTab1();
+          await yieldToMain();
           renderTab2();
+          await yieldToMain();
           populateProductDropdowns();
+          await yieldToMain();
           renderTab3();
+          await yieldToMain();
           renderTab4();
         }
       } catch (err) {
