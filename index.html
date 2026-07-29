@@ -60,6 +60,9 @@
   <header class="sticky top-0 z-40 glass-panel shadow-sm">
     <div class="px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
+        <button id="sidebarToggle" onclick="toggleSidebar()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center mr-1" aria-label="Toggle Sidebar" title="사이드바 접기/펼치기">
+          <i class="fa-solid fa-bars text-sm"></i>
+        </button>
         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
           <i class="fa-solid fa-chart-line text-sm"></i>
         </div>
@@ -94,7 +97,7 @@
 
   <div class="flex-1 flex overflow-hidden">
     <!-- Sidebar / Data Control Center -->
-    <aside class="w-72 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-64px)] overflow-y-auto z-10 hidden md:flex">
+    <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-64px)] overflow-y-auto z-10 hidden md:flex transition-all duration-300 ease-in-out">
       <div class="p-5 space-y-6">
         <div>
           <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">🎛️ Data Control Center</h2>
@@ -1053,6 +1056,23 @@
       document.documentElement.classList.toggle('dark');
       applyFilters();
     });
+
+    // Sidebar Toggle Function
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      if (!sb) return;
+      if (window.innerWidth < 768) {
+        if (sb.classList.contains('hidden')) {
+          sb.classList.remove('hidden');
+          sb.classList.add('flex', 'fixed', 'top-16', 'left-0', 'shadow-2xl', 'z-50');
+        } else {
+          sb.classList.add('hidden');
+          sb.classList.remove('flex', 'fixed', 'top-16', 'left-0', 'shadow-2xl', 'z-50');
+        }
+      } else {
+        sb.classList.toggle('-ml-72');
+      }
+    }
   </script>
 </body>
 </html>
