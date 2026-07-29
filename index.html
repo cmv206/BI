@@ -426,10 +426,8 @@
         const req = indexedDB.open(DB_NAME, 3);
         req.onupgradeneeded = (e) => {
           let database = e.target.result;
+          // 기존 스토어가 존재할 때 deleteObjectStore 로 삭제하던 구문을 제거하여 데이터 초기화 방지
           if (!database.objectStoreNames.contains(STORE_NAME)) {
-            database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-          } else {
-            database.deleteObjectStore(STORE_NAME);
             database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
           }
         };
