@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -49,8 +48,9 @@
     .stat-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 12px; padding: 18px 16px; }
     .stat-card:hover { transform: translateY(-2px); }
     
+    /* 탭 스타일링 최적화 (image_8eb855.png 스타일 반영) */
     .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; }
-    .tab-btn.active { color: #2563eb; background-color: #eff6ff; border-bottom-color: #2563eb; font-weight: 700; }
+    .tab-btn.active { color: #2563eb; background-color: #eff6ff; border-bottom-color: #2563eb; font-weight: 700; border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; }
     .dark .tab-btn.active { color: #60a5fa; background-color: rgba(30, 58, 138, 0.3); border-bottom-color: #60a5fa; }
   </style>
   <script>
@@ -101,7 +101,7 @@
     </div>
   </div>
 
-  <!-- High-Contrast Loading Overlay -->
+  <!-- Loading Overlay -->
   <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 transition-opacity">
     <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-brand-500 mb-4"></div>
     <div id="loadingText" class="text-white font-bold text-base text-center tracking-wide drop-shadow">데이터베이스 분석 중...</div>
@@ -174,22 +174,22 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
-      <!-- Top Navigation Menu -->
+      <!-- Top Navigation Menu (Image match + Tab Order Fix) -->
       <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
-          <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2 rounded-t-lg">
-            <i class="fa-solid fa-chart-pie text-brand-600 dark:text-brand-400"></i>
+          <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-brand-600"></i>
             <span>종합 대시보드</span>
           </button>
-          <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2 rounded-t-lg">
+          <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-trophy text-amber-500"></i>
             <span>베스트 상품 & 브랜드</span>
           </button>
-          <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2 rounded-t-lg">
+          <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-box-archive text-emerald-500"></i>
             <span>52주 트렌드 & 재고 예측</span>
           </button>
-          <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2 rounded-t-lg">
+          <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-tag text-purple-500"></i>
             <span>가격 변동 & 적정가 분석</span>
           </button>
@@ -321,7 +321,7 @@
           </div>
         </div>
 
-        <!-- TAB 4: 가격 분석 (Sweet Spot & Optimal Price) -->
+        <!-- TAB 4: 가격 변동 & 적정가 분석 (Sweet Spot) -->
         <div id="tab4" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
             <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 경제학적 최적 가격 (Optimal Price) 분석</h3>
@@ -400,7 +400,7 @@
       }
     }
 
-    // Modal & Loading Overlay Control with Safety Guards
+    // Modal & Safety Overlay Control
     const clearModal = document.getElementById('clearModal');
     function showClearModal() { clearModal.classList.remove('hidden'); }
     function hideClearModal() { clearModal.classList.add('hidden'); }
@@ -415,30 +415,30 @@
       loadingProgress.style.width = '10%';
       loadingOverlay.classList.remove('hidden');
       
+      // 최후의 안전장치: 에러로 로딩이 멈추더라도 15초 뒤엔 무조건 화면 개방
       if (loadingTimer) clearTimeout(loadingTimer);
-      // Safety timeout to guarantee overlay closes if something hangs
-      loadingTimer = setTimeout(() => {
-        hideLoading();
-      }, 15000);
+      loadingTimer = setTimeout(() => { hideLoading(); }, 15000);
     }
+    
     function hideLoading() { 
       if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
       loadingOverlay.classList.add('hidden'); 
       setTimeout(() => { loadingProgress.style.width = '0%'; }, 300);
     }
 
-    // IndexedDB Management (Safe Non-locking)
     let db = null;
-    const DB_NAME = 'O2O_Enterprise_DB';
+    // [중요 버그 픽스] 이전의 꼬인 버전을 완전히 회피하기 위해 네임스페이스를 v2로 갱신 (무한 로딩 근본 해결)
+    const DB_NAME = 'O2O_Enterprise_DB_v2'; 
     const STORE_NAME = 'sales_data';
     const STORE_MAPPING = { 7204:'중계점', 8206:'강남점', 8224:'송파점', 8230:'전주점', 8501:'쇼핑점' };
     
     function initDB() {
       return new Promise((resolve, reject) => {
-        // [핵심 해결] 3초 이상 DB가 응답하지 않으면 무한 로딩을 방지하고 강제로 에러 처리(로딩 해제)
+        // DB 연결 중 교착 상태 발생 시 3초 타임아웃 강제 에러 처리
         const timeoutId = setTimeout(() => { reject(new Error("DB Connection Timeout")); }, 3000);
+        
         try {
-          const req = indexedDB.open(DB_NAME, 5); // 버전 업그레이드로 꼬인 스키마 강제 초기화
+          const req = indexedDB.open(DB_NAME, 1);
           req.onupgradeneeded = (e) => {
             let database = e.target.result;
             if (!database.objectStoreNames.contains(STORE_NAME)) {
@@ -448,12 +448,11 @@
           req.onsuccess = (e) => { 
             clearTimeout(timeoutId);
             db = e.target.result; 
-            // 탭 여러개 열림 방지: 다른 탭에서 업데이트 시도 시 내 연결을 즉시 끊어줌
             db.onversionchange = () => { db.close(); db = null; };
             resolve(db); 
           };
           req.onerror = (e) => { clearTimeout(timeoutId); reject(e); };
-          req.onblocked = (e) => { console.warn("DB Blocked by another tab"); };
+          req.onblocked = (e) => { clearTimeout(timeoutId); reject(new Error("DB Blocked by another tab")); };
         } catch(err) {
           clearTimeout(timeoutId);
           reject(err);
@@ -470,14 +469,12 @@
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const req = tx.objectStore(STORE_NAME).clear();
           req.onsuccess = res; req.onerror = rej;
-          tx.onerror = rej;
-          tx.onabort = rej;
+          tx.onerror = rej; tx.onabort = rej;
         });
       } catch (err) {
-        console.error("DB Reset Error, forcing state reset:", err);
+        console.error("DB Reset Error:", err);
       } finally {
-        globalData = []; 
-        fd = [];
+        globalData = []; fd = [];
         document.getElementById('dbCount').textContent = "0 건";
         document.getElementById('fileUpload').value = "";
         document.getElementById('filteredCount').textContent = "0";
@@ -487,11 +484,9 @@
       }
     }
 
-    // Global State
     let globalData = []; 
     let fd = []; 
 
-    // Web Worker Multi-thread Parser Script
     function createWorker() {
       const workerCode = `
         const fastNum = (v) => {
@@ -544,7 +539,6 @@
             const d = String(pd.getDate()).padStart(2, '0');
             return \`\${y}-\${m}-\${d}\`;
           }
-
           return null;
         };
 
@@ -648,21 +642,13 @@
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             for (let i = 0; i < chunk.length; i++) {
-              try {
-                const item = chunk[i];
-                delete item.id;
-                store.put(item);
-              } catch (e) { console.error("Item put error:", e); }
+              try { const item = chunk[i]; delete item.id; store.put(item); } catch (e) {}
             }
             tx.oncomplete = () => { chunk.length = 0; res(); };
-            tx.onerror = (err) => { console.error("Tx Save Error:", err); res(); };
-            tx.onabort = () => { res(); };
-          } catch(err) {
-            console.error("Tx Creation Error:", err);
-            res();
-          }
+            tx.onerror = () => res(); tx.onabort = () => res();
+          } catch(err) { res(); }
         });
-      }).catch(err => console.error("Chunk save error:", err));
+      });
       return saveQueue;
     }
 
@@ -684,7 +670,6 @@
               try {
                 const buffer = await file.arrayBuffer();
                 const worker = createWorker();
-
                 worker.onmessage = async (msg) => {
                   try {
                     const data = msg.data.result;
@@ -699,13 +684,9 @@
                 };
                 worker.onerror = () => { worker.terminate(); resolve(); };
                 worker.postMessage({ fileBuffer: buffer, applyIqr }, [buffer]);
-              } catch (fileErr) {
-                console.error("File Read Error:", fileErr);
-                resolve();
-              }
+              } catch (fileErr) { resolve(); }
             });
           });
-
           await Promise.all(batchPromises);
         }
         await saveQueue;
@@ -727,27 +708,31 @@
       showLoading("통합 데이터베이스 조회 중...");
       try {
         if (!db) await initDB();
-        globalData = await new Promise((res, rej) => {
-          try {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const req = store.getAll();
-            req.onsuccess = () => res(req.result || []);
-            req.onerror = rej;
-          } catch (e) { rej(e); } // [핵심 해결] DB 조회 중 에러 발생 시 무한 로딩 방지
-        });
+        
+        // 무한 로딩 방지 핵심 코드 (Promise.race 3초 타임아웃)
+        globalData = await Promise.race([
+          new Promise((res, rej) => {
+            try {
+              const tx = db.transaction(STORE_NAME, 'readonly');
+              const store = tx.objectStore(STORE_NAME);
+              const req = store.getAll();
+              req.onsuccess = () => res(req.result || []);
+              req.onerror = rej;
+            } catch (e) { rej(e); }
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("DB Read Timeout")), 3000))
+        ]);
 
         if (!globalData) globalData = [];
-        // 날짜가 빈 값이어도 정렬 시 스크립트가 터지지 않도록 방어 로직 추가
         globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
         
         document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
         populateFilterOptions();
-        applyFilters();
+        applyFilters(); 
       } catch (err) {
-        console.error("Load Data Error:", err);
-      } finally {
-        hideLoading(); // 어떤 에러가 발생해도 무조건 로딩 오버레이를 해제
+        console.error("Load Data Error (Timeout or DB lock):", err);
+        // 에러 시 무조건 로딩 해제 (무한로딩 완벽 차단)
+        hideLoading();
       }
     }
 
@@ -782,7 +767,7 @@
       if (!globalData || !globalData.length) {
         document.getElementById('emptyState').classList.remove('hidden');
         document.getElementById('filteredCount').textContent = '0';
-        hideLoading();
+        hideLoading(); // 중요! 필터 적용 시에도 확실히 해제
         return;
       }
       showLoading("대시보드 실시간 집계 중...");
@@ -933,7 +918,8 @@
           const cVals = cKeys.map(k => chanMap[k]);
           Plotly.react('chartChannel', [{
             labels: cKeys, values: cVals, type: 'pie', hole: 0.5,
-            marker: { colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'] }
+            marker: { colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'] },
+            textinfo: 'label+percent'
           }], { margin: { t: 10, l: 10, r: 10, b: 10 }, paper_bgcolor: 'transparent', font: { color: fontCol } }, { displayModeBar: false, responsive: true });
         } catch (e) { console.error("Plotly Tab1 Error:", e); }
       }
@@ -986,8 +972,8 @@
       fd.forEach(d => { if(!d.IsRefund) map[d.ProductName] = (map[d.ProductName] || 0) + d.Quantity; });
       const tops = Object.keys(map).sort((a,b)=>map[b]-map[a]).slice(0, 500);
       const html = tops.map(p => `<option value="${String(p).replace(/"/g, '&quot;')}">${p}</option>`).join('');
-      document.getElementById('trendProdSelect').innerHTML = html;
-      document.getElementById('priceProdSelect').innerHTML = html;
+      document.getElementById('trendProdSelect').innerHTML = html; // Tab3
+      document.getElementById('priceProdSelect').innerHTML = html; // Tab4
     }
 
     function getWeekString(dateStr) {
@@ -1084,6 +1070,7 @@
           }
         }
 
+        // 차주(1주일 분량) 정밀 예측 수량 산출
         recStock = Math.round(baseWkAvg * seasonalityIndex * trendMomentum * 1.10);
       }
 
@@ -1124,7 +1111,7 @@
       }
     }
 
-    // TAB 4: 가격 분석 (Sweet Spot & Optimal Price)
+    // TAB 4: 가격 변동 & 적정가 분석
     function renderTab4() {
       const prodSelect = document.getElementById('priceProdSelect');
       if (!prodSelect) return;
