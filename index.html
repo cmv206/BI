@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -48,7 +49,6 @@
     .stat-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 12px; padding: 18px 16px; }
     .stat-card:hover { transform: translateY(-2px); }
     
-    /* 탭 스타일링 최적화 (image_8eb855.png 스타일 반영) */
     .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; }
     .tab-btn.active { color: #2563eb; background-color: #eff6ff; border-bottom-color: #2563eb; font-weight: 700; border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; }
     .dark .tab-btn.active { color: #60a5fa; background-color: rgba(30, 58, 138, 0.3); border-bottom-color: #60a5fa; }
@@ -174,7 +174,7 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
-      <!-- Top Navigation Menu (Image match + Tab Order Fix) -->
+      <!-- Top Navigation Menu -->
       <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
           <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
@@ -415,9 +415,8 @@
       loadingProgress.style.width = '10%';
       loadingOverlay.classList.remove('hidden');
       
-      // 최후의 안전장치: 에러로 로딩이 멈추더라도 15초 뒤엔 무조건 화면 개방
       if (loadingTimer) clearTimeout(loadingTimer);
-      loadingTimer = setTimeout(() => { hideLoading(); }, 15000);
+      loadingTimer = setTimeout(() => { hideLoading(); }, 12000);
     }
     
     function hideLoading() { 
@@ -426,17 +425,24 @@
       setTimeout(() => { loadingProgress.style.width = '0%'; }, 300);
     }
 
+    // High Reliability IndexedDB Engine
     let db = null;
-    // [중요 버그 픽스] 이전의 꼬인 버전을 완전히 회피하기 위해 네임스페이스를 v2로 갱신 (무한 로딩 근본 해결)
-    const DB_NAME = 'O2O_Enterprise_DB_v2'; 
+    const DB_NAME = 'O2O_Enterprise_DB_v3'; 
     const STORE_NAME = 'sales_data';
     const STORE_MAPPING = { 7204:'중계점', 8206:'강남점', 8224:'송파점', 8230:'전주점', 8501:'쇼핑점' };
     
-    function initDB() {
-      return new Promise((resolve, reject) => {
-        // DB 연결 중 교착 상태 발생 시 3초 타임아웃 강제 에러 처리
-        const timeoutId = setTimeout(() => { reject(new Error("DB Connection Timeout")); }, 3000);
-        
+    function getDB() {
+      return new Promise((resolve) => {
+        if (db) return resolve(db);
+        let resolved = false;
+        const timer = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            console.warn("DB Connection Timeout, using memory fallback");
+            resolve(null);
+          }
+        }, 2500);
+
         try {
           const req = indexedDB.open(DB_NAME, 1);
           req.onupgradeneeded = (e) => {
@@ -445,17 +451,29 @@
               database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
             }
           };
-          req.onsuccess = (e) => { 
-            clearTimeout(timeoutId);
-            db = e.target.result; 
-            db.onversionchange = () => { db.close(); db = null; };
-            resolve(db); 
+          req.onsuccess = (e) => {
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timer);
+              db = e.target.result;
+              db.onversionchange = () => { try { db.close(); } catch(err){} db = null; };
+              resolve(db);
+            }
           };
-          req.onerror = (e) => { clearTimeout(timeoutId); reject(e); };
-          req.onblocked = (e) => { clearTimeout(timeoutId); reject(new Error("DB Blocked by another tab")); };
+          req.onerror = req.onblocked = (e) => {
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timer);
+              console.warn("DB Connection Error or Blocked:", e);
+              resolve(null);
+            }
+          };
         } catch(err) {
-          clearTimeout(timeoutId);
-          reject(err);
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timer);
+            resolve(null);
+          }
         }
       });
     }
@@ -464,13 +482,16 @@
       hideClearModal();
       showLoading("데이터베이스 완전 초기화 중...");
       try {
-        if (!db) await initDB();
-        await new Promise((res, rej) => {
-          const tx = db.transaction(STORE_NAME, 'readwrite');
-          const req = tx.objectStore(STORE_NAME).clear();
-          req.onsuccess = res; req.onerror = rej;
-          tx.onerror = rej; tx.onabort = rej;
-        });
+        const database = await getDB();
+        if (database) {
+          await new Promise((res) => {
+            try {
+              const tx = database.transaction(STORE_NAME, 'readwrite');
+              const req = tx.objectStore(STORE_NAME).clear();
+              req.onsuccess = req.onerror = req.onabort = res;
+            } catch(e) { res(); }
+          });
+        }
       } catch (err) {
         console.error("DB Reset Error:", err);
       } finally {
@@ -487,69 +508,78 @@
     let globalData = []; 
     let fd = []; 
 
+    // Helper functions for Main Thread parsing fallback
+    const fastNumHelper = (v) => {
+      if (typeof v === 'number') return v;
+      if (!v) return 0;
+      let s = String(v).trim();
+      if (!s) return 0;
+      const isNeg = s.includes('-') || s.startsWith('(') || s.includes('△') || s.includes('▲');
+      const str = s.replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(str);
+      if (isNaN(parsed)) return 0;
+      return isNeg ? -parsed : parsed;
+    };
+
+    const parseDateStrHelper = (cell) => {
+      if (cell === null || cell === undefined || cell === '') return null;
+      if (typeof cell === 'number') {
+        if (cell >= 20000101 && cell <= 20991231) {
+          const s = String(cell);
+          return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+        }
+        if (cell > 30000 && cell < 60000) {
+          const date = new Date(Math.round((cell - 25569) * 86400 * 1000));
+          const y = date.getUTCFullYear();
+          const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(date.getUTCDate()).padStart(2, '0');
+          return y + '-' + m + '-' + d;
+        }
+      }
+
+      const s = String(cell).trim();
+      if (!s) return null;
+
+      if (/^[0-9]{8}$/.test(s)) {
+        return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+      }
+
+      const match = s.match(/^([0-9]{4})[-/.]([0-9]{1,2})[-/.]([0-9]{1,2})/);
+      if (match) {
+        const y = match[1];
+        const m = match[2].padStart(2, '0');
+        const d = match[3].padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      const pd = new Date(s);
+      if (!isNaN(pd.getTime())) {
+        const y = pd.getFullYear();
+        const m = String(pd.getMonth() + 1).padStart(2, '0');
+        const d = String(pd.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      return null;
+    };
+
     function createWorker() {
       const workerCode = `
-        const fastNum = (v) => {
-          if (typeof v === 'number') return v;
-          if (!v) return 0;
-          let s = String(v).trim();
-          if (!s) return 0;
-          const isNeg = s.includes('-') || s.startsWith('(') || s.includes('△') || s.includes('▲');
-          const str = s.replace(/[^0-9.]/g, '');
-          const parsed = parseFloat(str);
-          if (isNaN(parsed)) return 0;
-          return isNeg ? -parsed : parsed;
-        };
-
-        const parseDateStr = (cell) => {
-          if (cell === null || cell === undefined || cell === '') return null;
-          if (typeof cell === 'number') {
-            if (cell >= 20000101 && cell <= 20991231) {
-              const s = String(cell);
-              return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
-            }
-            if (cell > 30000 && cell < 60000) {
-              const date = new Date(Math.round((cell - 25569) * 86400 * 1000));
-              const y = date.getUTCFullYear();
-              const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-              const d = String(date.getUTCDate()).padStart(2, '0');
-              return y + '-' + m + '-' + d;
-            }
-          }
-
-          const s = String(cell).trim();
-          if (!s) return null;
-
-          if (/^[0-9]{8}$/.test(s)) {
-            return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
-          }
-
-          const match = s.match(/^([0-9]{4})[-/.]([0-9]{1,2})[-/.]([0-9]{1,2})/);
-          if (match) {
-            const y = match[1];
-            const m = match[2].padStart(2, '0');
-            const d = match[3].padStart(2, '0');
-            return \`\${y}-\${m}-\${d}\`;
-          }
-
-          const pd = new Date(s);
-          if (!isNaN(pd.getTime())) {
-            const y = pd.getFullYear();
-            const m = String(pd.getMonth() + 1).padStart(2, '0');
-            const d = String(pd.getDate()).padStart(2, '0');
-            return \`\${y}-\${m}-\${d}\`;
-          }
-          return null;
-        };
+        const fastNum = ${fastNumHelper.toString()};
+        const parseDateStr = ${parseDateStrHelper.toString()};
 
         self.onmessage = function(e) {
           const { fileBuffer, applyIqr } = e.data;
-          importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+          try {
+            importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+          } catch(err) {
+            self.postMessage({ result: null, error: 'ImportScriptsError' });
+            return;
+          }
           
           let wb;
           try {
             wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellText: false });
-          } catch(err) { self.postMessage({ result: [], error: 'ReadError' }); return; }
+          } catch(err) { self.postMessage({ result: null, error: 'ReadError' }); return; }
           
           const ws = wb.Sheets[wb.SheetNames[0]];
           if (!ws) { self.postMessage({ result: [] }); return; }
@@ -633,62 +663,163 @@
       return new Worker(URL.createObjectURL(blob));
     }
 
+    function parseFileMainThread(fileBuffer, applyIqr) {
+      try {
+        if (typeof XLSX === 'undefined') return [];
+        const wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellText: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) return [];
+
+        let rows = null;
+        if (ws['!data'] && Array.isArray(ws['!data']) && ws['!data'].length > 0) {
+           rows = ws['!data'].map(r => (r || []).map(c => (c && c.v !== undefined && c.v !== null) ? c.v : null));
+        } else {
+           rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+        }
+
+        if (!rows || rows.length < 2) return [];
+
+        let headerRowIdx = -1;
+        let hMap = { date: -1, revenue: -1, quantity: -1, brand: -1, product: -1, option: -1, channel: -1, store: -1 };
+
+        for (let r = 0; r < Math.min(rows.length, 25); r++) {
+          if (!rows[r] || !Array.isArray(rows[r])) continue;
+          const rowCells = rows[r].map(c => (c !== null && c !== undefined) ? String(c).replace(/\s/g,'').toLowerCase() : '');
+          
+          const dIdx = rowCells.findIndex(h => h.includes('결제일자') || h.includes('출고확정일') || h.includes('확정일') || h.includes('출고일자') || h.includes('일자') || h.includes('날짜') || h.includes('date'));
+          const rIdx = rowCells.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액') || h.includes('매출') || h.includes('금액') || h.includes('amount') || h.includes('revenue'));
+          const qIdx = rowCells.findIndex(h => h.includes('오더수량') || h.includes('주문수량') || h.includes('실주문') || h.includes('수량') || h.includes('qty') || h.includes('quantity'));
+
+          if (dIdx !== -1 && (rIdx !== -1 || qIdx !== -1)) {
+            headerRowIdx = r;
+            hMap.date = dIdx;
+            hMap.revenue = rIdx;
+            hMap.quantity = qIdx;
+            hMap.brand = rowCells.findIndex(h => h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드') || h.includes('brand'));
+            hMap.product = rowCells.findIndex(h => h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명') || h.includes('상품') || h.includes('product'));
+            hMap.option = rowCells.findIndex(h => h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명') || h.includes('옵션') || h.includes('option'));
+            hMap.channel = rowCells.findIndex(h => h.includes('채널명') || h.includes('유통채널') || h.includes('채널') || h.includes('channel'));
+            hMap.store = rowCells.findIndex(h => h.includes('플랜트') || h.includes('점포') || h.includes('지점') || h.includes('매장') || h.includes('store'));
+            break;
+          }
+        }
+
+        if (headerRowIdx === -1 || hMap.date === -1) return [];
+
+        let parsed = [];
+        for (let i = headerRowIdx + 1; i < rows.length; i++) {
+           const row = rows[i];
+           if(!row || !Array.isArray(row)) continue;
+           
+           const v = (idx) => (idx !== -1 && row[idx] !== undefined && row[idx] !== null) ? row[idx] : null;
+           
+           const dateStr = parseDateStrHelper(v(hMap.date));
+           const revenue = fastNumHelper(v(hMap.revenue));
+           const quantity = fastNumHelper(v(hMap.quantity));
+           
+           if (!dateStr || (revenue === 0 && quantity === 0)) continue;
+
+           const brand = String(v(hMap.brand) || '기타 브랜드');
+           const product = String(v(hMap.product) || '기타 상품');
+           const option = String(v(hMap.option) || '기본');
+           const channel = String(v(hMap.channel) || '본사채널');
+           const storeVal = v(hMap.store);
+           const store = storeVal ? String(storeVal) : '0';
+
+           const isRefund = (revenue < 0 || quantity < 0);
+           const unitPrice = (!isRefund && quantity > 0) ? (revenue / quantity) : 0;
+
+           parsed.push({ Date: dateStr, Revenue: revenue, Quantity: quantity, Brand: brand, ProductName: product, Option: option, Channel: channel, StoreCode: store, IsRefund: isRefund, UnitPrice: unitPrice });
+        }
+
+        if (applyIqr && parsed.length > 0) {
+           let valid = parsed.filter(d => !d.IsRefund && d.UnitPrice > 0).map(d => d.UnitPrice).sort((a,b)=>a-b);
+           if (valid.length > 4) {
+             const q1 = valid[Math.floor(valid.length * 0.25)], q3 = valid[Math.floor(valid.length * 0.75)], iqr = q3 - q1;
+             const lb = q1 - 1.5 * iqr, ub = q3 + 1.5 * iqr;
+             parsed = parsed.filter(d => d.IsRefund || (d.UnitPrice >= lb && d.UnitPrice <= ub));
+           }
+        }
+        return parsed;
+      } catch(e) {
+        return [];
+      }
+    }
+
     let saveQueue = Promise.resolve();
     function queueSaveToDB(chunk) {
       saveQueue = saveQueue.then(async () => {
-        if (!db) await initDB();
-        return new Promise((res) => {
-          try {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            for (let i = 0; i < chunk.length; i++) {
-              try { const item = chunk[i]; delete item.id; store.put(item); } catch (e) {}
-            }
-            tx.oncomplete = () => { chunk.length = 0; res(); };
-            tx.onerror = () => res(); tx.onabort = () => res();
-          } catch(err) { res(); }
-        });
-      });
+        if (!chunk || !chunk.length) return;
+        const database = await getDB();
+        if (!database) {
+          globalData.push(...chunk);
+          return;
+        }
+        
+        const BATCH_SIZE = 2000;
+        for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
+          const subChunk = chunk.slice(i, i + BATCH_SIZE);
+          await new Promise((res) => {
+            try {
+              const tx = database.transaction(STORE_NAME, 'readwrite');
+              const store = tx.objectStore(STORE_NAME);
+              for (let j = 0; j < subChunk.length; j++) {
+                const item = subChunk[j];
+                delete item.id;
+                store.put(item);
+              }
+              tx.oncomplete = () => res();
+              tx.onerror = tx.onabort = () => res();
+            } catch(err) { res(); }
+          });
+        }
+      }).catch(err => console.error("Save queue error:", err));
       return saveQueue;
     }
 
     async function handleFileUpload(e) {
       const files = e.target.files;
-      if (!files.length) return;
+      if (!files || !files.length) return;
       
       const applyIqr = document.getElementById('applyIqr').checked;
       showLoading(`[0 / ${files.length}] 파싱 및 병합 준비 중...`);
       
-      let processedCount = 0;
-      const concurrencyLimit = 2;
-
       try {
-        for (let i = 0; i < files.length; i += concurrencyLimit) {
-          const batch = Array.from(files).slice(i, i + concurrencyLimit);
-          const batchPromises = batch.map((file) => {
-            return new Promise(async (resolve) => {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          loadingProgress.style.width = Math.min(((i + 1) / files.length) * 100, 100) + '%';
+          loadingText.textContent = `[${i + 1} / ${files.length}] 파싱 및 병합 중... (${file.name})`;
+          
+          let parsedData = [];
+          try {
+            const buffer = await file.arrayBuffer();
+            parsedData = await new Promise((resolve) => {
               try {
-                const buffer = await file.arrayBuffer();
                 const worker = createWorker();
-                worker.onmessage = async (msg) => {
-                  try {
-                    const data = msg.data.result;
-                    if (data && data.length > 0) await queueSaveToDB(data);
-                  } finally {
-                    processedCount++;
-                    loadingProgress.style.width = Math.min((processedCount / files.length) * 100, 100) + '%';
-                    loadingText.textContent = `[${processedCount} / ${files.length}] 파싱 및 병합 중...`;
-                    worker.terminate();
-                    resolve();
-                  }
+                worker.onmessage = (msg) => {
+                  worker.terminate();
+                  resolve(msg.data.result);
                 };
-                worker.onerror = () => { worker.terminate(); resolve(); };
-                worker.postMessage({ fileBuffer: buffer, applyIqr }, [buffer]);
-              } catch (fileErr) { resolve(); }
+                worker.onerror = () => {
+                  worker.terminate();
+                  resolve(null);
+                };
+                worker.postMessage({ fileBuffer: buffer, applyIqr });
+              } catch(e) { resolve(null); }
             });
-          });
-          await Promise.all(batchPromises);
+
+            if (!parsedData || !Array.isArray(parsedData)) {
+              parsedData = parseFileMainThread(buffer, applyIqr);
+            }
+          } catch(fileErr) {
+            console.error("File Buffer Error:", fileErr);
+          }
+
+          if (parsedData && parsedData.length > 0) {
+            await queueSaveToDB(parsedData);
+          }
         }
+
         await saveQueue;
         loadingText.textContent = "데이터 인덱싱 완료! 화면 갱신 중...";
         
@@ -707,21 +838,21 @@
     async function loadData() {
       showLoading("통합 데이터베이스 조회 중...");
       try {
-        if (!db) await initDB();
-        
-        // 무한 로딩 방지 핵심 코드 (Promise.race 3초 타임아웃)
-        globalData = await Promise.race([
-          new Promise((res, rej) => {
+        const database = await getDB();
+        if (database) {
+          const records = await new Promise((res) => {
             try {
-              const tx = db.transaction(STORE_NAME, 'readonly');
+              const tx = database.transaction(STORE_NAME, 'readonly');
               const store = tx.objectStore(STORE_NAME);
               const req = store.getAll();
               req.onsuccess = () => res(req.result || []);
-              req.onerror = rej;
-            } catch (e) { rej(e); }
-          }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error("DB Read Timeout")), 3000))
-        ]);
+              req.onerror = req.onabort = () => res([]);
+            } catch(e) { res([]); }
+          });
+          if (records && records.length > 0) {
+            globalData = records;
+          }
+        }
 
         if (!globalData) globalData = [];
         globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
@@ -730,9 +861,9 @@
         populateFilterOptions();
         applyFilters(); 
       } catch (err) {
-        console.error("Load Data Error (Timeout or DB lock):", err);
-        // 에러 시 무조건 로딩 해제 (무한로딩 완벽 차단)
-        hideLoading();
+        console.error("Load Data Error:", err);
+      } finally {
+        setTimeout(() => { hideLoading(); }, 300);
       }
     }
 
@@ -767,7 +898,7 @@
       if (!globalData || !globalData.length) {
         document.getElementById('emptyState').classList.remove('hidden');
         document.getElementById('filteredCount').textContent = '0';
-        hideLoading(); // 중요! 필터 적용 시에도 확실히 해제
+        hideLoading();
         return;
       }
       showLoading("대시보드 실시간 집계 중...");
@@ -1070,7 +1201,6 @@
           }
         }
 
-        // 차주(1주일 분량) 정밀 예측 수량 산출
         recStock = Math.round(baseWkAvg * seasonalityIndex * trendMomentum * 1.10);
       }
 
