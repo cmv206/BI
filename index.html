@@ -599,18 +599,32 @@
     const blob = new Blob([workerScript], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);
 
-    let db;
-    const request = indexedDB.open("O2OSalesDB", 1);
-    request.onupgradeneeded = (e) => {
-      db = e.target.result;
-      if (!db.objectStoreNames.contains("sales_data")) {
-        db.createObjectStore("sales_data", { keyPath: "Hash" });
-      }
-    };
-    request.onsuccess = (e) => { db = e.target.result; loadAllDataFromDB(); };
+    let db = null;
 
-    function loadAllDataFromDB() {
-      if(!db) return;
+    function getDB() {
+      return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+        const request = indexedDB.open("O2OSalesDB", 1);
+        request.onupgradeneeded = (e) => {
+          const d = e.target.result;
+          if (!d.objectStoreNames.contains("sales_data")) {
+            d.createObjectStore("sales_data", { keyPath: "Hash" });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => {
+          reject(e);
+        };
+      });
+    }
+
+    // Initialize DB on script load
+    getDB().then(() => loadAllDataFromDB()).catch(err => console.warn("DB init warning:", err));
+
+    async function loadAllDataFromDB() {
       const overlay = document.getElementById('loadingOverlay');
       const loadText = document.getElementById('loadingText');
       const loadSub = document.getElementById('loadingSubtext');
@@ -621,48 +635,50 @@
       if (loadSub) loadSub.innerText = "대용량 누적 데이터 요약 집계를 생성하고 있습니다...";
 
       try {
-        const tx = db.transaction("sales_data", "readonly");
-        const store = tx.objectStore("sales_data");
-        const req = store.getAll();
+        const database = await getDB();
+        const records = await new Promise((resolve, reject) => {
+          const tx = database.transaction("sales_data", "readonly");
+          const store = tx.objectStore("sales_data");
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = (err) => reject(err);
+        });
 
-        req.onsuccess = () => {
-          allData = req.result || [];
-          if (allData.length > 0) {
-            document.getElementById('welcomeScreen').classList.add('hidden');
-            document.getElementById('totalRecordCount').innerText = fmtNum(allData.length) + ' 건';
-            
-            requestAnimationFrame(() => {
-              populateFilterOptions();
-              applyFilters();
-              overlay.classList.add('hidden');
-              overlay.classList.remove('flex');
-            });
-          } else {
-            document.getElementById('welcomeScreen').classList.remove('hidden');
-            overlay.classList.add('hidden');
-            overlay.classList.remove('flex');
-          }
-        };
-        req.onerror = (err) => {
-          console.error("IndexedDB read error:", err);
-          overlay.classList.add('hidden');
-          overlay.classList.remove('flex');
-        };
+        allData = records;
+
+        if (allData.length > 0) {
+          document.getElementById('welcomeScreen').classList.add('hidden');
+          document.getElementById('totalRecordCount').innerText = fmtNum(allData.length) + ' 건';
+          
+          populateFilterOptions();
+          applyFilters();
+        } else {
+          document.getElementById('welcomeScreen').classList.remove('hidden');
+        }
       } catch (err) {
-        console.error("Transaction error:", err);
+        console.error("IndexedDB read or aggregation error:", err);
+      } finally {
         overlay.classList.add('hidden');
         overlay.classList.remove('flex');
       }
     }
 
+    let dbWriteQueue = Promise.resolve();
+
+    function queueSaveToDB(records) {
+      dbWriteQueue = dbWriteQueue.then(() => saveToDBInBatches(records)).catch(err => console.error("Batch Queue error:", err));
+      return dbWriteQueue;
+    }
+
     async function saveToDBInBatches(records) {
-      if (!db || !records || records.length === 0) return;
+      if (!records || records.length === 0) return;
+      const database = await getDB();
       const BATCH_SIZE = 5000;
       for (let i = 0; i < records.length; i += BATCH_SIZE) {
         const chunk = records.slice(i, i + BATCH_SIZE);
         await new Promise((resolve) => {
           try {
-            const tx = db.transaction("sales_data", "readwrite");
+            const tx = database.transaction("sales_data", "readwrite");
             const store = tx.objectStore("sales_data");
             for (let j = 0; j < chunk.length; j++) {
               store.put(chunk[j]);
@@ -711,7 +727,7 @@
               try {
                 const res = msgEvent.data;
                 if (res.success && res.records && res.records.length > 0) {
-                  await saveToDBInBatches(res.records);
+                  await queueSaveToDB(res.records);
                 }
               } catch (err) {
                 console.error("Worker processing error:", err);
@@ -749,9 +765,12 @@
 
       await Promise.all(poolPromises);
 
+      // Wait for all DB write batches to fully commit
+      await dbWriteQueue;
+
       workers.forEach(w => w.terminate());
 
-      loadAllDataFromDB();
+      await loadAllDataFromDB();
     }
 
     document.querySelectorAll('input[type="file"]').forEach(input => {
@@ -1168,7 +1187,8 @@
       const el = document.getElementById('clearModal');
       if (el) el.classList.add('hidden'); 
     }
-    function confirmClearDB() {
+    
+    async function confirmClearDB() {
       const resetStateAndUI = () => {
         allData = []; 
         filteredData = []; 
@@ -1182,34 +1202,13 @@
         clearFilters();
       };
 
-      if (!db) {
-        try {
-          const delReq = indexedDB.deleteDatabase("O2OSalesDB");
-          delReq.onsuccess = () => resetStateAndUI();
-          delReq.onerror = () => resetStateAndUI();
-        } catch (e) {
-          resetStateAndUI();
-        }
-        return;
-      }
-
       try {
-        let tx = db.transaction("sales_data", "readwrite");
-        let store = tx.objectStore("sales_data");
-        let req = store.clear();
-        
-        req.onsuccess = () => {
-          resetStateAndUI();
-        };
-        req.onerror = () => {
-          resetStateAndUI();
-        };
-        tx.oncomplete = () => {
-          resetStateAndUI();
-        };
-        tx.onerror = () => {
-          resetStateAndUI();
-        };
+        const database = await getDB();
+        const tx = database.transaction("sales_data", "readwrite");
+        const store = tx.objectStore("sales_data");
+        store.clear();
+        tx.oncomplete = () => resetStateAndUI();
+        tx.onerror = () => resetStateAndUI();
       } catch (err) {
         console.error("Clear DB Error:", err);
         resetStateAndUI();
