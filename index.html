@@ -1,993 +1,1310 @@
 <!DOCTYPE html>
-<html lang="ko" class="dark">
+<html lang="ko" class="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>E-Commerce Analytics & Inventory Intelligence</title>
-  
-  <!-- Tailwind CSS -->
+  <title>O2O 판매 분석 AI | Enterprise BI Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; overflow: hidden; }
+    
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+    .data-table-container { 
+      overflow-y: auto; 
+      border-radius: 0.75rem; 
+      border: 1px solid #e2e8f0; 
+      height: calc(100vh - 220px);
+      margin-bottom: 0; 
+    }
+    .dark .data-table-container { border-color: #334155; }
+    table { width: 100%; border-collapse: collapse; }
+    th { 
+      background: #f8fafc; padding: 12px 8px; font-size: 0.75rem; font-weight: 600; 
+      color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; 
+      white-space: nowrap; position: sticky; top: 0; z-index: 10; 
+      text-align: center;
+    }
+    .dark th { background: #1e293b; color: #94a3b8; border-color: #334155; }
+    td { 
+      padding: 10px 8px; font-size: 0.8125rem; color: #334155; 
+      border-bottom: 1px solid #f1f5f9; white-space: nowrap; 
+      text-align: center;
+    }
+    .dark td { color: #cbd5e1; border-color: #1e293b; }
+    tr:hover td { background-color: #f8fafc; }
+    .dark tr:hover td { background-color: #0f172a; }
+
+    .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
+    .dark .glass-panel { background: rgba(15, 23, 42, 0.95); border-color: rgba(51, 65, 85, 0.8); }
+    
+    .stat-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 12px; padding: 18px 16px; }
+    .stat-card:hover { transform: translateY(-2px); }
+    
+    /* Top Bar Navigation Tab Styling */
+    .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; }
+    .tab-btn.active { 
+      color: #2563eb; 
+      background-color: #eff6ff; 
+      border-bottom-color: #2563eb; 
+      font-weight: 700; 
+      border-top-left-radius: 0.5rem; 
+      border-top-right-radius: 0.5rem; 
+    }
+    .dark .tab-btn.active { 
+      color: #60a5fa; 
+      background-color: rgba(30, 58, 138, 0.3); 
+      border-bottom-color: #60a5fa; 
+    }
+  </style>
   <script>
     tailwind.config = {
       darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#f0f7ff',
-              100: '#e0effe',
-              500: '#3b82f6',
-              600: '#2563eb',
-              700: '#1d4ed8',
-              900: '#1e3a8a'
-            }
-          }
-        }
-      }
+      theme: { extend: { colors: { brand: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb' }, panelbg: '#111827', panelborder: '#1f2937' } } }
     }
   </script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  
-  <!-- Plotly.js -->
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-  
-  <!-- SheetJS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: rgba(31, 41, 55, 0.5);
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: rgba(75, 85, 99, 0.5);
-      border-radius: 3px;
-    }
-    .js-plotly-plot .plotly .modebar {
-      padding: 2px;
-    }
-  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
+<body class="bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 h-screen flex flex-col transition-colors duration-300">
 
-  <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+  <header class="flex-shrink-0 z-40 glass-panel shadow-sm relative">
+    <div class="px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
-          <i data-lucide="line-chart" class="w-6 h-6"></i>
+        <button onclick="toggleSidebar()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center mr-1 transition-colors" title="패널 접기/펼치기">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+          <i class="fa-solid fa-chart-line text-sm"></i>
         </div>
         <div>
-          <h1 class="text-lg font-bold text-white tracking-wide">이커머스 매출 & 재고 인텔리전스</h1>
-          <p class="text-xs text-slate-400">데이터 기반 판매 분석 및 AI 예측 대시보드</p>
+          <h1 class="text-base font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400">O2O 판매 분석 AI</h1>
+          <p class="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest -mt-0.5">Enterprise BI Platform</p>
         </div>
       </div>
-
-      <div class="flex items-center gap-3">
-        <label for="excel-file-input" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-2 transition shadow-lg shadow-blue-600/20">
-          <i data-lucide="upload" class="w-4 h-4"></i>
-          <span>엑셀 파일 업로드</span>
-        </label>
-        <input type="file" id="excel-file-input" multiple accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
-        
-        <button onclick="clearAllData()" class="bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500/30 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
-          <span>초기화</span>
+      <div class="flex items-center gap-4">
+        <button id="themeToggle" onclick="toggleTheme()" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+          <i class="fa-solid fa-moon dark:hidden"></i>
+          <i class="fa-solid fa-sun hidden dark:block"></i>
         </button>
       </div>
     </div>
-
-    <!-- Navigation Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 border-t border-slate-800/60 pt-1 overflow-x-auto">
-      <button id="btn-tab1" onclick="switchTab('tab1')" class="tab-btn active px-4 py-2.5 text-xs font-medium rounded-t-lg border-b-2 border-blue-500 text-blue-400 bg-slate-800/60 flex items-center gap-2 transition whitespace-nowrap">
-        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-        <span>종합 대시보드</span>
-      </button>
-      <button id="btn-tab2" onclick="switchTab('tab2')" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 flex items-center gap-2 transition whitespace-nowrap">
-        <i data-lucide="trophy" class="w-4 h-4"></i>
-        <span>베스트 상품 & 브랜드</span>
-      </button>
-      <button id="btn-tab3" onclick="switchTab('tab3')" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 flex items-center gap-2 transition whitespace-nowrap">
-        <i data-lucide="trending-up" class="w-4 h-4"></i>
-        <span>52주 트렌드 & 재고 예측</span>
-      </button>
-      <button id="btn-tab4" onclick="switchTab('tab4')" class="tab-btn px-4 py-2.5 text-xs font-medium rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 flex items-center gap-2 transition whitespace-nowrap">
-        <i data-lucide="circle-dollar-sign" class="w-4 h-4"></i>
-        <span>가격 변동 & 적정가 분석</span>
-      </button>
-    </div>
   </header>
 
-  <!-- Global Filter Bar -->
-  <section class="bg-slate-900 border-b border-slate-800/80 py-3 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-          <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
-          <span class="text-slate-400">기간:</span>
-          <input type="date" id="filter-start-date" onchange="applyFilters()" class="bg-transparent text-white outline-none">
-          <span class="text-slate-500">~</span>
-          <input type="date" id="filter-end-date" onchange="applyFilters()" class="bg-transparent text-white outline-none">
-        </div>
-
-        <div class="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-          <i data-lucide="tag" class="w-3.5 h-3.5 text-slate-400"></i>
-          <span class="text-slate-400">브랜드:</span>
-          <select id="filter-brand" onchange="applyFilters()" class="bg-transparent text-white outline-none max-w-[140px]">
-            <option value="ALL">전체 브랜드</option>
-          </select>
-        </div>
-
-        <div class="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-          <i data-lucide="box" class="w-3.5 h-3.5 text-slate-400"></i>
-          <span class="text-slate-400">상품:</span>
-          <select id="filter-product" onchange="applyFilters()" class="bg-transparent text-white outline-none max-w-[160px]">
-            <option value="ALL">전체 상품</option>
-          </select>
-        </div>
+  <!-- Clear DB Modal -->
+  <div id="clearModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
+    <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-2xl max-w-sm w-full space-y-3 text-center">
+      <div class="w-10 h-10 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-full mx-auto flex items-center justify-center text-lg">
+        <i class="fa-solid fa-trash-can"></i>
       </div>
-
-      <div class="flex items-center gap-2 text-slate-400">
-        <i data-lucide="database" class="w-3.5 h-3.5 text-blue-400"></i>
-        <span>분석 데이터: <strong id="data-count-text" class="text-blue-400 font-bold">0</strong>건</span>
+      <h3 class="text-sm font-bold text-slate-900 dark:text-white">로컬 DB 초기화</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 font-normal">저장된 모든 누적 데이터를 삭제하시겠습니까?</p>
+      <div class="flex items-center gap-2.5 pt-1">
+        <button onclick="hideClearModal()" class="flex-1 bg-slate-200 dark:bg-slate-800 text-xs font-semibold py-2 rounded-xl">취소</button>
+        <button onclick="confirmClearDB()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold py-2 rounded-xl shadow-md">초기화 진행</button>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- Main Content Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-
-    <!-- Empty State -->
-    <div id="empty-state" class="flex flex-col items-center justify-center py-24 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 text-center">
-      <div class="p-4 bg-slate-800/80 rounded-full text-blue-400 mb-4">
-        <i data-lucide="file-spreadsheet" class="w-10 h-10"></i>
-      </div>
-      <h3 class="text-base font-bold text-white mb-1">업로드된 데이터가 없습니다</h3>
-      <p class="text-xs text-slate-400 max-w-sm mb-6">우측 상단의 [엑셀 파일 업로드] 버튼을 클릭하여 매출 데이터를 등록해주세요.</p>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 transition-opacity">
+    <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-brand-500 mb-4"></div>
+    <div id="loadingText" class="text-white font-bold text-base text-center tracking-wide drop-shadow">데이터베이스 분석 중...</div>
+    <div class="w-64 bg-slate-800 rounded-full h-1.5 mt-4 overflow-hidden border border-slate-700">
+      <div id="loadingProgress" class="bg-brand-500 h-1.5 rounded-full transition-all duration-300 w-0"></div>
     </div>
+  </div>
 
-    <!-- Tab 1: Executive Dashboard -->
-    <div id="tab1-content" class="tab-content space-y-6">
-      <!-- KPI Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-          <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span>최근월 순매출</span>
-            <i data-lucide="dollar-sign" class="w-4 h-4 text-blue-400"></i>
-          </div>
-          <div id="kpi-sales" class="text-xl font-bold text-white mb-1">0원</div>
-          <div id="kpi-yoy" class="text-xs text-slate-400">YoY -</div>
-        </div>
-
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-          <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span>판매 수량</span>
-            <i data-lucide="shopping-bag" class="w-4 h-4 text-emerald-400"></i>
-          </div>
-          <div id="kpi-qty" class="text-xl font-bold text-white mb-1">0개</div>
-          <div class="text-xs text-slate-500">누적 총 판매량</div>
-        </div>
-
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-          <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span>평균 단가 (AOV)</span>
-            <i data-lucide="receipt" class="w-4 h-4 text-purple-400"></i>
-          </div>
-          <div id="kpi-aov" class="text-xl font-bold text-white mb-1">@ 0원</div>
-          <div class="text-xs text-slate-500">건당 평균 구매가</div>
-        </div>
-
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-          <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span>주간 판매 속도</span>
-            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
-          </div>
-          <div id="kpi-velocity" class="text-xl font-bold text-white mb-1">0개/주</div>
-          <div class="text-xs text-slate-500">최근 4주 평균</div>
-        </div>
-
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-          <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span>환불율 & 건강도</span>
-            <i data-lucide="shield-alert" class="w-4 h-4 text-rose-400"></i>
-          </div>
-          <div id="kpi-refund" class="text-xl font-bold text-white mb-1">0%</div>
-          <div id="kpi-health" class="text-xs text-emerald-400 font-semibold">양호</div>
-        </div>
-      </div>
-
-      <!-- Charts Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-slate-900 p-5 rounded-xl border border-slate-800">
-          <div class="flex items-center justify-between mb-4">
-            <h4 id="chart-year-title" class="text-sm font-bold text-white flex items-center gap-2">
-              <i data-lucide="bar-chart-3" class="w-4 h-4 text-blue-400"></i>
-              <span>2026년 월별 순매출 및 환불 추이</span>
-            </h4>
-            <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full">최신 연도 전용</span>
-          </div>
-          <div id="chart-monthly-trend" class="w-full h-80"></div>
-        </div>
-
-        <div class="bg-slate-900 p-5 rounded-xl border border-slate-800">
-          <div class="flex items-center justify-between mb-4">
-            <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i>
-              <span>주요 브랜드 매출 점유율</span>
-            </h4>
-          </div>
-          <div id="chart-brand-share" class="w-full h-80"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab 2: Best Products & Brands -->
-    <div id="tab2-content" class="tab-content hidden space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-slate-900 p-5 rounded-xl border border-slate-800 flex flex-col">
-          <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
-            <span>상위 100개 베스트 상품</span>
-          </h3>
-          <div class="overflow-x-auto flex-1 custom-scrollbar">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/50">
-                  <th class="p-2.5 font-semibold">순위</th>
-                  <th class="p-2.5 font-semibold">상품명</th>
-                  <th class="p-2.5 font-semibold">브랜드</th>
-                  <th class="p-2.5 font-semibold text-right">총 매출액</th>
-                  <th class="p-2.5 font-semibold text-right">판매 수량</th>
-                </tr>
-              </thead>
-              <tbody id="table-best-products" class="divide-y divide-slate-800/60 text-slate-300">
-              </tbody>
-            </table>
+  <div class="flex-1 flex overflow-hidden relative">
+    <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-y-auto transition-all duration-300 z-30 absolute md:relative -translate-x-full md:translate-x-0">
+      <div class="p-5 space-y-6">
+        <div>
+          <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">🎛️ Data Control Center</h2>
+          <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 space-y-3">
+            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">데이터 업로드 (대용량 지원)</h3>
+            <label class="block w-full cursor-pointer group">
+              <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 text-center transition-colors group-hover:border-brand-500 bg-white dark:bg-slate-800">
+                <i class="fa-solid fa-file-excel text-2xl text-slate-400 group-hover:text-brand-500 mb-2"></i>
+                <div class="text-xs font-medium text-slate-600 dark:text-slate-300">주차/월별 엑셀 파일 선택</div>
+              </div>
+              <input type="file" id="fileUpload" multiple accept=".xlsx, .xls" class="hidden" onchange="handleFileUpload(event)">
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer mt-2">
+              <input type="checkbox" id="applyIqr" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500 bg-slate-100 dark:bg-slate-700">
+              <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium">가격 정밀 이상치(IQR) 제거 활성화</span>
+            </label>
           </div>
         </div>
 
-        <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 flex flex-col">
-          <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <i data-lucide="award" class="w-4 h-4 text-purple-400"></i>
-            <span>상위 50개 브랜드 순위</span>
-          </h3>
-          <div class="overflow-x-auto flex-1 custom-scrollbar">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/50">
-                  <th class="p-2.5 font-semibold">순위</th>
-                  <th class="p-2.5 font-semibold">브랜드</th>
-                  <th class="p-2.5 font-semibold text-right">매출액</th>
-                </tr>
-              </thead>
-              <tbody id="table-best-brands" class="divide-y divide-slate-800/60 text-slate-300">
-              </tbody>
-            </table>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">통합 조건 선택</h2>
+            <button onclick="resetFilters()" class="text-[10px] text-brand-600 font-medium hover:underline">필터 초기화</button>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab 3: 52-Week Trend & Stock Forecast -->
-    <div id="tab3-content" class="tab-content hidden space-y-6">
-      <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 class="text-sm font-bold text-white flex items-center gap-2">
-              <i data-lucide="cpu" class="w-4 h-4 text-blue-400"></i>
-              <span>AI 차주(다음 주) 권장 재고 산출 엔진</span>
-            </h3>
-            <p class="text-xs text-slate-400">최근 주차 모멘텀과 다가오는 주차의 계절성 지수를 추적하여 차주 1주일간 필요한 최적 재고량을 제안합니다.</p>
-          </div>
-          <div class="bg-blue-950/60 border border-blue-800/60 p-3 rounded-lg flex items-center gap-4">
-            <div>
-              <div class="text-[10px] text-blue-300 font-medium">차주(다음 주) AI 권장 재고량</div>
-              <div id="tab3-ai-rec-qty" class="text-lg font-bold text-blue-400">0개</div>
-            </div>
-          </div>
-        </div>
-
-        <div id="tab3-ai-rationale" class="text-xs bg-slate-950 p-3.5 rounded-lg border border-slate-800 text-slate-300 leading-relaxed">
-          분석 데이터 대기 중...
-        </div>
-      </div>
-
-      <div class="bg-slate-900 p-5 rounded-xl border border-slate-800">
-        <h4 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-          <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
-          <span>주차별 판매량 및 차주 예측 트렌드</span>
-        </h4>
-        <div id="chart-52week-trend" class="w-full h-96"></div>
-      </div>
-    </div>
-
-    <!-- Tab 4: Price Elasticity & Optimal Price -->
-    <div id="tab4-content" class="tab-content hidden space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
-          <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <i data-lucide="calculator" class="w-4 h-4 text-purple-400"></i>
-            <span>가격 탄력성 및 적정가 ($P^*$) 분석</span>
-          </h3>
           
-          <div class="space-y-3 text-xs">
-            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
-              <span class="text-slate-400">최대 판매 피크가</span>
-              <strong id="tab4-volume-peak" class="text-white font-semibold">0원</strong>
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-semibold flex items-center gap-1.5"><i class="fa-regular fa-calendar"></i> 전체 기간 (비우면 전체 조회)</label>
+            <div class="flex items-center gap-2">
+              <input type="date" id="filterStartDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none">
+              <span class="text-xs">~</span>
+              <input type="date" id="filterEndDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none">
             </div>
-            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
-              <span class="text-slate-400">최대 매출 피크가</span>
-              <strong id="tab4-revenue-peak" class="text-white font-semibold">0원</strong>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-semibold flex items-center gap-1.5"><i class="fa-solid fa-shop"></i> 유통 채널</label>
+            <select id="filterChannel" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-3 py-2"><option value="ALL">전체 채널</option></select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-semibold flex items-center gap-1.5"><i class="fa-solid fa-location-dot"></i> 출고 지점</label>
+            <select id="filterStore" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-3 py-2"><option value="ALL">전체 지점</option></select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-semibold flex items-center gap-1.5"><i class="fa-solid fa-tag"></i> 브랜드</label>
+            <select id="filterBrand" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-3 py-2"><option value="ALL">전체 브랜드</option></select>
+          </div>
+          
+          <button onclick="applyFilters()" class="w-full bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold py-2.5 rounded-xl mt-4 shadow-sm transition-colors">조건 적용 및 분석 갱신</button>
+          
+          <div class="pt-4 border-t border-slate-200 dark:border-slate-700/50 mt-4">
+            <div class="flex justify-between items-center text-[10px] text-slate-500 mb-2">
+              <span>누적 데이터베이스</span>
+              <span id="dbCount">0 건</span>
             </div>
-            <div class="bg-purple-950/40 p-3.5 rounded-lg border border-purple-800/50 flex justify-between items-center">
-              <span class="text-purple-300 font-medium">최적 추정가 ($P^*$)</span>
-              <strong id="tab4-optimal-price" class="text-purple-300 font-bold text-sm">0원</strong>
+            <button onclick="showClearModal()" class="w-full bg-slate-100 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/30 text-slate-600 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition-colors text-xs font-semibold py-2 rounded-xl border border-slate-200 dark:border-slate-700">로컬 DB 초기화</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
+      <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- Top Navigation Bar matching image_8eb855.png exactly -->
+        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
+          <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-brand-600"></i>
+            <span>종합 대시보드</span>
+          </button>
+          <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+            <i class="fa-solid fa-trophy text-amber-500"></i>
+            <span>베스트 상품 & 브랜드</span>
+          </button>
+          <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+            <i class="fa-solid fa-box-archive text-emerald-500"></i>
+            <span>52주 트렌드 & 재고 예측</span>
+          </button>
+          <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+            <i class="fa-solid fa-tag text-purple-500"></i>
+            <span>가격 변동 & 적정가 분석</span>
+          </button>
+        </div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+          분석 데이터: <span id="filteredCount" class="text-brand-600 dark:text-brand-400 font-bold">0</span>건
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6 relative" id="mainScrollArea">
+        <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10">
+          <div class="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm max-w-md w-full">
+            <div class="w-16 h-16 bg-brand-50 dark:bg-slate-700 text-brand-500 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4">
+              <i class="fa-solid fa-chart-pie"></i>
             </div>
-            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
-              <span class="text-slate-400">가격 탄력성 구증</span>
-              <strong id="tab4-elasticity-type" class="text-emerald-400">탄력적</strong>
+            <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-2">데이터가 없습니다</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">좌측 패널에서 엑셀 파일을 업로드하거나, 필터 조건을 넓게 조정해 보세요.</p>
+          </div>
+        </div>
+
+        <div id="tab1" class="tab-content space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-brand-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 순매출</div>
+              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1" id="kpiSales">0원</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiSalesSub">최근월 실적</div>
+            </div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-emerald-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 판매 수량</div>
+              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1" id="kpiQty">0개</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiQtySub">최근월 거래량</div>
+            </div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-blue-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">실판매 평균 단가</div>
+              <div class="text-xl sm:text-2xl font-black text-brand-600 dark:text-blue-400 mb-1" id="kpiAov">@ 0원</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">총매출액 ÷ 총수량</div>
+            </div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-indigo-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">주간 판매 속도</div>
+              <div class="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mb-1" id="kpiWeeklySpeed">0개 / 주</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiWeeklySpeedSub">주당 평균 거래속도</div>
+            </div>
+            <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-rose-500">
+              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">환불율 & 건강도</div>
+              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1 flex items-center justify-between" id="kpiRefund">0.0%</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiRefundSub">환불액 0원</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 glass-panel p-4 rounded-xl">
+              <h3 id="chartDailyTitle" class="text-sm font-bold text-slate-800 dark:text-white mb-4">📈 2026년 월별 순매출 및 환불 추이</h3>
+              <div id="chartDaily" class="w-full h-[300px]"></div>
+            </div>
+            <div class="glass-panel p-4 rounded-xl">
+              <h3 class="text-sm font-bold text-slate-800 dark:text-white mb-4">🛍️ 채널별 매출 점유율</h3>
+              <div id="chartChannel" class="w-full h-[300px]"></div>
             </div>
           </div>
         </div>
 
-        <div class="lg:col-span-2 bg-slate-900 p-5 rounded-xl border border-slate-800">
-          <h4 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <i data-lucide="scatter-chart" class="w-4 h-4 text-blue-400"></i>
-            <span>가격 구간별 수량 반응 분포</span>
-          </h4>
-          <div id="chart-price-scatter" class="w-full h-80"></div>
+        <div id="tab2" class="tab-content space-y-6 hidden h-full">
+          <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
+            <div class="flex-1 glass-panel p-4 rounded-xl flex flex-col">
+              <h3 class="text-sm font-bold text-slate-800 dark:text-white mb-4">🔝 Top 100 베스트 상품</h3>
+              <div class="data-table-container">
+                <table id="bestTable">
+                  <thead>
+                    <tr>
+                      <th class="w-12">순위</th>
+                      <th class="w-28">브랜드</th>
+                      <th class="w-auto">상품명</th>
+                      <th class="w-32">주요 옵션</th>
+                      <th class="w-24">수량</th>
+                      <th class="w-28">순매출</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bestTbody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="w-full lg:w-96 glass-panel p-4 rounded-xl flex flex-col shrink-0">
+              <h3 class="text-sm font-bold text-slate-800 dark:text-white mb-4">👑 Top 50 브랜드 랭킹</h3>
+              <div id="chartBrand" class="flex-1 min-h-[400px]"></div>
+            </div>
+          </div>
         </div>
+
+        <div id="tab3" class="tab-content space-y-6 hidden">
+          <div class="glass-panel p-5 rounded-xl">
+            <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 차주(다음 주) 권장 재고 예측</h3>
+            <p class="text-xs text-slate-500 mb-4">주차별 미세 변동과 계절성, 모멘텀 알고리즘을 정밀 추적하여 다가오는 차주 최적 재고량을 제안합니다.</p>
+            <select id="trendProdSelect" onchange="renderTab3()" class="w-full max-w-md bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div class="md:col-span-1 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
+                <div>
+                  <div class="text-xs font-bold text-indigo-500 dark:text-indigo-400 mb-1">💡 AI 차주(다음 주) 권장 재고량</div>
+                  <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-2" id="recStock">0개</div>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700/50" id="recStockSub">주차별 미세 동향 + 계절성 + 트렌드 정밀 반영</div>
+              </div>
+              
+              <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 space-y-2 text-xs">
+                <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"><i class="fa-solid fa-brain text-brand-500"></i> AI 재고 예측 산출 근거 (Rationale)</div>
+                <div class="grid grid-cols-3 gap-2 py-1 text-center">
+                  <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <span class="block text-[10px] text-slate-400">최근 주간 Base</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-200" id="aiBaseVal">0개/주</span>
+                  </div>
+                  <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <span class="block text-[10px] text-slate-400">월별 계절성 지수</span>
+                    <span class="font-bold text-brand-500" id="aiSeasonVal">1.00배</span>
+                  </div>
+                  <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <span class="block text-[10px] text-slate-400">트렌드 모멘텀</span>
+                    <span class="font-bold text-emerald-500" id="aiTrendVal">1.00배</span>
+                  </div>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 pt-1 leading-relaxed" id="aiReasonDesc">
+                  분석 데이터 대기 중...
+                </div>
+              </div>
+            </div>
+
+            <div id="chartTrend" class="w-full h-[400px]"></div>
+          </div>
+        </div>
+
+        <div id="tab4" class="tab-content space-y-6 hidden">
+          <div class="glass-panel p-5 rounded-xl">
+            <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 경제학적 최적 가격 (Optimal Price) 분석</h3>
+            <p class="text-xs text-slate-500 mb-4">가격 탄력성(Elasticity) 및 수요 곡선 회귀 분석을 통해 매출을 극대화하는 경제학/마케팅 최적가를 제안합니다.</p>
+            <select id="priceProdSelect" onchange="renderTab4()" class="w-full max-w-md bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-emerald-500">
+                <div class="text-xs font-bold text-slate-500 mb-1">볼륨 피크 (최대 수량 가격대)</div>
+                <div class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="ssVol">0원</div>
+                <div class="text-[10px] text-slate-400 mt-1">최대 판매량 형성 가격</div>
+              </div>
+              <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-amber-500">
+                <div class="text-xs font-bold text-slate-500 mb-1">매출 피크 (최대 매출 가격대)</div>
+                <div class="text-xl font-bold text-amber-600 dark:text-amber-400" id="ssRev">0원</div>
+                <div class="text-[10px] text-slate-400 mt-1">실제 최고 매출액 실적 가격</div>
+              </div>
+              <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-brand-500 bg-brand-50/20 dark:bg-brand-900/10">
+                <div class="text-xs font-bold text-brand-600 dark:text-brand-400 mb-1">🎯 AI 마케팅 최적 가격 (Optimal P*)</div>
+                <div class="text-xl font-bold text-brand-600 dark:text-brand-400" id="ssOpt">0원</div>
+                <div class="text-[10px] text-brand-500 mt-1">수요곡선 회귀분석 극대화 도출가</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 mb-6 space-y-1 text-xs">
+              <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span><i class="fa-solid fa-chart-line text-brand-500"></i> 경제학 수요 탄력성 분석 & 마케팅 제언</span>
+                <span class="text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-100 dark:bg-brand-900/50 px-2.5 py-0.5 rounded-full" id="elasticityTag">수요 탄력성: 계산 중</span>
+              </div>
+              <div class="text-slate-600 dark:text-slate-400 pt-1 leading-relaxed" id="elasticityDesc">
+                가격 탄력성 및 수요 반응성을 분석 중입니다.
+              </div>
+            </div>
+
+            <div id="chartPrice" class="w-full h-[400px]"></div>
+          </div>
+        </div>
+
       </div>
-    </div>
-
-  </main>
-
-  <!-- Processing Loading Modal -->
-  <div id="loading-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex-col items-center justify-center gap-4">
-    <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-    <div id="loading-text" class="text-white font-bold text-sm drop-shadow">데이터 처리 중...</div>
+    </main>
   </div>
 
   <script>
-    // --- Global State ---
-    let globalData = [];
-    let filteredData = [];
-    let db = null;
-    const DB_NAME = 'EcomAnalyticsDB_v4';
-    const STORE_NAME = 'sales_records';
+    const rangeSizeRegex = /[SMLXLXXL3XL]+|[0-9]{2,3}/g;
+    const shoeSizeRegex = /2[2-9]0|3[0-2]0/g;
+    const clothSizeRegex = /XS|S|M|L|XL|XXL|FREE/gi;
+    const koreanColorRegex = /블랙|화이트|네이비|그레이|베이지|레드|블루|그린|옐로우|핑크|퍼플|브라운|카키|아이보리|와인/g;
 
-    let activeTab = 'tab1';
-    let tabNeedsRender = { tab1: true, tab2: true, tab3: true, tab4: true };
-
-    // --- Non-blocking yield helper ---
     const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
-    // --- Init App ---
-    document.addEventListener('DOMContentLoaded', async () => {
-      lucide.createIcons();
-      await initDB();
-      await loadStoredData();
-    });
+    function cleanOptionString(opt, prod) {
+      let sOpt = String(opt || '').trim();
+      let sProd = String(prod || '').trim();
+      
+      if (sOpt && sOpt !== '기본' && sOpt.length > 1) {
+          let sizes = sOpt.match(clothSizeRegex) || sOpt.match(shoeSizeRegex) || sOpt.match(rangeSizeRegex) || [];
+          let colors = sOpt.match(koreanColorRegex) || [];
+          let extracted = [...new Set([...sizes, ...colors])].join(', ');
+          if (extracted.length > 0) return extracted;
+          return sOpt.length > 10 ? sOpt.substring(0, 10) + '..' : sOpt;
+      } else {
+          let sizes = sProd.match(clothSizeRegex) || sProd.match(shoeSizeRegex) || [];
+          let colors = sProd.match(koreanColorRegex) || [];
+          let extracted = [...new Set([...sizes, ...colors])].join(', ');
+          return extracted.length > 0 ? extracted : '기본';
+      }
+    }
 
-    // --- IndexedDB ---
-    function initDB() {
+    function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      if (sb.classList.contains('-translate-x-full')) {
+        sb.classList.remove('-translate-x-full', 'md:-ml-72');
+      } else {
+        sb.classList.add('-translate-x-full', 'md:-ml-72');
+      }
+    }
+
+    const clearModal = document.getElementById('clearModal');
+    function showClearModal() { clearModal.classList.remove('hidden'); }
+    function hideClearModal() { clearModal.classList.add('hidden'); }
+    
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const loadingProgress = document.getElementById('loadingProgress');
+    
+    function showLoading(text) {
+      loadingText.textContent = text;
+      loadingProgress.style.width = '10%';
+      loadingOverlay.classList.remove('hidden');
+    }
+    
+    function hideLoading() { 
+      loadingOverlay.classList.add('hidden'); 
+      setTimeout(() => { loadingProgress.style.width = '0%'; }, 300);
+    }
+
+    let db = null;
+    const DB_NAME = 'O2O_Enterprise_DB_v8'; 
+    const STORE_NAME = 'sales_data';
+    const STORE_MAPPING = { 7204:'중계점', 8206:'강남점', 8224:'송파점', 8230:'전주점', 8501:'쇼핑점' };
+
+    function getDB() {
       return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-          console.warn('IndexedDB connection timeout. Continuing in memory mode.');
-          resolve(null);
+        if (db) return resolve(db);
+        let resolved = false;
+        const done = (result) => {
+          if (!resolved) {
+            resolved = true;
+            resolve(result);
+          }
+        };
+
+        const timer = setTimeout(() => {
+          console.warn("DB connection timed out. Proceeding in-memory.");
+          done(null);
         }, 1500);
 
         try {
-          const request = indexedDB.open(DB_NAME, 1);
-          request.onupgradeneeded = (e) => {
-            const database = e.target.result;
-            if (!database.objectStoreNames.contains(STORE_NAME)) {
-              database.createObjectStore(STORE_NAME, { autoIncrement: true });
-            }
+          if (!window.indexedDB) { done(null); return; }
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            try {
+              let database = e.target.result;
+              if (!database.objectStoreNames.contains(STORE_NAME)) {
+                database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+              }
+            } catch(err) { console.error(err); }
           };
-          request.onsuccess = (e) => {
-            clearTimeout(timeout);
+          req.onsuccess = (e) => {
+            clearTimeout(timer);
             db = e.target.result;
-            resolve(db);
+            db.onversionchange = () => { try { db.close(); } catch(err){} db = null; };
+            done(db);
           };
-          request.onerror = () => {
-            clearTimeout(timeout);
-            resolve(null);
+          req.onerror = req.onblocked = (e) => {
+            clearTimeout(timer);
+            done(null);
           };
-        } catch (err) {
-          clearTimeout(timeout);
-          resolve(null);
+        } catch(err) {
+          clearTimeout(timer);
+          done(null);
         }
       });
     }
 
-    async function saveToDB(records) {
-      if (!db || !records || records.length === 0) return;
-      return new Promise((resolve) => {
-        try {
-          const tx = db.transaction(STORE_NAME, 'readwrite');
-          const store = tx.objectStore(STORE_NAME);
-          store.clear();
-          records.forEach(r => store.add(r));
-          tx.oncomplete = () => resolve(true);
-          tx.onerror = () => resolve(false);
-        } catch (e) {
-          resolve(false);
+    async function confirmClearDB() {
+      hideClearModal();
+      showLoading("데이터베이스 완전 초기화 중...");
+      try {
+        const database = await getDB();
+        if (database) {
+          await new Promise((res) => {
+            try {
+              const tx = database.transaction(STORE_NAME, 'readwrite');
+              const req = tx.objectStore(STORE_NAME).clear();
+              req.onsuccess = req.onerror = req.onabort = res;
+            } catch(e) { res(); }
+          });
         }
-      });
-    }
-
-    async function loadStoredData() {
-      showLoading('통합 데이터베이스 조회 중...');
-      let records = [];
-      if (db) {
-        records = await new Promise((resolve) => {
-          try {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const req = store.getAll();
-            req.onsuccess = () => resolve(req.result || []);
-            req.onerror = () => resolve([]);
-          } catch (e) {
-            resolve([]);
-          }
-        });
-      }
-
-      if (records && records.length > 0) {
-        globalData = records;
-        populateDropdowns();
-        await applyFilters();
-      } else {
-        toggleEmptyState(true);
-      }
-      hideLoading();
-    }
-
-    async function clearAllData() {
-      if (confirm('저장된 모든 데이터를 삭제하시겠습니까?')) {
-        globalData = [];
-        filteredData = [];
-        if (db) {
-          try {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).clear();
-          } catch(e) {}
-        }
-        populateDropdowns();
-        toggleEmptyState(true);
-      }
-    }
-
-    // --- Tab Switching ---
-    async function switchTab(tabId) {
-      activeTab = tabId;
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active', 'border-blue-500', 'text-blue-400', 'bg-slate-800/60');
-        btn.classList.add('border-transparent', 'text-slate-400');
-      });
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-
-      const activeBtn = document.getElementById(`btn-${tabId}`);
-      if (activeBtn) {
-        activeBtn.classList.add('active', 'border-blue-500', 'text-blue-400', 'bg-slate-800/60');
-        activeBtn.classList.remove('border-transparent', 'text-slate-400');
-      }
-
-      const activeContent = document.getElementById(`${tabId}-content`);
-      if (activeContent) {
-        activeContent.classList.remove('hidden');
-      }
-
-      if (tabNeedsRender[tabId] && globalData.length > 0) {
-        showLoading('탭 데이터 렌더링 중...');
-        await yieldToMain();
-        if (tabId === 'tab1') await renderTab1();
-        else if (tabId === 'tab2') await renderTab2();
-        else if (tabId === 'tab3') await renderTab3();
-        else if (tabId === 'tab4') await renderTab4();
-        tabNeedsRender[tabId] = false;
+      } catch (err) {
+        console.error("DB Reset Error:", err);
+      } finally {
+        globalData = []; fd = [];
+        document.getElementById('dbCount').textContent = "0 건";
+        document.getElementById('fileUpload').value = "";
+        document.getElementById('filteredCount').textContent = "0";
+        document.getElementById('emptyState').classList.remove('hidden');
+        resetFilters();
         hideLoading();
       }
     }
 
-    // --- Filter Application ---
-    async function applyFilters() {
-      if (globalData.length === 0) {
-        toggleEmptyState(true);
-        return;
-      }
-      toggleEmptyState(false);
+    let globalData = []; 
+    let fd = []; 
 
-      const sDate = document.getElementById('filter-start-date').value;
-      const eDate = document.getElementById('filter-end-date').value;
-      const brand = document.getElementById('filter-brand').value;
-      const prod = document.getElementById('filter-product').value;
+    let activeTabId = 'tab1';
+    let tabRenderState = { tab1: false, tab2: false, tab3: false, tab4: false };
 
-      filteredData = globalData.filter(d => {
-        if (sDate && d.date < sDate) return false;
-        if (eDate && d.date > eDate) return false;
-        if (brand !== 'ALL' && d.brand !== brand) return false;
-        if (prod !== 'ALL' && d.product !== prod) return false;
-        return true;
-      });
+    function invalidateTabRenderStates() {
+      tabRenderState = { tab1: false, tab2: false, tab3: false, tab4: false };
+    }
 
-      document.getElementById('data-count-text').innerText = filteredData.length.toLocaleString();
-
-      tabNeedsRender = { tab1: true, tab2: true, tab3: true, tab4: true };
+    async function renderActiveTab() {
+      if (tabRenderState[activeTabId]) return;
       
-      // Immediately render active tab only
-      await switchTab(activeTab);
-    }
-
-    function populateDropdowns() {
-      const brands = new Set();
-      const products = new Set();
-
-      globalData.forEach(d => {
-        if (d.brand) brands.add(d.brand);
-        if (d.product) products.add(d.product);
-      });
-
-      const brandSelect = document.getElementById('filter-brand');
-      brandSelect.innerHTML = '<option value="ALL">전체 브랜드</option>';
-      Array.from(brands).sort().forEach(b => {
-        brandSelect.innerHTML += `<option value="${b}">${b}</option>`;
-      });
-
-      const prodSelect = document.getElementById('filter-product');
-      prodSelect.innerHTML = '<option value="ALL">전체 상품</option>';
-      Array.from(products).sort().slice(0, 500).forEach(p => {
-        prodSelect.innerHTML += `<option value="${p}">${p}</option>`;
-      });
-    }
-
-    function toggleEmptyState(isEmpty) {
-      const emptyEl = document.getElementById('empty-state');
-      const tabs = ['tab1-content', 'tab2-content', 'tab3-content', 'tab4-content'];
-      if (isEmpty) {
-        emptyEl.classList.remove('hidden');
-        tabs.forEach(t => document.getElementById(t).classList.add('hidden'));
-        document.getElementById('data-count-text').innerText = '0';
-      } else {
-        emptyEl.classList.add('hidden');
+      if (activeTabId === 'tab1') {
+        renderTab1();
+      } else if (activeTabId === 'tab2') {
+        renderTab2();
+      } else if (activeTabId === 'tab3') {
+        renderTab3();
+      } else if (activeTabId === 'tab4') {
+        renderTab4();
       }
+      tabRenderState[activeTabId] = true;
     }
 
-    // --- File Upload & Parsing ---
-    async function handleFileUpload(e) {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
+    const fastNumHelper = (v) => {
+      if (typeof v === 'number') return v;
+      if (!v) return 0;
+      let s = String(v).trim();
+      if (!s) return 0;
+      const isNeg = s.includes('-') || s.startsWith('(') || s.includes('△') || s.includes('▲');
+      const str = s.replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(str);
+      if (isNaN(parsed)) return 0;
+      return isNeg ? -parsed : parsed;
+    };
 
-      showLoading('[1 / ' + files.length + '] 파일 업로드 및 분석 중...');
-      await yieldToMain();
-
-      let newRecords = [];
-
-      for (let i = 0; i < files.length; i++) {
-        showLoading(`[${i + 1} / ${files.length}] 파일 파싱 중... (${files[i].name})`);
-        await yieldToMain();
-
-        try {
-          const records = await parseExcelFile(files[i]);
-          newRecords.push(...records);
-        } catch (err) {
-          console.error(err);
+    const parseDateStrHelper = (cell) => {
+      if (cell === null || cell === undefined || cell === '') return null;
+      if (typeof cell === 'number') {
+        if (cell >= 20000101 && cell <= 20991231) {
+          const s = String(cell);
+          return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+        }
+        if (cell > 30000 && cell < 60000) {
+          const date = new Date(Math.round((cell - 25569) * 86400 * 1000));
+          const y = date.getUTCFullYear();
+          const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(date.getUTCDate()).padStart(2, '0');
+          return y + '-' + m + '-' + d;
         }
       }
 
-      if (newRecords.length > 0) {
-        globalData = newRecords;
-        await saveToDB(globalData);
-        populateDropdowns();
-        await applyFilters();
+      const s = String(cell).trim();
+      if (!s) return null;
+
+      if (/^[0-9]{8}$/.test(s)) {
+        return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
       }
 
-      hideLoading();
-      e.target.value = '';
-    }
-
-    function parseExcelFile(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array', cellStyles: false, cellFormulas: false, cellDates: false });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-            if (json.length < 2) {
-              resolve([]);
-              return;
-            }
-
-            let headerIdx = 0;
-            for (let r = 0; r < Math.min(json.length, 15); r++) {
-              const rowStr = JSON.stringify(json[r] || []);
-              if (rowStr.includes('일자') || rowStr.includes('날짜') || rowStr.includes('매출') || rowStr.includes('수량')) {
-                headerIdx = r;
-                break;
-              }
-            }
-
-            const headers = (json[headerIdx] || []).map(h => String(h || '').trim());
-            const dateCol = headers.findIndex(h => h.includes('일자') || h.includes('날짜') || h.includes('Date'));
-            const brandCol = headers.findIndex(h => h.includes('브랜드') || h.includes('Brand'));
-            const prodCol = headers.findIndex(h => h.includes('상품') || h.includes('품명') || h.includes('Product'));
-            const salesCol = headers.findIndex(h => h.includes('매출') || h.includes('금액') || h.includes('Amount'));
-            const qtyCol = headers.findIndex(h => h.includes('수량') || h.includes('Qty'));
-            const refundCol = headers.findIndex(h => h.includes('환불') || h.includes('취소'));
-
-            const records = [];
-            for (let i = headerIdx + 1; i < json.length; i++) {
-              const row = json[i];
-              if (!row || row.length === 0) continue;
-
-              let rawDate = dateCol >= 0 ? row[dateCol] : null;
-              let dateStr = parseDateVal(rawDate);
-              if (!dateStr) continue;
-
-              const year = dateStr.substring(0, 4);
-              const month = dateStr.substring(0, 7);
-
-              let sales = salesCol >= 0 ? parseNum(row[salesCol]) : 0;
-              let qty = qtyCol >= 0 ? parseNum(row[qtyCol]) : 1;
-              let refund = refundCol >= 0 ? parseNum(row[refundCol]) : 0;
-
-              records.push({
-                date: dateStr,
-                year: year,
-                month: month,
-                brand: brandCol >= 0 ? String(row[brandCol] || '기타').trim() : '기타',
-                product: prodCol >= 0 ? String(row[prodCol] || '미지정 상품').trim() : '미지정 상품',
-                sales: sales,
-                quantity: qty,
-                refund: refund,
-                price: qty > 0 ? Math.round(sales / qty) : sales
-              });
-            }
-            resolve(records);
-          } catch (err) {
-            resolve([]);
-          }
-        };
-        reader.onerror = () => resolve([]);
-        reader.readAsArrayBuffer(file);
-      });
-    }
-
-    function parseDateVal(val) {
-      if (!val) return null;
-      let str = String(val).trim();
-      if (/^\d{8}$/.test(str)) {
-        return `${str.substring(0,4)}-${str.substring(4,6)}-${str.substring(6,8)}`;
+      const match = s.match(/^([0-9]{4})[-/.]([0-9]{1,2})[-/.]([0-9]{1,2})/);
+      if (match) {
+        const y = match[1];
+        const m = match[2].padStart(2, '0');
+        const d = match[3].padStart(2, '0');
+        return `${y}-${m}-${d}`;
       }
-      str = str.replace(/[\.\/]/g, '-');
-      const parts = str.split('-');
-      if (parts.length >= 3) {
-        const y = parts[0].padStart(4, '20');
-        const m = parts[1].padStart(2, '0');
-        const d = parts[2].padStart(2, '0');
+
+      const pd = new Date(s);
+      if (!isNaN(pd.getTime())) {
+        const y = pd.getFullYear();
+        const m = String(pd.getMonth() + 1).padStart(2, '0');
+        const d = String(pd.getDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
       }
       return null;
+    };
+
+    async function parseFileAsync(fileBuffer, applyIqr) {
+      try {
+        if (typeof XLSX === 'undefined') return [];
+        const wb = XLSX.read(fileBuffer, { type: 'array', dense: true, cellStyles: false, cellFormulas: false, cellHTML: false, cellText: false, cellDates: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) return [];
+
+        let rows = null;
+        if (ws['!data'] && Array.isArray(ws['!data']) && ws['!data'].length > 0) {
+           rows = ws['!data'].map(r => (r || []).map(c => (c && c.v !== undefined && c.v !== null) ? c.v : null));
+        } else {
+           rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+        }
+
+        if (!rows || rows.length < 2) return [];
+
+        let headerRowIdx = -1;
+        let hMap = { date: -1, revenue: -1, quantity: -1, brand: -1, product: -1, option: -1, channel: -1, store: -1 };
+
+        for (let r = 0; r < Math.min(rows.length, 25); r++) {
+          if (!rows[r] || !Array.isArray(rows[r])) continue;
+          const rowCells = rows[r].map(c => (c !== null && c !== undefined) ? String(c).replace(/\s/g,'').toLowerCase() : '');
+          
+          const dIdx = rowCells.findIndex(h => h.includes('결제일자') || h.includes('출고확정일') || h.includes('확정일') || h.includes('출고일자') || h.includes('일자') || h.includes('날짜') || h.includes('date'));
+          const rIdx = rowCells.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액') || h.includes('매출') || h.includes('금액') || h.includes('amount') || h.includes('revenue'));
+          const qIdx = rowCells.findIndex(h => h.includes('오더수량') || h.includes('주문수량') || h.includes('실주문') || h.includes('수량') || h.includes('qty') || h.includes('quantity'));
+
+          if (dIdx !== -1 && (rIdx !== -1 || qIdx !== -1)) {
+            headerRowIdx = r;
+            hMap.date = dIdx;
+            hMap.revenue = rIdx;
+            hMap.quantity = qIdx;
+            hMap.brand = rowCells.findIndex(h => h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드') || h.includes('brand'));
+            hMap.product = rowCells.findIndex(h => h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명') || h.includes('상품') || h.includes('product'));
+            hMap.option = rowCells.findIndex(h => h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명') || h.includes('옵션') || h.includes('option'));
+            hMap.channel = rowCells.findIndex(h => h.includes('채널명') || h.includes('유통채널') || h.includes('채널') || h.includes('channel'));
+            hMap.store = rowCells.findIndex(h => h.includes('플랜트') || h.includes('점포') || h.includes('지점') || h.includes('매장') || h.includes('store'));
+            break;
+          }
+        }
+
+        if (headerRowIdx === -1 || hMap.date === -1) return [];
+
+        let parsed = [];
+        for (let i = headerRowIdx + 1; i < rows.length; i++) {
+           if (i % 2000 === 0) await yieldToMain();
+           const row = rows[i];
+           if(!row || !Array.isArray(row)) continue;
+           
+           const v = (idx) => (idx !== -1 && row[idx] !== undefined && row[idx] !== null) ? row[idx] : null;
+           
+           const dateStr = parseDateStrHelper(v(hMap.date));
+           const revenue = fastNumHelper(v(hMap.revenue));
+           const quantity = fastNumHelper(v(hMap.quantity));
+           
+           if (!dateStr || (revenue === 0 && quantity === 0)) continue;
+
+           const brand = String(v(hMap.brand) || '기타 브랜드');
+           const product = String(v(hMap.product) || '기타 상품');
+           const option = String(v(hMap.option) || '기본');
+           const channel = String(v(hMap.channel) || '본사채널');
+           const storeVal = v(hMap.store);
+           const store = storeVal ? String(storeVal) : '0';
+
+           const isRefund = (revenue < 0 || quantity < 0);
+           const unitPrice = (!isRefund && quantity > 0) ? (revenue / quantity) : 0;
+
+           parsed.push({ Date: dateStr, Revenue: revenue, Quantity: quantity, Brand: brand, ProductName: product, Option: option, Channel: channel, StoreCode: store, IsRefund: isRefund, UnitPrice: unitPrice });
+        }
+
+        if (applyIqr && parsed.length > 0) {
+           let valid = parsed.filter(d => !d.IsRefund && d.UnitPrice > 0).map(d => d.UnitPrice).sort((a,b)=>a-b);
+           if (valid.length > 4) {
+             const q1 = valid[Math.floor(valid.length * 0.25)], q3 = valid[Math.floor(valid.length * 0.75)], iqr = q3 - q1;
+             const lb = q1 - 1.5 * iqr, ub = q3 + 1.5 * iqr;
+             parsed = parsed.filter(d => d.IsRefund || (d.UnitPrice >= lb && d.UnitPrice <= ub));
+           }
+        }
+        return parsed;
+      } catch(e) {
+        return [];
+      }
     }
 
-    function parseNum(val) {
-      if (typeof val === 'number') return val;
-      if (!val) return 0;
-      const clean = String(val).replace(/[^0-9.-]/g, '');
-      return parseFloat(clean) || 0;
+    async function saveToDBDirectAsync(chunk) {
+      if (!chunk || !chunk.length) return;
+      const database = await getDB();
+      if (!database) return;
+      
+      const BATCH_SIZE = 2000;
+      for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
+        const subChunk = chunk.slice(i, i + BATCH_SIZE);
+        await new Promise((res) => {
+          try {
+            const tx = database.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            for (let j = 0; j < subChunk.length; j++) {
+              const item = subChunk[j];
+              delete item.id;
+              store.put(item);
+            }
+            tx.oncomplete = () => res();
+            tx.onerror = tx.onabort = () => res();
+          } catch(err) { res(); }
+        });
+        await yieldToMain();
+      }
     }
 
-    // --- Render Tab 1 (Executive Dashboard) ---
-    async function renderTab1() {
-      if (filteredData.length === 0) return;
+    async function handleFileUpload(e) {
+      const files = e.target.files;
+      if (!files || !files.length) return;
+      
+      const applyIqr = document.getElementById('applyIqr').checked;
+      showLoading(`[0 / ${files.length}] 파싱 및 병합 준비 중...`);
+      await yieldToMain();
+      
+      const newlyParsedRecords = [];
 
-      // 1. Calculate Latest Year dynamically (e.g. 2026)
-      const years = Array.from(new Set(filteredData.map(d => parseInt(d.year)).filter(Boolean)));
-      const maxYear = years.length > 0 ? Math.max(...years) : 2026;
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          await yieldToMain();
+          loadingProgress.style.width = Math.min(((i + 1) / files.length) * 100, 100) + '%';
+          loadingText.textContent = `[${i + 1} / ${files.length}] 파싱 및 병합 중... (${file.name})`;
+          
+          let parsedData = null;
+          try {
+            const buffer = await file.arrayBuffer();
+            parsedData = await parseFileAsync(buffer, applyIqr);
+          } catch(fileErr) {
+            console.error("File Buffer Error:", fileErr);
+          }
 
-      document.getElementById('chart-year-title').innerHTML = `
-        <i data-lucide="bar-chart-3" class="w-4 h-4 text-blue-400"></i>
-        <span>${maxYear}년 월별 순매출 및 환불 추이</span>
+          if (parsedData && parsedData.length > 0) {
+            newlyParsedRecords.push(...parsedData);
+            saveToDBDirectAsync(parsedData);
+          }
+          parsedData = null;
+          await yieldToMain();
+        }
+
+        loadingText.textContent = "데이터 인덱싱 완료! 화면 갱신 중...";
+        await yieldToMain();
+        
+        globalData = [...globalData, ...newlyParsedRecords];
+        globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
+
+        document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
+        document.getElementById('filterStartDate').value = '';
+        document.getElementById('filterEndDate').value = '';
+
+        populateFilterOptions();
+        await yieldToMain();
+        await applyFilters();
+      } catch (err) {
+        console.error("Upload Error:", err);
+      } finally {
+        document.getElementById('fileUpload').value = "";
+        hideLoading();
+      }
+    }
+
+    async function loadData() {
+      showLoading("통합 데이터베이스 조회 중...");
+      
+      let isLoaded = false;
+      const safetyTimer = setTimeout(() => {
+        if (!isLoaded) {
+           console.warn("DB Deadlock fallback triggered.");
+           hideLoading();
+        }
+      }, 2000);
+
+      try {
+        const database = await getDB();
+        if (database) {
+          const records = await new Promise((res) => {
+            try {
+              const tx = database.transaction(STORE_NAME, 'readonly');
+              const store = tx.objectStore(STORE_NAME);
+              const req = store.getAll();
+              req.onsuccess = () => res(req.result || []);
+              req.onerror = req.onabort = () => res([]);
+            } catch(e) { res([]); }
+          });
+          if (records && records.length > 0) {
+            globalData = records;
+          }
+        }
+
+        if (!globalData) globalData = [];
+        globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
+        
+        document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
+        populateFilterOptions();
+        await yieldToMain();
+        await applyFilters(); 
+      } catch (err) {
+        console.error("Load Data Error:", err);
+      } finally {
+        isLoaded = true;
+        clearTimeout(safetyTimer);
+        hideLoading();
+      }
+    }
+
+    function populateFilterOptions() {
+      if (!globalData || !globalData.length) return;
+      const channels = new Set(), stores = new Set(), brands = new Set();
+      globalData.forEach(d => {
+        if (d.Channel) channels.add(d.Channel);
+        stores.add(STORE_MAPPING[d.StoreCode] || '본사/기타');
+        if (d.Brand) brands.add(d.Brand);
+      });
+
+      const fill = (id, set, def) => {
+        const el = document.getElementById(id);
+        el.innerHTML = `<option value="ALL">${def}</option>` + Array.from(set).sort().map(v => `<option value="${v}">${v}</option>`).join('');
+      };
+      fill('filterChannel', channels, '전체 채널');
+      fill('filterStore', stores, '전체 지점');
+      fill('filterBrand', brands, '전체 브랜드');
+    }
+
+    function resetFilters() {
+      document.getElementById('filterStartDate').value = '';
+      document.getElementById('filterEndDate').value = '';
+      document.getElementById('filterChannel').value = 'ALL';
+      document.getElementById('filterStore').value = 'ALL';
+      document.getElementById('filterBrand').value = 'ALL';
+      applyFilters();
+    }
+
+    async function applyFilters() {
+      if (!globalData || !globalData.length) {
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('filteredCount').textContent = '0';
+        hideLoading();
+        return;
+      }
+
+      try {
+        const sD = document.getElementById('filterStartDate').value;
+        const eD = document.getElementById('filterEndDate').value;
+        const c = document.getElementById('filterChannel').value;
+        const s = document.getElementById('filterStore').value;
+        const b = document.getElementById('filterBrand').value;
+
+        fd = globalData.filter(d => {
+          if (sD && d.Date < sD) return false;
+          if (eD && d.Date > eD) return false;
+          if (c !== 'ALL' && d.Channel !== c) return false;
+          if (s !== 'ALL' && (STORE_MAPPING[d.StoreCode] || '본사/기타') !== s) return false;
+          if (b !== 'ALL' && d.Brand !== b) return false;
+          return true;
+        });
+
+        document.getElementById('filteredCount').textContent = fd.length.toLocaleString();
+        
+        if (fd.length === 0) {
+          document.getElementById('emptyState').classList.remove('hidden');
+        } else {
+          document.getElementById('emptyState').classList.add('hidden');
+          
+          invalidateTabRenderStates();
+          populateProductDropdowns();
+          await yieldToMain();
+          await renderActiveTab();
+        }
+      } catch (err) {
+        console.error("Apply Filters Error:", err);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function renderTab1() {
+      let netSales = 0, totalQty = 0, refundAmt = 0;
+      const chanMap = {}, monthMap = {};
+      const weekSet = new Set();
+
+      // Determine Latest Year dynamically (e.g. 2026)
+      let latestYear = null;
+      for (let i = 0; i < fd.length; i++) {
+        const dt = fd[i].Date;
+        if (dt && dt.length >= 4) {
+          const y = dt.substring(0, 4);
+          if (!latestYear || y > latestYear) {
+            latestYear = y;
+          }
+        }
+      }
+      if (!latestYear) latestYear = new Date().getFullYear().toString();
+
+      // Update Chart Title Heading dynamically
+      const chartTitleEl = document.getElementById('chartDailyTitle');
+      if (chartTitleEl) {
+        chartTitleEl.textContent = `📈 ${latestYear}년 월별 순매출 및 환불 추이`;
+      }
+
+      // Initialize 12 Months array for the latest year (1월~12월)
+      const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+      const monthSales = new Array(12).fill(0);
+      const monthRefund = new Array(12).fill(0);
+
+      for (let i = 0; i < fd.length; i++) {
+        const d = fd[i];
+        const dt = d.Date;
+        if (!dt) continue;
+        
+        const mStr = String(dt).substring(0, 7);
+        if (!monthMap[mStr]) monthMap[mStr] = { sales: 0, qty: 0 };
+
+        const wStr = getWeekString(dt);
+        weekSet.add(wStr);
+
+        // Populate Latest Year 12-Month Array
+        if (dt.startsWith(latestYear)) {
+          const mParts = dt.split('-');
+          if (mParts.length >= 2) {
+            const mIdx = parseInt(mParts[1], 10) - 1;
+            if (mIdx >= 0 && mIdx < 12) {
+              if (d.IsRefund) {
+                monthRefund[mIdx] += Math.abs(d.Revenue);
+              } else {
+                monthSales[mIdx] += d.Revenue;
+              }
+            }
+          }
+        }
+        
+        if (d.IsRefund) {
+          refundAmt += Math.abs(d.Revenue);
+        } else {
+          netSales += d.Revenue;
+          totalQty += d.Quantity;
+          chanMap[d.Channel] = (chanMap[d.Channel] || 0) + d.Revenue;
+
+          monthMap[mStr].sales += d.Revenue;
+          monthMap[mStr].qty += d.Quantity;
+        }
+      }
+
+      const sortedMonths = Object.keys(monthMap).sort();
+      const latestMonth = sortedMonths.length > 0 ? sortedMonths[sortedMonths.length - 1] : '';
+      const recentMonthSales = latestMonth ? monthMap[latestMonth].sales : 0;
+      const recentMonthQty = latestMonth ? monthMap[latestMonth].qty : 0;
+
+      const mParts = latestMonth ? latestMonth.split('-') : [];
+      const lY = mParts[0] || '';
+      const lM = mParts[1] || '';
+      const monthLabel = latestMonth && lM ? `${lY}년 ${parseInt(lM)}월` : '최근월';
+
+      let yoyHtml = '';
+      if (latestMonth && lY && lM) {
+        const currY = parseInt(lY);
+        const prevYearMonth = `${currY - 1}-${lM}`;
+        if (monthMap[prevYearMonth] && monthMap[prevYearMonth].sales > 0) {
+          const priorSales = monthMap[prevYearMonth].sales;
+          const diffPct = ((recentMonthSales - priorSales) / priorSales) * 100;
+          const sign = diffPct >= 0 ? '+' : '';
+          const colorClass = diffPct >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-600 dark:text-rose-400 font-bold';
+          yoyHtml = ` <span class="${colorClass} ml-1">(YoY ${sign}${diffPct.toFixed(1)}%)</span>`;
+        } else {
+          yoyHtml = ` <span class="text-slate-400 ml-1">(YoY -)</span>`;
+        }
+      }
+
+      const aov = totalQty > 0 ? Math.round(netSales / totalQty) : 0;
+      const totalWeeks = Math.max(1, weekSet.size);
+      const weeklySpeed = Math.round(totalQty / totalWeeks);
+      const refRate = netSales > 0 ? (refundAmt / netSales * 100) : 0;
+
+      let healthStatus = '양호';
+      let healthClass = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800';
+      if (refRate > 10) {
+        healthStatus = '위험';
+        healthClass = 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800';
+      } else if (refRate > 5) {
+        healthStatus = '주의';
+        healthClass = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800';
+      }
+
+      document.getElementById('kpiSales').textContent = recentMonthSales.toLocaleString() + '원';
+      document.getElementById('kpiSalesSub').innerHTML = `${monthLabel} 실적${yoyHtml}`;
+
+      document.getElementById('kpiQty').textContent = recentMonthQty.toLocaleString() + '개';
+      document.getElementById('kpiQtySub').textContent = `${monthLabel} 판매 수량`;
+
+      document.getElementById('kpiAov').textContent = '@ ' + aov.toLocaleString() + '원';
+
+      document.getElementById('kpiWeeklySpeed').textContent = weeklySpeed.toLocaleString() + '개 / 주';
+      document.getElementById('kpiWeeklySpeedSub').textContent = `총 ${totalWeeks}개 주차 평균 속도`;
+
+      document.getElementById('kpiRefund').innerHTML = `
+        <span>${refRate.toFixed(1)}%</span>
+        <span class="text-xs px-2 py-0.5 rounded-md border font-bold ${healthClass}">${healthStatus}</span>
       `;
-      lucide.createIcons();
+      document.getElementById('kpiRefundSub').textContent = `환불액 ${Math.round(refundAmt).toLocaleString()}원`;
 
-      // 2. Aggregate Data for Jan~Dec of maxYear ONLY
-      const months12 = [];
-      const monthlySalesMap = {};
-      const monthlyRefundMap = {};
+      if (window.Plotly) {
+        try {
+          const isDark = document.documentElement.classList.contains('dark');
+          const fontCol = isDark ? '#94a3b8' : '#64748b';
 
-      for (let m = 1; m <= 12; m++) {
-        const mKey = `${maxYear}-${String(m).padStart(2, '0')}`;
-        months12.push(`${m}월`);
-        monthlySalesMap[mKey] = 0;
-        monthlyRefundMap[mKey] = 0;
+          Plotly.react('chartDaily', [
+            { x: monthNames, y: monthSales, name: '순매출액', type: 'bar', marker: { color: '#3b82f6' } },
+            { x: monthNames, y: monthRefund, name: '환불액', type: 'bar', marker: { color: '#ef4444' } }
+          ], {
+            barmode: 'stack', margin: { t: 10, l: 40, r: 10, b: 30 },
+            paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: fontCol }
+          }, { displayModeBar: false, responsive: true });
+
+          const cKeys = Object.keys(chanMap).sort((a,b)=>chanMap[b]-chanMap[a]);
+          const cVals = cKeys.map(k => chanMap[k]);
+          Plotly.react('chartChannel', [{
+            labels: cKeys, values: cVals, type: 'pie', hole: 0.5,
+            marker: { colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'] },
+            textinfo: 'label+percent'
+          }], { margin: { t: 10, l: 10, r: 10, b: 10 }, paper_bgcolor: 'transparent', font: { color: fontCol } }, { displayModeBar: false, responsive: true });
+        } catch (e) { console.error("Plotly Tab1 Error:", e); }
       }
-
-      let totalSales = 0;
-      let totalQty = 0;
-      let totalRefund = 0;
-
-      filteredData.forEach(d => {
-        totalSales += d.sales;
-        totalQty += d.quantity;
-        totalRefund += d.refund;
-
-        if (d.year == maxYear && d.month) {
-          if (monthlySalesMap.hasOwnProperty(d.month)) {
-            monthlySalesMap[d.month] += d.sales;
-            monthlyRefundMap[d.month] += d.refund;
-          }
-        }
-      });
-
-      // KPI Calculations
-      const aov = totalQty > 0 ? Math.round(totalSales / totalQty) : 0;
-      const refundRate = totalSales > 0 ? ((totalRefund / totalSales) * 100).toFixed(1) : '0.0';
-
-      document.getElementById('kpi-sales').innerText = totalSales.toLocaleString() + '원';
-      document.getElementById('kpi-qty').innerText = totalQty.toLocaleString() + '개';
-      document.getElementById('kpi-aov').innerText = '@ ' + aov.toLocaleString() + '원';
-      document.getElementById('kpi-velocity').innerText = Math.round(totalQty / 4).toLocaleString() + '개/주';
-      document.getElementById('kpi-refund').innerText = refundRate + '%';
-
-      await yieldToMain();
-
-      // Plot Monthly Trend Chart (2026년 전용)
-      const salesArr = Object.values(monthlySalesMap);
-      const refundArr = Object.values(monthlyRefundMap);
-
-      const traceSales = {
-        x: months12,
-        y: salesArr,
-        name: '순매출액',
-        type: 'bar',
-        marker: { color: '#3b82f6' }
-      };
-
-      const traceRefund = {
-        x: months12,
-        y: refundArr,
-        name: '환불액',
-        type: 'scatter',
-        mode: 'lines+markers',
-        line: { color: '#f43f5e', width: 2 },
-        yaxis: 'y2'
-      };
-
-      const layout1 = {
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        margin: { t: 20, r: 40, l: 50, b: 40 },
-        showlegend: true,
-        legend: { font: { color: '#94a3b8' }, orientation: 'h', y: 1.1 },
-        xaxis: { tickfont: { color: '#94a3b8' }, gridcolor: '#1e293b' },
-        yaxis: { tickfont: { color: '#94a3b8' }, gridcolor: '#1e293b' },
-        yaxis2: {
-          overlaying: 'y',
-          side: 'right',
-          tickfont: { color: '#f43f5e' },
-          showgrid: false
-        }
-      };
-
-      Plotly.newPlot('chart-monthly-trend', [traceSales, traceRefund], layout1, { responsive: true, displayModeBar: false });
-
-      await yieldToMain();
-
-      // Brand Share Chart
-      const brandMap = {};
-      filteredData.forEach(d => {
-        brandMap[d.brand] = (brandMap[d.brand] || 0) + d.sales;
-      });
-
-      const sortedBrands = Object.entries(brandMap).sort((a,b) => b[1] - a[1]);
-      const topBrands = sortedBrands.slice(0, 5);
-      const otherSales = sortedBrands.slice(5).reduce((acc, curr) => acc + curr[1], 0);
-
-      const pieLabels = topBrands.map(b => b[0]);
-      const pieValues = topBrands.map(b => b[1]);
-      if (otherSales > 0) {
-        pieLabels.push('기타');
-        pieValues.push(otherSales);
-      }
-
-      const pieTrace = {
-        labels: pieLabels,
-        values: pieValues,
-        type: 'pie',
-        hole: 0.4,
-        marker: { colors: ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#64748b'] },
-        textposition: 'inside',
-        textfont: { color: '#ffffff' }
-      };
-
-      const layout2 = {
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        margin: { t: 10, r: 10, l: 10, b: 10 },
-        showlegend: true,
-        legend: { font: { color: '#94a3b8' } }
-      };
-
-      Plotly.newPlot('chart-brand-share', [pieTrace], layout2, { responsive: true, displayModeBar: false });
     }
 
-    // --- Render Tab 2 (Best Products & Brands) ---
-    async function renderTab2() {
-      const prodMap = {};
-      const brandMap = {};
-
-      filteredData.forEach(d => {
-        if (!prodMap[d.product]) {
-          prodMap[d.product] = { sales: 0, qty: 0, brand: d.brand };
+    function renderTab2() {
+      const pMap = {}, bMap = {};
+      for (let i = 0; i < fd.length; i++) {
+        const d = fd[i];
+        if (!d.IsRefund) {
+          bMap[d.Brand] = (bMap[d.Brand] || 0) + d.Revenue;
+          const k = d.Brand + '||' + d.ProductName;
+          if(!pMap[k]) pMap[k] = { b: d.Brand, p: d.ProductName, opt: d.Option, rev: 0, qty: 0 };
+          pMap[k].rev += d.Revenue;
+          pMap[k].qty += d.Quantity;
         }
-        prodMap[d.product].sales += d.sales;
-        prodMap[d.product].qty += d.quantity;
+      }
 
-        brandMap[d.brand] = (brandMap[d.brand] || 0) + d.sales;
-      });
-
-      const bestProds = Object.entries(prodMap)
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a,b) => b.sales - a.sales)
-        .slice(0, 100);
-
-      const bestBrands = Object.entries(brandMap)
-        .map(([name, sales]) => ({ name, sales }))
-        .sort((a,b) => b.sales - a.sales)
-        .slice(0, 50);
-
-      const prodTbody = document.getElementById('table-best-products');
-      prodTbody.innerHTML = bestProds.map((p, idx) => `
-        <tr class="hover:bg-slate-800/40">
-          <td class="p-2.5 font-bold text-blue-400">${idx + 1}</td>
-          <td class="p-2.5 font-medium text-white max-w-[200px] truncate" title="${p.name}">${p.name}</td>
-          <td class="p-2.5 text-slate-400">${p.brand}</td>
-          <td class="p-2.5 text-right font-semibold">${p.sales.toLocaleString()}원</td>
-          <td class="p-2.5 text-right text-slate-300">${p.qty.toLocaleString()}개</td>
+      const pList = Object.values(pMap).sort((a,b)=>b.rev - a.rev).slice(0, 100);
+      const esc = str => String(str).replace(/[&<>'"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[m]));
+      
+      document.getElementById('bestTbody').innerHTML = pList.map((item, idx) => `
+        <tr>
+          <td class="font-bold text-slate-500">${idx+1}</td>
+          <td class="font-medium text-brand-600 dark:text-brand-400">${esc(item.b)}</td>
+          <td class="max-w-[200px] truncate" title="${esc(item.p)}">${esc(item.p)}</td>
+          <td class="text-slate-500 text-xs">${esc(cleanOptionString(item.opt, item.p))}</td>
+          <td class="font-semibold text-emerald-600">${item.qty.toLocaleString()}개</td>
+          <td class="font-bold">${item.rev.toLocaleString()}원</td>
         </tr>
       `).join('');
 
-      const brandTbody = document.getElementById('table-best-brands');
-      brandTbody.innerHTML = bestBrands.map((b, idx) => `
-        <tr class="hover:bg-slate-800/40">
-          <td class="p-2.5 font-bold text-purple-400">${idx + 1}</td>
-          <td class="p-2.5 font-medium text-white">${b.name}</td>
-          <td class="p-2.5 text-right font-semibold">${b.sales.toLocaleString()}원</td>
-        </tr>
-      `).join('');
+      if (window.Plotly) {
+        try {
+          const bKeys = Object.keys(bMap).sort((a,b)=>bMap[b]-bMap[a]).slice(0, 50);
+          const bVals = bKeys.map(k => bMap[k]);
+          const isDark = document.documentElement.classList.contains('dark');
+          
+          Plotly.react('chartBrand', [{
+            x: bVals.reverse(), y: bKeys.reverse(), type: 'bar', orientation: 'h', marker: { color: bVals, colorscale: 'Viridis' }
+          }], { 
+            margin: { t: 10, l: 100, r: 20, b: 30 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: isDark ? '#94a3b8' : '#64748b' }
+          }, { displayModeBar: false, responsive: true });
+        } catch (e) { console.error("Plotly Tab2 Error:", e); }
+      }
     }
 
-    // --- Render Tab 3 (52-Week Trend & AI Stock Forecast) ---
-    async function renderTab3() {
-      // Group by Week
-      const weekMap = {};
-      filteredData.forEach(d => {
-        const wKey = d.date.substring(0, 7); // Monthly/Weekly proxy for aggregation
-        weekMap[wKey] = (weekMap[wKey] || 0) + d.quantity;
-      });
-
-      const sortedWeeks = Object.keys(weekMap).sort();
-      const weekQtys = sortedWeeks.map(w => weekMap[w]);
-
-      const recent4Weeks = weekQtys.slice(-4);
-      const avgRecentQty = recent4Weeks.length > 0 
-        ? Math.round(recent4Weeks.reduce((a,b) => a+b, 0) / recent4Weeks.length) 
-        : 0;
-
-      // Next Week AI Forecast Calculation (Single week)
-      const aiRecQty = Math.round(avgRecentQty * 1.08); // 8% momentum multiplier
-
-      document.getElementById('tab3-ai-rec-qty').innerText = aiRecQty.toLocaleString() + '개';
-      document.getElementById('tab3-ai-rationale').innerText = 
-        `[차주 예측 근거] 최근 4주간 주당 평균 판매량(${avgRecentQty.toLocaleString()}개) 및 계절성 모멘텀(+8%)을 정밀 반영하여, 다가오는 차주(다음 주 1주일) 최적 권장 재고 수량을 ${aiRecQty.toLocaleString()}개로 산출했습니다.`;
-
-      const xLabels = sortedWeeks.map(w => {
-        const parts = w.split('-');
-        return `${parts[0]}년<br>${parts[1]}월`;
-      });
-
-      const trendTrace = {
-        x: xLabels,
-        y: weekQtys,
-        type: 'scatter',
-        mode: 'lines+markers',
-        name: '주차별 판매량',
-        line: { color: '#10b981', width: 3 },
-        marker: { size: 6 }
-      };
-
-      const layout = {
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        margin: { t: 20, r: 20, l: 50, b: 60 },
-        xaxis: { tickfont: { color: '#94a3b8', size: 10 }, gridcolor: '#1e293b' },
-        yaxis: { tickfont: { color: '#94a3b8' }, gridcolor: '#1e293b' }
-      };
-
-      Plotly.newPlot('chart-52week-trend', [trendTrace], layout, { responsive: true, displayModeBar: false });
+    function populateProductDropdowns() {
+      const map = {};
+      fd.forEach(d => { if(!d.IsRefund) map[d.ProductName] = (map[d.ProductName] || 0) + d.Quantity; });
+      const tops = Object.keys(map).sort((a,b)=>map[b]-map[a]).slice(0, 500);
+      const html = tops.map(p => `<option value="${String(p).replace(/"/g, '&quot;')}">${p}</option>`).join('');
+      document.getElementById('trendProdSelect').innerHTML = html; 
+      document.getElementById('priceProdSelect').innerHTML = html; 
     }
 
-    // --- Render Tab 4 (Price Elasticity & Optimal Price) ---
-    async function renderTab4() {
-      const priceMap = {};
-      filteredData.forEach(d => {
-        if (d.price > 0) {
-          const roundedPrice = Math.round(d.price / 1000) * 1000;
-          if (!priceMap[roundedPrice]) {
-            priceMap[roundedPrice] = { sales: 0, qty: 0 };
+    function getWeekString(dateStr) {
+       if (!dateStr || typeof dateStr !== 'string') return '기타 주차';
+       const parts = dateStr.split('-');
+       if (parts.length < 3) return dateStr;
+       const y = parts[0], m = parts[1], d = parts[2];
+       const date = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+       if (isNaN(date.getTime())) return dateStr;
+       const fDay = new Date(parseInt(y), parseInt(m)-1, 1).getDay();
+       const wNum = Math.ceil((date.getDate() + fDay) / 7);
+       return `${y}년<br>${parseInt(m)}월 ${wNum}주차`;
+    }
+
+    function renderTab3() {
+      const prodSelect = document.getElementById('trendProdSelect');
+      if (!prodSelect) return;
+      const prod = prodSelect.value;
+      if(!prod) return;
+
+      const allWeeksSet = new Set();
+      const weekDateMap = {}; 
+      fd.forEach(d => {
+        if (!d.Date) return;
+        const wStr = getWeekString(d.Date);
+        allWeeksSet.add(wStr);
+        if(!weekDateMap[wStr] || d.Date < weekDateMap[wStr]) weekDateMap[wStr] = d.Date; 
+      });
+
+      const orderedWeeks = Array.from(allWeeksSet).sort((a,b) => String(weekDateMap[a] || '').localeCompare(String(weekDateMap[b] || '')));
+
+      const pwMap = {};
+      const prodAllData = fd.filter(d => d.ProductName === prod && !d.IsRefund);
+      
+      prodAllData.forEach(d => {
+         const wStr = getWeekString(d.Date);
+         pwMap[wStr] = pwMap[wStr] || { q:0, stores:{}, channels:{} };
+         pwMap[wStr].q += d.Quantity;
+         pwMap[wStr].stores[d.StoreCode] = (pwMap[wStr].stores[d.StoreCode] || 0) + d.Quantity;
+         pwMap[wStr].channels[d.Channel] = (pwMap[wStr].channels[d.Channel] || 0) + d.Quantity;
+      });
+
+      const xVals = [], yVals = [], tVals = [];
+
+      orderedWeeks.forEach(w => {
+         xVals.push(w);
+         if(pwMap[w] && pwMap[w].q > 0) {
+           yVals.push(pwMap[w].q);
+           const bestStoreCode = Object.keys(pwMap[w].stores).sort((a,b)=>pwMap[w].stores[b]-pwMap[w].stores[a])[0];
+           const bestStore = STORE_MAPPING[bestStoreCode] || '본사/기타';
+           const bestChan = Object.keys(pwMap[w].channels).sort((a,b)=>pwMap[w].channels[b]-pwMap[w].channels[a])[0];
+           tVals.push(`판매량: ${pwMap[w].q}개<br>주요 지점: ${bestStore}<br>주요 채널: ${bestChan}`);
+         } else {
+           yVals.push(0);
+           tVals.push(`판매량: 0개<br>주요 지점: 없음<br>주요 채널: 없음`);
+         }
+      });
+
+      let baseWkAvg = 0;
+      let seasonalityIndex = 1.0;
+      let trendMomentum = 1.0;
+      let recStock = 0;
+
+      if (yVals.length >= 4) {
+        const last4 = yVals.slice(-4);
+        baseWkAvg = last4.reduce((a,b)=>a+b, 0) / 4;
+
+        const lastDateStr = prodAllData.length > 0 ? prodAllData[prodAllData.length-1].Date : '2026-01-01';
+        const targetMonth = (parseInt(String(lastDateStr).substring(5,7)) % 12) + 1;
+
+        const monthSalesMap = {};
+        let totalSalesAllMonths = 0;
+
+        prodAllData.forEach(d => {
+          if (!d.Date) return;
+          const m = parseInt(String(d.Date).substring(5,7));
+          monthSalesMap[m] = (monthSalesMap[m] || 0) + d.Quantity;
+          totalSalesAllMonths += d.Quantity;
+        });
+
+        const distinctMonthsCount = Math.max(1, Object.keys(monthSalesMap).length);
+        const overallMonthlyAvg = totalSalesAllMonths / distinctMonthsCount;
+        
+        if (monthSalesMap[targetMonth] && overallMonthlyAvg > 0) {
+          seasonalityIndex = Math.min(2.0, Math.max(0.5, monthSalesMap[targetMonth] / overallMonthlyAvg));
+        }
+
+        if (yVals.length >= 8) {
+          const prev4 = yVals.slice(-8, -4);
+          const prev4Avg = prev4.reduce((a,b)=>a+b, 0) / 4;
+          if (prev4Avg > 0) {
+            trendMomentum = Math.min(1.8, Math.max(0.6, baseWkAvg / prev4Avg));
           }
-          priceMap[roundedPrice].sales += d.sales;
-          priceMap[roundedPrice].qty += d.quantity;
         }
+
+        recStock = Math.round(baseWkAvg * seasonalityIndex * trendMomentum * 1.10);
+      }
+
+      document.getElementById('recStock').textContent = recStock.toLocaleString() + '개';
+      document.getElementById('aiBaseVal').textContent = Math.round(baseWkAvg).toLocaleString() + '개/주';
+      document.getElementById('aiSeasonVal').textContent = seasonalityIndex.toFixed(2) + '배';
+      document.getElementById('aiTrendVal').textContent = trendMomentum.toFixed(2) + '배';
+
+      let reasonText = `🤖 <b>AI 차주 예측 근거:</b> 최근 주차별 미세 판매 추이를 분석하여 차주 Base 판매량(주당 ${Math.round(baseWkAvg)}개)을 도출했습니다. `;
+      if (seasonalityIndex > 1.1) {
+        reasonText += `차주는 해당 상품의 <b>성수기(계절 가중치 +${Math.round((seasonalityIndex-1)*100)}%)</b> 진입 주차이며, `;
+      } else if (seasonalityIndex < 0.9) {
+        reasonText += `차주는 계절적 수요 감소기(가중치 -${Math.round((1-seasonalityIndex)*100)}%)로 예측되며, `;
+      } else {
+        reasonText += `평년 수준의 계절적 수요(가중치 ${seasonalityIndex.toFixed(2)}배)를 보이고 있으며, `;
+      }
+
+      if (trendMomentum > 1.1) {
+        reasonText += `최근 주차별 구매 상승 모멘텀(전주 대비 +${Math.round((trendMomentum-1)*100)}% 가속)이 감지되었습니다. `;
+      } else if (trendMomentum < 0.9) {
+        reasonText += `최근 주차별 구매 속도가 소폭 둔화되는 추세를 반영했습니다. `;
+      }
+
+      reasonText += `주차별 미세 수요 변동 및 안전재고(10%)를 반영하여 <b>차주(다음 주) 권장 재고 ${recStock.toLocaleString()}개</b>를 제안합니다.`;
+      document.getElementById('aiReasonDesc').innerHTML = reasonText;
+
+      if (window.Plotly) {
+        try {
+          const isDark = document.documentElement.classList.contains('dark');
+          Plotly.react('chartTrend', [{
+            x: xVals, y: yVals, text: tVals, hoverinfo: 'x+text', type: 'scatter', mode: 'lines+markers',
+            line: { color: '#6366f1', width: 3 }, marker: { size: 8 }
+          }], {
+            margin: { t: 20, l: 40, r: 20, b: 60 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: isDark ? '#94a3b8' : '#64748b' },
+            xaxis: { tickangle: 0, type: 'category' }
+          }, { displayModeBar: false, responsive: true });
+        } catch (e) { console.error("Plotly Tab3 Error:", e); }
+      }
+    }
+
+    function renderTab4() {
+      const prodSelect = document.getElementById('priceProdSelect');
+      if (!prodSelect) return;
+      const prod = prodSelect.value;
+      if(!prod) return;
+      
+      const pd = fd.filter(d => d.ProductName === prod && !d.IsRefund && d.UnitPrice > 0);
+      pd.sort((a,b) => String(a.Date || '').localeCompare(String(b.Date || '')));
+      
+      let vMax = 0, rMax = 0, bpVol = 0, bpRev = 0;
+      const pGroup = {};
+      pd.forEach(d => {
+        pGroup[d.UnitPrice] = pGroup[d.UnitPrice] || { q:0, r:0 };
+        pGroup[d.UnitPrice].q += d.Quantity;
+        pGroup[d.UnitPrice].r += d.Revenue;
       });
 
-      const prices = Object.keys(priceMap).map(Number).sort((a,b) => a - b);
-      if (prices.length === 0) return;
-
-      let maxQty = 0, volPeak = prices[0];
-      let maxRev = 0, revPeak = prices[0];
-
-      prices.forEach(p => {
-        if (priceMap[p].qty > maxQty) {
-          maxQty = priceMap[p].qty;
-          volPeak = p;
-        }
-        if (priceMap[p].sales > maxRev) {
-          maxRev = priceMap[p].sales;
-          revPeak = p;
-        }
+      const priceKeys = Object.keys(pGroup).map(Number).sort((a,b)=>a-b);
+      priceKeys.forEach(p => {
+        if(pGroup[p].q > vMax) { vMax = pGroup[p].q; bpVol = p; }
+        if(pGroup[p].r > rMax) { rMax = pGroup[p].r; bpRev = p; }
       });
 
-      const optimalPrice = Math.round((volPeak + revPeak) / 2);
+      let optPrice = bpRev; 
+      let elasticity = 1.0;
+      
+      if (priceKeys.length >= 2) {
+        let sumP = 0, sumQ = 0, sumP2 = 0, sumPQ = 0, n = priceKeys.length;
+        priceKeys.forEach(p => {
+          const q = pGroup[p].q;
+          sumP += p; sumQ += q; sumP2 += p * p; sumPQ += p * q;
+        });
+        const meanP = sumP / n;
+        const meanQ = sumQ / n;
+        const denom = (sumP2 - n * meanP * meanP);
+        
+        if (denom !== 0) {
+          const b = - (sumPQ - n * meanP * meanQ) / denom;
+          if (b > 0) {
+            const a = meanQ + b * meanP;
+            optPrice = Math.round(a / (2 * b));
+            elasticity = Math.abs(b * (meanP / Math.max(1, meanQ)));
+          }
+        }
+      }
 
-      document.getElementById('tab4-volume-peak').innerText = volPeak.toLocaleString() + '원';
-      document.getElementById('tab4-revenue-peak').innerText = revPeak.toLocaleString() + '원';
-      document.getElementById('tab4-optimal-price').innerText = optimalPrice.toLocaleString() + '원';
+      if (optPrice < priceKeys[0] * 0.7 || optPrice > priceKeys[priceKeys.length - 1] * 1.5) {
+        optPrice = bpRev;
+      }
 
-      const scatterTrace = {
-        x: prices,
-        y: prices.map(p => priceMap[p].qty),
-        mode: 'markers+lines',
-        type: 'scatter',
-        marker: { size: 8, color: '#8b5cf6' },
-        line: { color: '#8b5cf6', width: 2, dash: 'dot' }
-      };
+      document.getElementById('ssVol').textContent = Number(bpVol).toLocaleString() + '원';
+      document.getElementById('ssRev').textContent = Number(bpRev).toLocaleString() + '원';
+      document.getElementById('ssOpt').textContent = Number(optPrice).toLocaleString() + '원';
 
-      const layout = {
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        margin: { t: 20, r: 20, l: 50, b: 50 },
-        xaxis: { title: '판매 단가 (원)', titlefont: { color: '#94a3b8' }, tickfont: { color: '#94a3b8' }, gridcolor: '#1e293b' },
-        yaxis: { title: '판매 수량 (개)', titlefont: { color: '#94a3b8' }, tickfont: { color: '#94a3b8' }, gridcolor: '#1e293b' }
-      };
+      const tagEl = document.getElementById('elasticityTag');
+      const descEl = document.getElementById('elasticityDesc');
 
-      Plotly.newPlot('chart-price-scatter', [scatterTrace], layout, { responsive: true, displayModeBar: false });
+      if (elasticity > 1.1) {
+        tagEl.textContent = `탄력적 수요 (Elastic: ε=${elasticity.toFixed(2)})`;
+        tagEl.className = "text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/50 px-2.5 py-0.5 rounded-full";
+        descEl.innerHTML = `💡 <b>가격 민감형 상품:</b> 가격 변화에 대한 고객 수요 반응이 민감합니다. 최적 적정가 <b>${Number(optPrice).toLocaleString()}원</b> 부근에서 소폭 할인 프로모션을 진행할 때 구매 전환량이 크게 늘어 연간 총 매출액이 극대화됩니다.`;
+      } else if (elasticity < 0.9) {
+        tagEl.textContent = `비탄력적 수요 (Inelastic: ε=${elasticity.toFixed(2)})`;
+        tagEl.className = "text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 px-2.5 py-0.5 rounded-full";
+        descEl.innerHTML = `💎 <b>브랜드 충성형 상품:</b> 가격 변화에 따른 수량 이탈이 적은 비탄력적 특성을 보입니다. 가격을 과도하게 할인하기보다는 브랜드 프리미엄 가치를 유지하며 최적 가격 <b>${Number(optPrice).toLocaleString()}원</b> 수준으로 단가를 방어하는 전략이 유리합니다.`;
+      } else {
+        tagEl.textContent = `단위 탄력적 수요 (Unit Elastic: ε=${elasticity.toFixed(2)})`;
+        tagEl.className = "text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-100 dark:bg-brand-900/50 px-2.5 py-0.5 rounded-full";
+        descEl.innerHTML = `⚖️ <b>균형 가격대 형성:</b> 가격과 수요량이 정비례 수준으로 균형을 이루고 있습니다. 도출된 경제학적 최적가 <b>${Number(optPrice).toLocaleString()}원</b>를 실판매 기준으로 삼고 번들 구성이나 사은품 마케팅을 병행하세요.`;
+      }
+
+      if (window.Plotly) {
+        try {
+          const dates = pd.map(d => d.Date);
+          const prices = pd.map(d => d.UnitPrice);
+          const qtys = pd.map(d => Math.max(d.Quantity * 2, 6)); 
+          const texts = pd.map(d => `일자: ${d.Date}<br>채널: ${d.Channel}<br>수량: ${d.Quantity}개<br>단가: ${d.UnitPrice.toLocaleString()}원`);
+
+          const isDark = document.documentElement.classList.contains('dark');
+          Plotly.react('chartPrice', [{
+            x: dates, y: prices, text: texts, hoverinfo: 'text', mode: 'markers',
+            marker: { size: qtys, sizemode: 'area', sizeref: 2, sizemin: 4, color: '#3b82f6', opacity: 0.6 }
+          }], {
+            margin: { t: 20, l: 50, r: 20, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: isDark ? '#94a3b8' : '#64748b' },
+            shapes: [
+              { type: 'line', y0: bpVol, y1: bpVol, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#10b981', dash: 'dash', width: 2 } },
+              { type: 'line', y0: bpRev, y1: bpRev, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#f59e0b', dash: 'dot', width: 2 } },
+              { type: 'line', y0: optPrice, y1: optPrice, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#3b82f6', width: 2.5 } }
+            ]
+          }, { displayModeBar: false, responsive: true });
+        } catch (e) { console.error("Plotly Tab4 Error:", e); }
+      }
     }
 
-    // --- Loading UI Helpers ---
-    function showLoading(text) {
-      document.getElementById('loading-text').innerText = text || '데이터 처리 중...';
-      document.getElementById('loading-overlay').classList.remove('hidden');
-      document.getElementById('loading-overlay').classList.add('flex');
+    async function switchTab(t, btn) {
+      activeTabId = t;
+      document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(e => {
+        e.classList.remove('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-bold', 'text-brand-600', 'dark:text-brand-400');
+        e.classList.add('text-slate-600', 'dark:text-slate-300', 'font-medium');
+      });
+      
+      const targetContent = document.getElementById(t);
+      if (targetContent) targetContent.classList.remove('hidden');
+
+      const targetBtn = btn || (window.event ? window.event.currentTarget : null);
+      if (targetBtn) {
+        targetBtn.classList.add('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-bold', 'text-brand-600', 'dark:text-brand-400');
+        targetBtn.classList.remove('text-slate-600', 'dark:text-slate-300', 'font-medium');
+      }
+
+      if (fd && fd.length > 0 && !tabRenderState[t]) {
+        await yieldToMain();
+        await renderActiveTab();
+      }
     }
 
-    function hideLoading() {
-      document.getElementById('loading-overlay').classList.add('hidden');
-      document.getElementById('loading-overlay').classList.remove('flex');
-    }
+    window.onload = async () => { await loadData(); };
   </script>
 </body>
 </html>
