@@ -261,20 +261,20 @@
 
         <div id="tab2" class="tab-content space-y-6 hidden h-full">
           <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
-            <!-- Left Card: Top 50 Brand Ranking Table (Matching image_7ece7f.png) -->
-            <div class="w-full lg:w-80 xl:w-[350px] flex-shrink-0 glass-panel p-5 rounded-2xl flex flex-col shadow-sm">
+            <!-- Left Card: Top 50 Brand Ranking Table -->
+            <div class="w-full lg:w-72 xl:w-80 flex-shrink-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
               <div class="flex items-center gap-2 mb-4">
                 <i class="fa-solid fa-award text-amber-500 text-base"></i>
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">브랜드별 매출 순위 Top 50</h3>
               </div>
-              <div class="data-table-container flex-1">
-                <table id="brandRankTable">
+              <div class="data-table-container flex-1 overflow-x-auto">
+                <table id="brandRankTable" class="w-full text-xs">
                   <thead>
                     <tr>
-                      <th class="w-12">순위</th>
-                      <th class="w-auto text-left pl-3">브랜드명</th>
-                      <th class="w-28 text-right pr-3">순매출액</th>
-                      <th class="w-20 text-right pr-3">판매량</th>
+                      <th class="w-10 text-center py-2.5 px-1">순위</th>
+                      <th class="text-center py-2.5 px-2">브랜드명</th>
+                      <th class="w-24 text-center py-2.5 px-1.5">순매출액</th>
+                      <th class="w-16 text-center py-2.5 px-1.5">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="brandRankTbody"></tbody>
@@ -282,23 +282,23 @@
               </div>
             </div>
 
-            <!-- Right Card: Top 100 Best Product Ranking Table (Matching image_7ece7f.png) -->
-            <div class="flex-1 min-w-0 glass-panel p-5 rounded-2xl flex flex-col shadow-sm">
+            <!-- Right Card: Top 100 Best Product Ranking Table -->
+            <div class="flex-1 min-w-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
               <div class="flex items-center gap-2 mb-4">
                 <i class="fa-solid fa-box-open text-brand-500 text-base"></i>
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">베스트 상품 순위 Top 100</h3>
               </div>
-              <div class="data-table-container flex-1">
-                <table id="bestTable">
+              <div class="data-table-container flex-1 overflow-x-auto">
+                <table id="bestTable" class="w-full text-xs">
                   <thead>
                     <tr>
-                      <th class="w-12">순위</th>
-                      <th class="w-auto text-left pl-2">순위 & 상품명</th>
-                      <th class="w-24 text-right pr-2">평균단가</th>
-                      <th class="w-28 text-left pl-2">매장 (지점명+브랜드)</th>
-                      <th class="w-24">주요 옵션</th>
-                      <th class="w-28 text-right pr-2">매출액</th>
-                      <th class="w-20 text-right pr-2">판매량</th>
+                      <th class="w-10 text-center py-2.5 px-1">순위</th>
+                      <th class="text-center py-2.5 px-2">상품명</th>
+                      <th class="w-24 text-center py-2.5 px-1.5">평균단가</th>
+                      <th class="w-28 text-center py-2.5 px-1.5">매장 (지점명+브랜드)</th>
+                      <th class="w-24 text-center py-2.5 px-1.5">주요 옵션</th>
+                      <th class="w-28 text-center py-2.5 px-1.5">매출액</th>
+                      <th class="w-20 text-center py-2.5 px-1.5">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="bestTbody"></tbody>
@@ -527,17 +527,39 @@
       let sanitized = records.filter(d => {
         if (!d) return false;
         const absQty = Math.abs(d.Quantity || 0);
-        if (absQty > 50000) return false;
+        const absRev = Math.abs(d.Revenue || 0);
+
+        // Filter out extreme single-line quantity & revenue anomalies
+        if (absQty > 10000) return false;
+        if (absRev > 1000000000) return false;
+
+        // Filter out summary/total rows (합계, 소계, 총계)
+        const prodStr = String(d.ProductName || '').toLowerCase();
+        const brandStr = String(d.Brand || '').toLowerCase();
+        if (prodStr.includes('합계') || prodStr.includes('소계') || prodStr.includes('총계') || prodStr.includes('total') || prodStr.includes('subtotal')) return false;
+        if (brandStr.includes('합계') || brandStr.includes('소계') || brandStr.includes('총계') || brandStr.includes('total')) return false;
+
         return true;
       });
 
+      // IQR filtering on Quantity
       const positiveQtys = sanitized.filter(d => !d.IsRefund && d.Quantity > 0).map(d => d.Quantity).sort((a,b)=>a-b);
       if (positiveQtys.length > 10) {
         const q1 = positiveQtys[Math.floor(positiveQtys.length * 0.25)];
         const q3 = positiveQtys[Math.floor(positiveQtys.length * 0.75)];
         const iqr = q3 - q1;
-        const maxAllowedQty = Math.max(500, q3 + 3 * iqr);
+        const maxAllowedQty = Math.max(300, q3 + 3.5 * iqr);
         sanitized = sanitized.filter(d => d.IsRefund || d.Quantity <= maxAllowedQty);
+      }
+
+      // IQR filtering on Revenue
+      const positiveRevs = sanitized.filter(d => !d.IsRefund && d.Revenue > 0).map(d => d.Revenue).sort((a,b)=>a-b);
+      if (positiveRevs.length > 10) {
+        const q1 = positiveRevs[Math.floor(positiveRevs.length * 0.25)];
+        const q3 = positiveRevs[Math.floor(positiveRevs.length * 0.75)];
+        const iqr = q3 - q1;
+        const maxAllowedRev = Math.max(30000000, q3 + 3.5 * iqr);
+        sanitized = sanitized.filter(d => d.IsRefund || d.Revenue <= maxAllowedRev);
       }
 
       return sanitized;
@@ -672,7 +694,7 @@
           const rowCells = rows[r].map(c => (c !== null && c !== undefined) ? String(c).replace(/\s/g,'').toLowerCase() : '');
           
           const dIdx = rowCells.findIndex(h => h.includes('결제일자') || h.includes('출고확정일') || h.includes('확정일') || h.includes('출고일자') || h.includes('일자') || h.includes('날짜') || h.includes('date'));
-          const rIdx = rowCells.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액') || h.includes('매출') || h.includes('금액') || h.includes('amount') || h.includes('revenue'));
+          const rIdx = rowCells.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액') || (h.includes('매출') && !h.includes('수량')) || (h.includes('금액') && !h.includes('수량')) || h.includes('revenue'));
           
           const qIdx = rowCells.findIndex(h => {
             if (h.includes('번호') || h.includes('코드') || h.includes('id') || h.includes('no')) return false;
@@ -685,17 +707,28 @@
             hMap.revenue = rIdx;
             hMap.quantity = qIdx;
             
-            // Priority Column Matching
-            const exactBrand = rowCells.findIndex(h => h === '브랜드내역' || h === '브랜드명' || h === '브랜드');
-            hMap.brand = exactBrand !== -1 ? exactBrand : rowCells.findIndex(h => h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드') || h.includes('brand'));
+            // Priority Brand Matching ('브랜드 내역' 1st)
+            const b1 = rowCells.findIndex(h => h === '브랜드내역');
+            const b2 = rowCells.findIndex(h => h === '브랜드명' || h === '브랜드');
+            if (b1 !== -1) hMap.brand = b1;
+            else if (b2 !== -1) hMap.brand = b2;
+            else hMap.brand = rowCells.findIndex(h => (h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드') || h.includes('brand')) && !h.includes('코드') && !h.includes('code'));
 
-            const exactProd = rowCells.findIndex(h => h === '외부몰상품명' || h === '상품명' || h === '품명');
-            hMap.product = exactProd !== -1 ? exactProd : rowCells.findIndex(h => h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명') || h.includes('상품') || h.includes('product'));
+            // Priority Product Name Matching ('외부몰 상품명' 1st)
+            const p1 = rowCells.findIndex(h => h === '외부몰상품명');
+            const p2 = rowCells.findIndex(h => h === '상품명' || h === '품명');
+            if (p1 !== -1) hMap.product = p1;
+            else if (p2 !== -1) hMap.product = p2;
+            else hMap.product = rowCells.findIndex(h => (h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명') || h.includes('product')) && !h.includes('코드') && !h.includes('code'));
 
-            const exactOpt = rowCells.findIndex(h => h === '외부몰옵션명' || h === '단품명' || h === '옵션명');
-            hMap.option = exactOpt !== -1 ? exactOpt : rowCells.findIndex(h => h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명') || h.includes('옵션') || h.includes('option'));
+            // Priority Option Matching ('외부몰 옵션명' 1st)
+            const o1 = rowCells.findIndex(h => h === '외부몰옵션명');
+            const o2 = rowCells.findIndex(h => h === '단품명' || h === '옵션명' || h === '옵션');
+            if (o1 !== -1) hMap.option = o1;
+            else if (o2 !== -1) hMap.option = o2;
+            else hMap.option = rowCells.findIndex(h => (h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명') || h.includes('옵션') || h.includes('option')) && !h.includes('코드'));
 
-            hMap.channel = rowCells.findIndex(h => h.includes('채널명') || h.includes('유통채널') || h.includes('채널') || h.includes('channel'));
+            hMap.channel = rowCells.findIndex(h => (h.includes('채널명') || h.includes('유통채널') || h.includes('채널') || h.includes('channel')) && !h.includes('코드'));
             hMap.store = rowCells.findIndex(h => h.includes('플랜트') || h.includes('점포') || h.includes('지점') || h.includes('매장') || h.includes('store'));
             break;
           }
@@ -717,10 +750,15 @@
            
            if (!dateStr || (revenue === 0 && quantity === 0)) continue;
 
-           if (Math.abs(quantity) > 50000) continue;
+           let brand = String(v(hMap.brand) || '').trim();
+           if (!brand || brand === 'null' || brand === 'undefined' || brand.startsWith('@')) {
+             brand = '기타 브랜드';
+           }
+           let product = String(v(hMap.product) || '').trim();
+           if (!product || product === 'null' || product === 'undefined' || product.startsWith('@')) {
+             product = '기타 상품';
+           }
 
-           const brand = String(v(hMap.brand) || '기타 브랜드');
-           const product = String(v(hMap.product) || '기타 상품');
            const option = String(v(hMap.option) || '기본');
            const channel = String(v(hMap.channel) || '본사채널');
            const storeVal = v(hMap.store);
@@ -1145,10 +1183,10 @@
       } else {
         brandTbody.innerHTML = bList.map((item, idx) => `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <td class="font-bold text-slate-500 text-center">${idx + 1}</td>
-            <td class="font-semibold text-slate-800 dark:text-slate-200 text-left pl-4">${esc(item.name)}</td>
-            <td class="font-bold text-brand-600 dark:text-brand-400 text-right pr-4">${item.rev.toLocaleString()}원</td>
-            <td class="font-medium text-emerald-600 dark:text-emerald-400 text-right pr-4">${item.qty.toLocaleString()}개</td>
+            <td class="font-bold text-slate-500 text-center py-2 px-1">${idx + 1}</td>
+            <td class="font-semibold text-slate-800 dark:text-slate-200 text-left px-2 truncate max-w-[120px]" title="${esc(item.name)}">${esc(item.name)}</td>
+            <td class="font-bold text-brand-600 dark:text-brand-400 text-right px-1.5">${item.rev.toLocaleString()}원</td>
+            <td class="font-medium text-emerald-600 dark:text-emerald-400 text-right px-1.5">${item.qty.toLocaleString()}개</td>
           </tr>
         `).join('');
       }
@@ -1167,15 +1205,15 @@
 
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <td class="font-bold text-slate-500 text-center">${idx + 1}</td>
-              <td class="text-left pl-2 max-w-[280px] lg:max-w-[380px] xl:max-w-[600px] truncate" title="${esc(item.p)}">
+              <td class="font-bold text-slate-500 text-center py-2 px-1">${idx + 1}</td>
+              <td class="text-left px-2 max-w-[280px] lg:max-w-[400px] xl:max-w-[650px] truncate" title="${esc(item.p)}">
                 <span class="font-bold text-slate-900 dark:text-white">${esc(item.p)}</span>
               </td>
-              <td class="text-right pr-2 text-slate-600 dark:text-slate-300 font-medium">@ ${avgPrice.toLocaleString()}원</td>
-              <td class="text-left pl-2 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px]" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
-              <td class="text-center text-slate-500 dark:text-slate-400 text-xs font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">${esc(cleanedOpt)}</td>
-              <td class="font-bold text-slate-900 dark:text-white text-right pr-2">${item.rev.toLocaleString()}원</td>
-              <td class="font-bold text-emerald-600 dark:text-emerald-400 text-right pr-2">${item.qty.toLocaleString()}개</td>
+              <td class="text-right px-1.5 text-slate-600 dark:text-slate-300 font-medium">@ ${avgPrice.toLocaleString()}원</td>
+              <td class="text-left px-2 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px]" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
+              <td class="text-center text-slate-500 dark:text-slate-400 text-xs font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-1 rounded-md">${esc(cleanedOpt)}</td>
+              <td class="font-bold text-slate-900 dark:text-white text-right px-1.5">${item.rev.toLocaleString()}원</td>
+              <td class="font-bold text-emerald-600 dark:text-emerald-400 text-right px-1.5">${item.qty.toLocaleString()}개</td>
             </tr>
           `;
         }).join('');
