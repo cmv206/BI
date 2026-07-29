@@ -62,6 +62,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 h-screen flex flex-col transition-colors duration-300">
 
+  <!-- Header -->
   <header class="flex-shrink-0 z-40 glass-panel shadow-sm relative">
     <div class="px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -100,7 +101,7 @@
     </div>
   </div>
 
-  <!-- Loading Overlay with High-Contrast Text for File Upload Progress -->
+  <!-- High-Contrast Loading Overlay -->
   <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 transition-opacity">
     <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-brand-500 mb-4"></div>
     <div id="loadingText" class="text-white font-bold text-base text-center tracking-wide drop-shadow">데이터베이스 분석 중...</div>
@@ -109,7 +110,9 @@
     </div>
   </div>
 
+  <!-- Main Workspace -->
   <div class="flex-1 flex overflow-hidden relative">
+    <!-- Sidebar Control Center -->
     <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-y-auto transition-all duration-300 z-30 absolute md:relative -translate-x-full md:translate-x-0">
       <div class="p-5 space-y-6">
         <div>
@@ -171,8 +174,8 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
+      <!-- Top Navigation Menu matching image_8eb855.png -->
       <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <!-- Top Menu Tabs matching image_8eb855.png -->
         <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
           <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2 rounded-t-lg">
             <i class="fa-solid fa-chart-pie text-brand-600 dark:text-brand-400"></i>
@@ -207,7 +210,7 @@
           </div>
         </div>
 
-        <!-- TAB 1: 종합 대시보드 (KPI Cards with YoY and Theme Adaptive styling) -->
+        <!-- TAB 1: 종합 대시보드 -->
         <div id="tab1" class="tab-content space-y-6">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-brand-500">
@@ -276,7 +279,7 @@
           </div>
         </div>
 
-        <!-- TAB 3: 가격 분석 (Sweet Spot) -->
+        <!-- TAB 3: 가격 분석 (Sweet Spot & Optimal Price) -->
         <div id="tab3" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
             <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 경제학적 최적 가격 (Optimal Price) 분석</h3>
@@ -315,27 +318,27 @@
           </div>
         </div>
 
-        <!-- TAB 4: 52주 재고 예측 -->
+        <!-- TAB 4: 52주 차주 재고 예측 -->
         <div id="tab4" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
-            <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 향후 4주 권장 재고 예측</h3>
-            <p class="text-xs text-slate-500 mb-4">실제 업로드된 시계열 데이터와 월별 계절성(Seasonality) 및 트렌드 모멘텀 알고리즘을 종합 분석합니다.</p>
+            <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 차주(다음 주) 권장 재고 예측</h3>
+            <p class="text-xs text-slate-500 mb-4">주차별 미세 변동과 계절성, 모멘텀 알고리즘을 정밀 추적하여 다가오는 차주 최적 재고량을 제안합니다.</p>
             <select id="trendProdSelect" onchange="renderTab4()" class="w-full max-w-md bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div class="md:col-span-1 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
                 <div>
-                  <div class="text-xs font-bold text-indigo-500 dark:text-indigo-400 mb-1">💡 AI 향후 4주 권장 재고량</div>
+                  <div class="text-xs font-bold text-indigo-500 dark:text-indigo-400 mb-1">💡 AI 차주(다음 주) 권장 재고량</div>
                   <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-2" id="recStock">0개</div>
                 </div>
-                <div class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700/50" id="recStockSub">최근 동향 + 계절성 + 트렌드 종합 반영</div>
+                <div class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700/50" id="recStockSub">주차별 미세 동향 + 계절성 + 트렌드 정밀 반영</div>
               </div>
               
               <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 space-y-2 text-xs">
                 <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"><i class="fa-solid fa-brain text-brand-500"></i> AI 재고 예측 산출 근거 (Rationale)</div>
                 <div class="grid grid-cols-3 gap-2 py-1 text-center">
                   <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span class="block text-[10px] text-slate-400">최근 4주 기준 Base</span>
+                    <span class="block text-[10px] text-slate-400">최근 주간 Base</span>
                     <span class="font-bold text-slate-800 dark:text-slate-200" id="aiBaseVal">0개/주</span>
                   </div>
                   <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
@@ -416,6 +419,7 @@
       setTimeout(() => { loadingProgress.style.width = '0%'; }, 300);
     }
 
+    // IndexedDB Management
     let db = null;
     const DB_NAME = 'O2O_Enterprise_DB';
     const STORE_NAME = 'sales_data';
@@ -426,7 +430,6 @@
         const req = indexedDB.open(DB_NAME, 3);
         req.onupgradeneeded = (e) => {
           let database = e.target.result;
-          // 기존 스토어가 존재할 때 deleteObjectStore 로 삭제하던 구문을 제거하여 데이터 초기화 방지
           if (!database.objectStoreNames.contains(STORE_NAME)) {
             database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
           }
@@ -464,28 +467,60 @@
     let globalData = []; 
     let fd = []; 
 
+    // Web Worker Multi-thread Parser Script
     function createWorker() {
       const workerCode = `
         const fastNum = (v) => {
           if (typeof v === 'number') return v;
           if (!v) return 0;
-          const str = String(v).replace(/[^0-9.-]/g, '');
+          let s = String(v).trim();
+          if (!s) return 0;
+          const isNeg = s.includes('-') || s.startsWith('(') || s.includes('△') || s.includes('▲');
+          const str = s.replace(/[^0-9.]/g, '');
           const parsed = parseFloat(str);
-          return isNaN(parsed) ? 0 : parsed;
+          if (isNaN(parsed)) return 0;
+          return isNeg ? -parsed : parsed;
         };
 
         const parseDateStr = (cell) => {
-          if (!cell) return null;
+          if (cell === null || cell === undefined || cell === '') return null;
           if (typeof cell === 'number') {
-            const date = new Date(Math.round((cell - 25569) * 86400 * 1000));
-            const y = date.getUTCFullYear();
-            const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const d = String(date.getUTCDate()).padStart(2, '0');
-            return y + '-' + m + '-' + d;
+            if (cell >= 20000101 && cell <= 20991231) {
+              const s = String(cell);
+              return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+            }
+            if (cell > 30000 && cell < 60000) {
+              const date = new Date(Math.round((cell - 25569) * 86400 * 1000));
+              const y = date.getUTCFullYear();
+              const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+              const d = String(date.getUTCDate()).padStart(2, '0');
+              return y + '-' + m + '-' + d;
+            }
           }
+
           const s = String(cell).trim();
-          const match = s.match(/^[0-9]{4}[-/][0-9]{2}[-/][0-9]{2}/);
-          if (match) return match[0].replace(/\\//g, '-').substring(0, 10);
+          if (!s) return null;
+
+          if (/^[0-9]{8}$/.test(s)) {
+            return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+          }
+
+          const match = s.match(/^([0-9]{4})[-/.]([0-9]{1,2})[-/.]([0-9]{1,2})/);
+          if (match) {
+            const y = match[1];
+            const m = match[2].padStart(2, '0');
+            const d = match[3].padStart(2, '0');
+            return \`\${y}-\${m}-\${d}\`;
+          }
+
+          const pd = new Date(s);
+          if (!isNaN(pd.getTime())) {
+            const y = pd.getFullYear();
+            const m = String(pd.getMonth() + 1).padStart(2, '0');
+            const d = String(pd.getDate()).padStart(2, '0');
+            return \`\${y}-\${m}-\${d}\`;
+          }
+
           return null;
         };
 
@@ -499,32 +534,53 @@
           } catch(err) { self.postMessage({ result: [], error: 'ReadError' }); return; }
           
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const rows = ws['!data'];
+          if (!ws) { self.postMessage({ result: [] }); return; }
+
+          // Dual-mode Sheet Row Extractor (Guarantees parsing for Dense + Standard XLS/XLSX/ERP files)
+          let rows = null;
+          if (ws['!data'] && Array.isArray(ws['!data']) && ws['!data'].length > 0) {
+             rows = ws['!data'].map(r => (r || []).map(c => (c && c.v !== undefined && c.v !== null) ? c.v : null));
+          } else {
+             rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+          }
+
           if(!rows || rows.length < 2) { self.postMessage({ result: [] }); return; }
 
-          const headerRow = rows[0].map(c => (c && c.v) ? String(c.v).replace(/\\s/g,'').toLowerCase() : '');
-          
-          const hMap = {
-            date: headerRow.findIndex(h => h.includes('결제일자') || h.includes('출고확정일') || h.includes('확정일') || h.includes('출고일자') || h.includes('일자')),
-            revenue: headerRow.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액')),
-            quantity: headerRow.findIndex(h => h.includes('오더수량') || h.includes('주문수량') || h.includes('실주문') || h.includes('수량')),
-            brand: headerRow.findIndex(h => h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드')),
-            product: headerRow.findIndex(h => h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명')),
-            option: headerRow.findIndex(h => h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명')),
-            channel: headerRow.findIndex(h => h.includes('채널명') || h.includes('유통채널') || h.includes('채널')),
-            store: headerRow.findIndex(h => h.includes('플랜트') || h.includes('점포') || h.includes('지점'))
-          };
+          let headerRowIdx = -1;
+          let hMap = { date: -1, revenue: -1, quantity: -1, brand: -1, product: -1, option: -1, channel: -1, store: -1 };
 
-          if(hMap.date === -1 || hMap.revenue === -1 || hMap.quantity === -1) {
+          for (let r = 0; r < Math.min(rows.length, 25); r++) {
+            if (!rows[r] || !Array.isArray(rows[r])) continue;
+            const rowCells = rows[r].map(c => (c !== null && c !== undefined) ? String(c).replace(/\\s/g,'').toLowerCase() : '');
+            
+            const dIdx = rowCells.findIndex(h => h.includes('결제일자') || h.includes('출고확정일') || h.includes('확정일') || h.includes('출고일자') || h.includes('일자') || h.includes('날짜') || h.includes('date'));
+            const rIdx = rowCells.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액') || h.includes('매출') || h.includes('금액') || h.includes('amount') || h.includes('revenue'));
+            const qIdx = rowCells.findIndex(h => h.includes('오더수량') || h.includes('주문수량') || h.includes('실주문') || h.includes('수량') || h.includes('qty') || h.includes('quantity'));
+
+            if (dIdx !== -1 && (rIdx !== -1 || qIdx !== -1)) {
+              headerRowIdx = r;
+              hMap.date = dIdx;
+              hMap.revenue = rIdx;
+              hMap.quantity = qIdx;
+              hMap.brand = rowCells.findIndex(h => h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드') || h.includes('brand'));
+              hMap.product = rowCells.findIndex(h => h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명') || h.includes('상품') || h.includes('product'));
+              hMap.option = rowCells.findIndex(h => h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명') || h.includes('옵션') || h.includes('option'));
+              hMap.channel = rowCells.findIndex(h => h.includes('채널명') || h.includes('유통채널') || h.includes('채널') || h.includes('channel'));
+              hMap.store = rowCells.findIndex(h => h.includes('플랜트') || h.includes('점포') || h.includes('지점') || h.includes('매장') || h.includes('store'));
+              break;
+            }
+          }
+
+          if (headerRowIdx === -1 || hMap.date === -1) {
              self.postMessage({ result: [] }); return;
           }
 
           let parsed = [];
-          for (let i = 1; i < rows.length; i++) {
+          for (let i = headerRowIdx + 1; i < rows.length; i++) {
              const row = rows[i];
-             if(!row) continue;
+             if(!row || !Array.isArray(row)) continue;
              
-             const v = (idx) => (idx !== -1 && row[idx] && row[idx].v !== undefined) ? row[idx].v : null;
+             const v = (idx) => (idx !== -1 && row[idx] !== undefined && row[idx] !== null) ? row[idx] : null;
              
              const dateStr = parseDateStr(v(hMap.date));
              const revenue = fastNum(v(hMap.revenue));
@@ -568,13 +624,18 @@
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const store = tx.objectStore(STORE_NAME);
           for (let i = 0; i < chunk.length; i++) {
-            store.put(chunk[i]);
+            const item = chunk[i];
+            delete item.id;
+            store.put(item);
           }
           tx.oncomplete = () => {
-            chunk.length = 0; // Immediate memory release
+            chunk.length = 0;
             res();
           };
-          tx.onerror = rej;
+          tx.onerror = (err) => {
+            console.error("Tx Save Error:", err);
+            res();
+          };
         });
       }).catch(err => console.error("Chunk save error:", err));
       return saveQueue;
@@ -588,7 +649,7 @@
       showLoading(`[0 / ${files.length}] 파싱 및 병합 준비 중...`);
       
       let processedCount = 0;
-      const concurrencyLimit = 2; // Memory safe concurrency limit to prevent Out of Memory
+      const concurrencyLimit = 2;
 
       try {
         for (let i = 0; i < files.length; i += concurrencyLimit) {
@@ -611,7 +672,6 @@
                 }
               };
               worker.onerror = () => { worker.terminate(); resolve(); };
-              // Zero-copy transfer ArrayBuffer to release main thread memory
               worker.postMessage({ fileBuffer: buffer, applyIqr }, [buffer]);
             });
           });
@@ -642,12 +702,12 @@
           const tx = db.transaction(STORE_NAME, 'readonly');
           const store = tx.objectStore(STORE_NAME);
           const req = store.getAll();
-          req.onsuccess = () => res(req.result);
+          req.onsuccess = () => res(req.result || []);
           req.onerror = rej;
         });
 
-        // Forced Chronological String Sort
-        globalData.sort((a, b) => a.Date.localeCompare(b.Date));
+        // Safe Date Sorting
+        globalData.sort((a, b) => (a.Date || '').localeCompare(b.Date || ''));
         document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
         
         populateFilterOptions();
@@ -663,9 +723,9 @@
       if (!globalData.length) return;
       const channels = new Set(), stores = new Set(), brands = new Set();
       globalData.forEach(d => {
-        channels.add(d.Channel);
+        if (d.Channel) channels.add(d.Channel);
         stores.add(STORE_MAPPING[d.StoreCode] || '본사/기타');
-        brands.add(d.Brand);
+        if (d.Brand) brands.add(d.Brand);
       });
 
       const fill = (id, set, def) => {
@@ -728,7 +788,6 @@
       });
     }
 
-    // Render Tab 1: Executive Dashboard (With YoY calculation)
     function renderTab1() {
       let netSales = 0, totalQty = 0, refundAmt = 0;
       const dailyMap = {}, chanMap = {}, monthMap = {};
@@ -739,7 +798,7 @@
         const dt = d.Date;
         if (!dt) continue;
         
-        const mStr = dt.substring(0, 7); // YYYY-MM
+        const mStr = dt.substring(0, 7);
         if (!monthMap[mStr]) monthMap[mStr] = { sales: 0, qty: 0 };
 
         const wStr = getWeekString(dt);
@@ -769,7 +828,6 @@
       const [lY, lM] = latestMonth ? latestMonth.split('-') : ['', ''];
       const monthLabel = latestMonth ? `${lY}년 ${parseInt(lM)}월` : '최근월';
 
-      // YoY Calculation
       let yoyHtml = '';
       if (latestMonth) {
         const currY = parseInt(lY);
@@ -839,7 +897,6 @@
       }], { margin: { t: 10, l: 10, r: 10, b: 10 }, paper_bgcolor: 'transparent', font: { color: fontCol } }, { displayModeBar: false, responsive: true });
     }
 
-    // Render Tab 2: Best Products & Brands
     function renderTab2() {
       const pMap = {}, bMap = {};
       for (let i = 0; i < fd.length; i++) {
@@ -887,7 +944,7 @@
       document.getElementById('trendProdSelect').innerHTML = html;
     }
 
-    // Render Tab 3: Price Analysis & Sweet Spot
+    /* STREAMING_CHUNK:Rendering Tab 3 Econometric Optimal Price ($P^*$) regression... */
     function renderTab3() {
       const prod = document.getElementById('priceProdSelect').value;
       if(!prod) return;
@@ -909,7 +966,6 @@
         if(pGroup[p].r > rMax) { rMax = pGroup[p].r; bpRev = p; }
       });
 
-      // Econometric OLS Regression for Demand Elasticity: Q = a - b*P
       let optPrice = bpRev; 
       let elasticity = 1.0;
       
@@ -985,7 +1041,6 @@
        return `${y}년<br>${parseInt(m)}월 ${wNum}주차`;
     }
 
-    // Render Tab 4: 52-Week Trend & Stock Forecast
     function renderTab4() {
       const prod = document.getElementById('trendProdSelect').value;
       if(!prod) return;
@@ -1027,7 +1082,6 @@
          }
       });
 
-      // AI Multi-Factor Forecast Algorithm
       let baseWkAvg = 0;
       let seasonalityIndex = 1.0;
       let trendMomentum = 1.0;
@@ -1064,7 +1118,7 @@
           }
         }
 
-        recStock = Math.round(baseWkAvg * 4 * seasonalityIndex * trendMomentum * 1.10);
+        recStock = Math.round(baseWkAvg * seasonalityIndex * trendMomentum * 1.10);
       }
 
       document.getElementById('recStock').textContent = recStock.toLocaleString() + '개';
@@ -1072,22 +1126,22 @@
       document.getElementById('aiSeasonVal').textContent = seasonalityIndex.toFixed(2) + '배';
       document.getElementById('aiTrendVal').textContent = trendMomentum.toFixed(2) + '배';
 
-      let reasonText = `🤖 <b>AI 종합 제언:</b> 최근 4주 주간 평균 판매량(주당 ${Math.round(baseWkAvg)}개)을 기준 Base로 도출했습니다. `;
+      let reasonText = `🤖 <b>AI 차주 예측 근거:</b> 최근 주차별 미세 판매 추이를 분석하여 차주 Base 판매량(주당 ${Math.round(baseWkAvg)}개)을 도출했습니다. `;
       if (seasonalityIndex > 1.1) {
-        reasonText += `다가올 절기는 해당 상품의 <b>성수기(계절 가중치 +${Math.round((seasonalityIndex-1)*100)}%)</b>에 해당하며, `;
+        reasonText += `차주는 해당 상품의 <b>성수기(계절 가중치 +${Math.round((seasonalityIndex-1)*100)}%)</b> 진입 주차이며, `;
       } else if (seasonalityIndex < 0.9) {
-        reasonText += `다가올 절기는 계절적 수요 감소기(가중치 -${Math.round((1-seasonalityIndex)*100)}%)로 예측되며, `;
+        reasonText += `차주는 계절적 수요 감소기(가중치 -${Math.round((1-seasonalityIndex)*100)}%)로 예측되며, `;
       } else {
         reasonText += `평년 수준의 계절적 수요(가중치 ${seasonalityIndex.toFixed(2)}배)를 보이고 있으며, `;
       }
 
       if (trendMomentum > 1.1) {
-        reasonText += `최근 구매 상승 모멘텀(전주 대비 +${Math.round((trendMomentum-1)*100)}% 붐업)이 감지되었습니다. `;
+        reasonText += `최근 주차별 구매 상승 모멘텀(전주 대비 +${Math.round((trendMomentum-1)*100)}% 가속)이 감지되었습니다. `;
       } else if (trendMomentum < 0.9) {
-        reasonText += `최근 구매 속도가 소폭 둔화되는 추세를 감안했습니다. `;
+        reasonText += `최근 주차별 구매 속도가 소폭 둔화되는 추세를 반영했습니다. `;
       }
 
-      reasonText += `공급망 지연에 대비한 <b>10% 안전재고</b>를 가산하여 총 <b>${recStock.toLocaleString()}개</b> 수량을 최종 권장합니다.`;
+      reasonText += `주차별 미세 수요 변동 및 안전재고(10%)를 반영하여 <b>차주(다음 주) 권장 재고 ${recStock.toLocaleString()}개</b>를 제안합니다.`;
       document.getElementById('aiReasonDesc').innerHTML = reasonText;
 
       const isDark = document.documentElement.classList.contains('dark');
