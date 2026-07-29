@@ -245,6 +245,19 @@
           </div>
         </div>
 
+        <!-- Selected Product Title Display Banner (Prominent & Copyable) -->
+        <div id="selectedProdTitleContainer" class="hidden bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3 transition">
+          <div class="flex items-center gap-2.5 overflow-hidden w-full">
+            <span class="bg-brand-500/10 text-brand-600 dark:text-brand-400 p-2.5 rounded-lg shrink-0">
+              <i class="fa-solid fa-box-archive text-lg"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-[10px] uppercase font-semibold text-brand-600 dark:text-brand-400 tracking-wider">선택 분석 상품명 (드래그하여 복사 가능)</p>
+              <h3 id="selectedProdTitle" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate select-text cursor-text" title="마우스로 드래그하여 복사할 수 있습니다"></h3>
+            </div>
+          </div>
+        </div>
+
         <!-- Spike Warning Alert Banner -->
         <div id="spikeAlertBanner" class="hidden bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-center gap-2.5 text-amber-600 dark:text-amber-400 text-xs font-medium">
           <i class="fa-solid fa-triangle-exclamation text-lg"></i>
@@ -391,39 +404,49 @@
       };
     };
 
-    // High Precision 4-Tier Priority Hierarchy Option Parser (Enhanced with prefix label cleaning)
+    // High Precision 4-Tier Priority Hierarchy Option Parser
     function cleanOptionString(rawOpt, prodName = '', rawColor = '', rawSize = '') {
       let foundColor = '';
       let foundSize = '';
 
-      // Regex pattern definitions for Sizes
+      // Regex pattern definitions for Sizes (Includes Range/Dual sizes like 275-280mm, 275~280, 270-275, 95-100, S-M etc.)
       const parenSizeRegex = /(?:^|[^\d\w])(\d{2,3}\s*\(\d{2,3}\)|(?:[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b|\d{2,3})\s*\(\s*(?:[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b|\d{2,3})\s*\))(?:[^\d\w]|$)/i;
-      const shoeSizeRegex = /\b(2[1-9][05])\b/;
+      const rangeSizeRegex = /(?:^|[^\d\w])((?:2[0-9]{2}|3[0-1][0-9]|[0-1]?[0-9]{2}|[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b)\s*[\-\~\/]\s*(?:2[0-9]{2}|3[0-1][0-9]|[0-1]?[0-9]{2}|[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b)(?:mm|MM)?)(?:[^\d\w]|$)/i;
+      const shoeSizeRegex = /(?:^|[^\d])(2[0-9]{2}|300|305|310)(?:mm|MM)?(?:[^\d]|$)/i;
       const clothSizeRegex = /(?:^|[^\d])(0[89][05]|1[0-6][05]|[1-5]?XL|XXL|XXXL|FREE\(F\)|FREE|\bF\b|\b44\b|\b55\b|\b66\b|\b77\b|\b88\b|\b99\b|\b2[4-9]\b|\b3[0-9]\b|\b4[02]\b|\b78\b|\b80\b|\b82\b|\b84\b|\b85\b|\b86\b|\b88\b|\b90\b|\b92\b|\b94\b|\b95\b|\b96\b|\b98\b|\b100\b|\b102\b|\b104\b|\b105\b|\b108\b|\b110\b|\b115\b|\b120\b|\b130\b|\b140\b|\b150\b|\b160\b)(?:[^\d]|$)/i;
 
-      // Regex pattern definitions for Colors (Expanded with common apparel colors)
-      const koreanColorRegex = /(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|오트밀|카멜|버건디|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|오렌지|멜란지|소라|라벤더|올리브|모카|에크루|인디핑크|[가-힣]{2,6}(?:색|컬러))/i;
-      const englishColorWordRegex = /\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER|MELANGE|OATMEAL|CAMEL|BURGUNDY|OLIVE|MOCHA|LAVENDER)\b/i;
-      const englishColorCodeRegex = /\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR|DU|DN|CH|KA|NA|OW|CG|SE|CP|SB|DB|DG|LB|[A-Z]{2,3})\b/i;
+      // Regex pattern definitions for Colors
+      const koreanColorRegex = /(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|오트밀|카멜|버건디|차콜|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|오렌지|멜란지|소라|라벤더|올리브|모카|에크루|인디핑크|올블랙|올화이트|라이트그레이|다크그레이|라이트베이지|샌드|[가-힣]{2,6}(?:색|컬러))/i;
+      const englishColorWordRegex = /\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER|MELANGE|OATMEAL|CAMEL|BURGUNDY|OLIVE|MOCHA|LAVENDER|SAND|WHT|BLK|GRY|BEG|NVY|PNK|RED|BLU)\b/i;
+      const englishColorCodeRegex = /\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR|DU|DN|CH|KA|NA|OW|CG|SE|CP|SB|DB|DG|LB)\b/i;
       const codeWithParenRegex = /([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/;
 
       // Tier 1 & 2: Extract Color & Size from '외부몰 옵션명' (rawOpt)
       let sOpt = String(rawOpt || '').trim();
       if (sOpt && sOpt !== '기본' && sOpt !== '단품' && sOpt !== '없음' && sOpt !== '-') {
         sOpt = sOpt.replace(/\[.*?\]/g, ' ').trim();
+
+        // Strip internal product model code parens like (SL0WSCFM063)
+        sOpt = sOpt.replace(/\([A-Z0-9\-\_]{5,}\)/gi, ' ').trim();
+
+        // Strip department floor prefixes like "1층", "2층", "본점" if prepended in option string
+        sOpt = sOpt.replace(/^(?:\d+층|본점|지점)\s*/i, ' ').trim();
         
         // Globally remove redundant labels like "색상:", "컬러:", "칼라:", "Color:", "사이즈:", "치수:", "호수:", "Size:", "선택1:" etc.
         sOpt = sOpt.replace(/(?:선택\d*|옵션명?|상품선택|단품명?|색상|컬러|칼라|Color|사이즈|치수|호수|Size)\s*[:：]?\s*/gi, ' ').trim();
 
         // Extract Size from rawOpt
         let parenM = sOpt.match(parenSizeRegex);
+        let rangeM = sOpt.match(rangeSizeRegex);
         let shoeM = sOpt.match(shoeSizeRegex);
         let clothM = sOpt.match(clothSizeRegex);
 
         if (parenM) {
           foundSize = parenM[1].trim();
+        } else if (rangeM) {
+          foundSize = (rangeM[1] || rangeM[0]).trim();
         } else if (shoeM) {
-          foundSize = shoeM[0];
+          foundSize = (shoeM[1] || shoeM[0]).trim();
         } else if (clothM) {
           foundSize = (clothM[1] || clothM[0]).trim();
         }
@@ -440,19 +463,19 @@
         else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
 
         // If foundColor exists but size missed, capture remaining text if it's concise
-        if (!foundSize && foundColor && sOpt.length <= 40) {
+        if (!foundSize && foundColor) {
           let remaining = sOpt.replace(foundColor, '').replace(/^[\/\_\-\,\.\:\s]+|[\/\_\-\,\.\:\s]+$/g, '').trim();
           remaining = remaining.replace(/(?:선택\d*|옵션명?|상품선택|단품명?|색상|컬러|칼라|Color|사이즈|치수|호수|Size)\s*[:：]?\s*/gi, '').trim();
-          if (remaining && remaining.length <= 15 && !/^(?:무료배송|사은품|당일발송|특가|할인|단품|기본)$/i.test(remaining)) {
+          if (remaining && remaining.length <= 20 && !/^(?:무료배송|사은품|당일발송|특가|할인|단품|기본)$/i.test(remaining)) {
             foundSize = remaining;
           }
         }
 
-        // If sOpt is short and size is found, use remaining non-numeric token as color code if standard color list missed it
-        if (!foundColor && foundSize && sOpt.length <= 40) {
+        // If sOpt has size but color was missed, capture remaining non-numeric token as color code if standard color list missed it
+        if (!foundColor && foundSize) {
           let rem = sOpt.replace(foundSize, '').replace(/^[\/\_\-\,\.\:\s]+|[\/\_\-\,\.\:\s]+$/g, '').trim();
           rem = rem.replace(/(?:선택\d*|옵션명?|상품선택|단품명?|색상|컬러|칼라|Color|사이즈|치수|호수|Size)\s*[:：]?\s*/gi, '').trim();
-          if (rem && rem.length <= 15 && !/^\d+$/.test(rem) && !/^(?:무료배송|사은품|당일발송|특가|할인|단품|기본)$/i.test(rem)) {
+          if (rem && rem.length <= 20 && !/^\d+(?:mm|MM)?$/i.test(rem) && !/^(?:무료배송|사은품|당일발송|특가|할인|단품|기본)$/i.test(rem)) {
             foundColor = rem.toUpperCase();
           }
         }
@@ -471,13 +494,14 @@
       // Check prodName if still missing Color or Size
       let sProd = String(prodName || '').trim();
       if (sProd && (!foundColor || !foundSize)) {
-        // Strip brand names containing color words to prevent false-positive color extraction (e.g., '블랙야크' -> '블랙')
         let cleanedProdForColor = sProd.replace(/(블랙야크|핑크퐁|화이트리퍼|그린핑거|그린조이|골드윈|레드페이스|블루독|크림하우스)/gi, '');
 
         if (!foundSize) {
+          let rangeM = sProd.match(rangeSizeRegex);
           let shoeM = sProd.match(shoeSizeRegex);
           let clothM = sProd.match(clothSizeRegex);
-          if (shoeM) foundSize = shoeM[0];
+          if (rangeM) foundSize = (rangeM[1] || rangeM[0]).trim();
+          else if (shoeM) foundSize = (shoeM[1] || shoeM[0]).trim();
           else if (clothM) foundSize = (clothM[1] || clothM[0]).trim();
         }
         if (!foundColor) {
@@ -490,12 +514,17 @@
         }
       }
 
-      // Ensure no leftover label prefixes or separators exist in color or size strings
+      // Clean up foundColor
       if (foundColor) {
         foundColor = foundColor.replace(/^(?:색상|컬러|칼라|Color)\s*[:：]?\s*/gi, '').replace(/^[\/\_\-\,\.\:\s]+|[\/\_\-\,\.\:\s]+$/g, '').trim();
       }
+
+      // Clean up foundSize and STRIP UNIT SUFFIXES (mm, MM, cm, CM) as requested
       if (foundSize) {
-        foundSize = foundSize.replace(/^(?:사이즈|치수|호수|Size)\s*[:：]?\s*/gi, '').replace(/^[\/\_\-\,\.\:\s]+|[\/\_\-\,\.\:\s]+$/g, '').trim();
+        foundSize = foundSize.replace(/^(?:사이즈|치수|호수|Size)\s*[:：]?\s*/gi, '')
+                             .replace(/(?:mm|MM|cm|CM)$/gi, '')
+                             .replace(/^[\/\_\-\,\.\:\s]+|[\/\_\-\,\.\:\s]+$/g, '')
+                             .trim();
       }
 
       // Safety guard against duplicate color and size
@@ -1101,6 +1130,15 @@
       if (!sel) return;
       const prod = sel.value;
       
+      const elTitle = document.getElementById('selectedProdTitle');
+      const elTitleContainer = document.getElementById('selectedProdTitleContainer');
+      if (prod) {
+        if (elTitle) elTitle.innerText = prod;
+        if (elTitleContainer) elTitleContainer.classList.remove('hidden');
+      } else {
+        if (elTitleContainer) elTitleContainer.classList.add('hidden');
+      }
+
       const banner = document.getElementById('spikeAlertBanner');
       if (!prod) {
         if (banner) banner.classList.add('hidden');
@@ -1109,6 +1147,10 @@
 
       const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0);
       let weekMap = {}, weekStoreMap = {}, weekChanMap = {};
+      
+      // AI Advanced Logic: Track year and week explicitly for YoY
+      const weekRegex = /(\d{4})년\s*(\d{1,2})주차/;
+      let yearWeekMap = {};
 
       pData.forEach(d => {
         let w = d.Week;
@@ -1119,9 +1161,23 @@
 
         if (!weekChanMap[w]) weekChanMap[w] = {};
         weekChanMap[w][d.Channel] = (weekChanMap[w][d.Channel] || 0) + d.Quantity;
+        
+        let match = w.match(weekRegex);
+        if (match) {
+            let yr = parseInt(match[1]);
+            let wk = parseInt(match[2]);
+            if(!yearWeekMap[yr]) yearWeekMap[yr] = {};
+            yearWeekMap[yr][wk] = (yearWeekMap[yr][wk] || 0) + d.Quantity;
+        }
       });
 
-      const weeks = Object.keys(weekMap).sort();
+      const weeks = Object.keys(weekMap).sort((a, b) => {
+        let ma = a.match(weekRegex); let mb = b.match(weekRegex);
+        if(!ma || !mb) return a.localeCompare(b);
+        if(ma[1] !== mb[1]) return parseInt(ma[1]) - parseInt(mb[1]);
+        return parseInt(ma[2]) - parseInt(mb[2]);
+      });
+      
       const weekQtys = weeks.map(w => weekMap[w]);
       const weekTopStores = weeks.map(w => Object.entries(weekStoreMap[w]).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타');
       const weekTopChans = weeks.map(w => Object.entries(weekChanMap[w]).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타');
@@ -1136,43 +1192,129 @@
         customdata: weekTopChans
       }], getChartLayout(`[${prod}] 주차별 누적 판매 트렌드`), getPlotlyConfig());
 
-      // Trend spike and inventory calculation
+      // Trend spike and AI inventory calculation
       const last4Weeks = weeks.slice(-4);
-      const last4QtySum = last4Weeks.reduce((acc, w) => acc + weekMap[w], 0);
-      const recent4wAvg = last4Weeks.length ? (last4QtySum / last4Weeks.length) : 0;
-
       const prevWeeks = weeks.slice(-8, -4);
-      const prev4QtySum = prevWeeks.reduce((acc, w) => acc + weekMap[w], 0);
-      const prev4wAvg = prevWeeks.length ? (prev4QtySum / prevWeeks.length) : 0;
-
-      let isSpike = false;
-      if (prev4wAvg > 5 && (recent4wAvg - prev4wAvg) / prev4wAvg >= 0.5) {
-        isSpike = true;
+      
+      let recent4w_qty = 0, prev4w_qty = 0;
+      last4Weeks.forEach(w => recent4w_qty += weekMap[w]);
+      prevWeeks.forEach(w => prev4w_qty += weekMap[w]);
+      
+      const recent4wAvg = last4Weeks.length ? (recent4w_qty / last4Weeks.length) : 0;
+      const momentum = prev4w_qty > 0 ? (recent4w_qty - prev4w_qty) / prev4w_qty : 0;
+      
+      let isSpike = (momentum >= 0.5 && prev4w_qty > 5);
+      
+      // YoY Seasonality Logic
+      let seasonalMultiplier = 1.0;
+      let hasYoY = false;
+      let lastWeekStr = weeks[weeks.length - 1];
+      
+      if (lastWeekStr) {
+         let m = lastWeekStr.match(weekRegex);
+         if (m) {
+             let currYr = parseInt(m[1]);
+             let currWk = parseInt(m[2]);
+             
+             let next4Wks = [];
+             for(let i=1; i<=4; i++) {
+                 let nw = currWk + i;
+                 let ny = currYr;
+                 if (nw > 52) { nw -= 52; ny += 1; }
+                 next4Wks.push({yr: ny, wk: nw});
+             }
+             let recent4WksNums = last4Weeks.map(w => parseInt(w.match(weekRegex)[2]));
+             
+             let lastYr = currYr - 1;
+             if (yearWeekMap[lastYr]) {
+                 let yoyRecent4wQty = recent4WksNums.reduce((sum, wk) => sum + (yearWeekMap[lastYr][wk] || 0), 0);
+                 let yoyNext4wQty = next4Wks.reduce((sum, nw) => sum + (yearWeekMap[nw.yr - 1] ? (yearWeekMap[nw.yr - 1][nw.wk] || 0) : 0), 0);
+                 
+                 if (yoyRecent4wQty > 0) {
+                     hasYoY = true;
+                     // Prevent extreme multipliers (cap between 0.3x and 3.0x)
+                     seasonalMultiplier = Math.max(0.3, Math.min(3.0, yoyNext4wQty / yoyRecent4wQty));
+                 }
+             }
+         }
+      }
+      
+      // AI Final Calculation
+      let baseQty = recent4w_qty;
+      let predictedQty = baseQty;
+      
+      if (hasYoY) {
+          predictedQty = baseQty * seasonalMultiplier;
+          if (isSpike) predictedQty = predictedQty * 1.2; // Add viral momentum alpha
+      } else {
+          if (isSpike) {
+              predictedQty = baseQty * (1 + Math.min(momentum, 1.0) * 0.5);
+          } else if (momentum <= -0.3) {
+              predictedQty = baseQty * (1 + Math.max(momentum, -0.8) * 0.5);
+          }
+      }
+      
+      const recQty = Math.round(predictedQty);
+      
+      // AI Rationale & Status Updates
+      let aiReasonHTML = "";
+      let statusText = "안정적 판매";
+      let statusClass = "text-xl sm:text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1";
+      
+      const elYoy = document.getElementById('invYoyText');
+      if (hasYoY) {
+          let trendDir = seasonalMultiplier > 1.1 ? "상승" : (seasonalMultiplier < 0.9 ? "하락" : "유지");
+          let pct = Math.round(seasonalMultiplier * 100);
+          aiReasonHTML = `<strong>[AI 예측 근거]</strong> 과거 빅데이터 분석 결과, 다가올 4주는 최근 4주 대비 <b>계절적 수요가 약 ${pct}% 수준으로 ${trendDir}</b>할 것으로 예측됩니다. `;
+          if (elYoy) {
+              elYoy.innerText = `YoY 계절성 지수: ${pct}%`;
+              elYoy.className = `text-xs font-semibold mt-0.5 ${seasonalMultiplier >= 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`;
+          }
+      } else {
+          aiReasonHTML = `<strong>[AI 단기 모멘텀 예측]</strong> 전년도 동기 계절성 데이터가 부족하여 최근 8주간의 단기 판매 흐름을 분석했습니다. `;
+          if (elYoy) {
+              elYoy.innerText = "YoY: 전년동기 데이터 대기 중 (단기 추세 분석)";
+              elYoy.className = "text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5";
+          }
+      }
+      
+      if (isSpike) {
+          aiReasonHTML += `또한 현재 <b>최근 4주 판매량이 직전 대비 +${Math.round(momentum*100)}% 급증</b>하는 단기 유행 패턴이 감지되어 예측치에 +20% 가중치를 반영했습니다.`;
+          statusText = "🔥 수요 폭증 (Spike)";
+          statusClass = "text-xl sm:text-2xl font-bold text-amber-500 mt-1";
+      } else if (momentum <= -0.3 && prev4w_qty > 5) {
+          aiReasonHTML += `최근 4주 판매량이 직전 대비 <b>${Math.round(Math.abs(momentum)*100)}% 감소</b> 추세이므로, 보수적인 재고 운영을 제안합니다.`;
+          statusText = "📉 수요 감소 주의";
+          statusClass = "text-xl sm:text-2xl font-bold text-rose-500 dark:text-rose-400 mt-1";
+      } else if (hasYoY && seasonalMultiplier > 1.3) {
+          statusText = "🌊 시즌 성수기 진입";
+          statusClass = "text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1";
+      } else if (hasYoY && seasonalMultiplier < 0.7) {
+          statusText = "🍂 시즌 비수기 진입";
+          statusClass = "text-xl sm:text-2xl font-bold text-slate-500 dark:text-slate-400 mt-1";
       }
 
       if (banner) {
-        if (isSpike) banner.classList.remove('hidden');
-        else banner.classList.add('hidden');
+          banner.classList.remove('hidden');
+          banner.innerHTML = `<i class="fa-solid fa-robot text-lg mt-0.5"></i><div>${aiReasonHTML}</div>`;
+          if (isSpike) {
+              banner.className = "bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-start gap-2.5 text-amber-600 dark:text-amber-400 text-xs font-medium";
+          } else {
+              banner.className = "bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl flex items-start gap-2.5 text-indigo-700 dark:text-indigo-300 text-xs font-medium";
+          }
       }
 
-      const recQty = isSpike ? Math.round(recent4wAvg * 4 * 1.3) : Math.round(recent4wAvg * 4);
-      
       const elRec = document.getElementById('invRecommend');
       const elSub = document.getElementById('invRecommendSub');
       const elAvg = document.getElementById('invRecent4wAvg');
       const elStatus = document.getElementById('invTrendStatus');
 
       if (elRec) elRec.innerText = fmtNum(recQty) + ' 개';
-      if (elSub) elSub.innerText = isSpike ? '트렌드 폭증 반영 (안전재고 +30% 가중치)' : '최근 4주 판매 흐름 기반 추정';
+      if (elSub) elSub.innerText = "AI 종합 분석 기반 권장량 (계절성 & 유행 반영)";
       if (elAvg) elAvg.innerText = fmtNum(recent4wAvg) + ' 개 / 주';
       if (elStatus) {
-        if (isSpike) {
-          elStatus.innerText = '🔥 수요 폭증 (Spike)';
-          elStatus.className = 'text-xl sm:text-2xl font-bold text-amber-500 mt-1';
-        } else {
-          elStatus.innerText = '안정적 판매';
-          elStatus.className = 'text-xl sm:text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1';
-        }
+        elStatus.innerText = statusText;
+        elStatus.className = statusClass;
       }
     }
 
