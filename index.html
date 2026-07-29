@@ -1160,19 +1160,59 @@
     }
 
     // Modal Helpers
-    function showClearModal() { document.getElementById('clearModal').classList.remove('hidden'); }
-    function hideClearModal() { document.getElementById('clearModal').classList.add('hidden'); }
+    function showClearModal() { 
+      const el = document.getElementById('clearModal');
+      if (el) el.classList.remove('hidden'); 
+    }
+    function hideClearModal() { 
+      const el = document.getElementById('clearModal');
+      if (el) el.classList.add('hidden'); 
+    }
     function confirmClearDB() {
-      if(db) {
+      const resetStateAndUI = () => {
+        allData = []; 
+        filteredData = []; 
+        uniqueProductList = [];
+        const countEl = document.getElementById('totalRecordCount');
+        if (countEl) countEl.innerText = '0 건';
+        const welcomeEl = document.getElementById('welcomeScreen');
+        if (welcomeEl) welcomeEl.classList.remove('hidden');
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        hideClearModal();
+        clearFilters();
+      };
+
+      if (!db) {
+        try {
+          const delReq = indexedDB.deleteDatabase("O2OSalesDB");
+          delReq.onsuccess = () => resetStateAndUI();
+          delReq.onerror = () => resetStateAndUI();
+        } catch (e) {
+          resetStateAndUI();
+        }
+        return;
+      }
+
+      try {
         let tx = db.transaction("sales_data", "readwrite");
-        tx.objectStore("sales_data").clear();
-        tx.oncomplete = () => {
-          allData = []; filteredData = []; uniqueProductList = [];
-          document.getElementById('totalRecordCount').innerText = '0 건';
-          document.getElementById('welcomeScreen').classList.remove('hidden');
-          hideClearModal();
-          clearFilters();
+        let store = tx.objectStore("sales_data");
+        let req = store.clear();
+        
+        req.onsuccess = () => {
+          resetStateAndUI();
         };
+        req.onerror = () => {
+          resetStateAndUI();
+        };
+        tx.oncomplete = () => {
+          resetStateAndUI();
+        };
+        tx.onerror = () => {
+          resetStateAndUI();
+        };
+      } catch (err) {
+        console.error("Clear DB Error:", err);
+        resetStateAndUI();
       }
     }
 
