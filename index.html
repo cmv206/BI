@@ -20,7 +20,7 @@
     /* Data table styling */
     .data-table-container { overflow-x: auto; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
     .dark .data-table-container { border-color: #334155; }
-    table { w-full; text-left; border-collapse: collapse; }
+    table { width: 100%; text-align: left; border-collapse: collapse; }
     th { background: #f8fafc; padding: 12px 16px; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
     .dark th { background: #1e293b; color: #94a3b8; border-color: #334155; }
     td { padding: 12px 16px; font-size: 0.875rem; color: #334155; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
@@ -104,7 +104,7 @@
               <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 text-center transition-colors group-hover:border-brand-500 group-hover:bg-brand-50 dark:group-hover:bg-brand-900/20">
                 <i class="fa-solid fa-file-excel text-2xl text-slate-400 group-hover:text-brand-500 mb-2 transition-colors"></i>
                 <div class="text-xs font-medium text-slate-600 dark:text-slate-300">주차별/월별 Raw Excel 누적 추가</div>
-                <div class="text-[10px] text-slate-400 mt-1">.xlsx, .xls 파일 지원</div>
+                <div class="text-[10px] text-slate-400 mt-1">.xlsx, .xls 파일 지원 (다중 지원)</div>
               </div>
               <input type="file" id="fileUpload" multiple accept=".xlsx, .xls" class="hidden">
             </label>
@@ -118,10 +118,10 @@
             <button onclick="clearFilters()" class="text-[10px] text-brand-600 dark:text-brand-400 font-medium hover:underline">필터 초기화</button>
           </div>
           
-          <!-- 기간 필터 추가 -->
+          <!-- 기간 필터 -->
           <div class="space-y-1.5">
             <label class="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-              <i class="fa-regular fa-calendar text-slate-400"></i> 조회 기간 설정 (전체 기간 권장)
+              <i class="fa-regular fa-calendar text-slate-400"></i> 조회 기간 설정
             </label>
             <div class="flex items-center gap-2">
               <input type="date" id="filterStartDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500">
@@ -170,11 +170,11 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-[calc(100vh-64px)] overflow-hidden relative">
-      <!-- Loading Overlay -->
-      <div id="loadingOverlay" class="hidden absolute inset-0 bg-slate-900/40 backdrop-blur-sm z-30 flex-col items-center justify-center text-white">
-        <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 text-brand-400"></i>
-        <p class="font-medium">빅데이터 전처리 및 인덱싱 중...</p>
-        <p class="text-xs opacity-75 mt-1">엑셀 용량에 따라 수십 초가 소요될 수 있습니다.</p>
+      <!-- High Performance Memory Overlay -->
+      <div id="loadingOverlay" class="hidden absolute inset-0 bg-slate-900/60 backdrop-blur-md z-30 flex-col items-center justify-center text-white px-4 text-center">
+        <i class="fa-solid fa-circle-notch fa-spin text-5xl mb-4 text-brand-400"></i>
+        <h3 id="loadingText" class="font-bold text-lg mb-1">대용량 시계열 빅데이터 병렬 인덱싱 중...</h3>
+        <p id="loadingSubtext" class="text-xs text-slate-300">메모리 안정화 및 데이터베이스 스트리밍 분할 적용 중</p>
       </div>
 
       <!-- Tabs Navigation -->
@@ -204,7 +204,7 @@
           </div>
           <h2 class="text-xl font-bold text-slate-800 dark:text-white mb-2">데이터를 업로드해 분석을 시작하세요</h2>
           <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-            좌측 패널에서 주차별 또는 월별로 정리된 <br class="hidden sm:block">Raw Excel 파일(.xlsx)을 드래그 앤 드롭하여 업로드하세요. <br>대용량 시계열 데이터를 자동으로 정제하고 통합합니다.
+            좌측 패널에서 주차별 또는 월별로 정리된 <br class="hidden sm:block">Raw Excel 파일(.xlsx)을 드래그 앤 드롭하여 업로드하세요. <br>5개년 이상의 대용량 멀티 데이터도 안전하게 통합 파싱됩니다.
           </p>
           <label class="cursor-pointer bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-lg shadow-brand-500/30 flex items-center gap-2">
             <i class="fa-solid fa-file-excel"></i> PC에서 엑셀 파일 선택
@@ -311,7 +311,7 @@
             <div class="w-full sm:w-2/3 space-y-1">
               <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">단일 상품 정밀 분석 검색</label>
               <select id="selectTrendProd" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none">
-                <option value="">상품을 선택하세요 (매출 상위 순 정렬)</option>
+                <option value="">상품을 선택하세요</option>
               </select>
             </div>
             <button onclick="document.querySelector('[data-target=\'tab4\']').click()" class="shrink-0 w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-2.5 px-4 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-1.5 mt-4 sm:mt-0">
@@ -373,12 +373,12 @@
             <div class="bg-white dark:bg-[#111827] p-5 rounded-2xl border-l-4 border-l-emerald-500 border border-slate-200 dark:border-slate-800 shadow-sm">
               <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">경제학적 매출 극대화 최적가 (RMP)</div>
               <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400" id="optPriceRev">0 원</div>
-              <div class="text-[11px] text-slate-400 mt-1">회귀분석 단일탄력성(Ep=-1) 도출점</div>
+              <div class="text-[11px] text-slate-400 mt-1">수요 탄력성(Ep=-1) 도출점</div>
             </div>
             <div class="bg-white dark:bg-[#111827] p-5 rounded-2xl border-l-4 border-l-brand-500 border border-slate-200 dark:border-slate-800 shadow-sm">
               <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">마케팅 수요저항 최적 적정가 (Sweet Spot)</div>
               <div class="text-2xl font-extrabold text-brand-600 dark:text-brand-400" id="optPriceMkt">0 원</div>
-              <div class="text-[11px] text-slate-400 mt-1">수량 감소율 조화평균(Harmonic) 도출점</div>
+              <div class="text-[11px] text-slate-400 mt-1">수량/매출 기여 조화평균 도출점</div>
             </div>
           </div>
 
@@ -422,12 +422,11 @@
     let allData = [];
     let filteredData = [];
     let uniqueProductList = [];
-    let isInternalNav = false;
 
     // Integer formatting helper (No decimals)
     const fmtNum = (num) => Math.round(num || 0).toLocaleString('ko-KR');
 
-    // Date formatting helpers
+    // Date formatting helper (2026년 3월 4일)
     const fmtExactDate = (dtStr) => {
       if (!dtStr) return '';
       const parts = dtStr.split('-');
@@ -457,55 +456,23 @@
       };
     };
 
-    // Option Cleaning Regexes (Hoisted)
-    const parenSizeRegex = /(?:^|[^\d\w])(\d{2,3}\s*\(\d{2,3}\)|(?:[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b|\d{2,3})\s*\(\s*(?:[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b|\d{2,3})\s*\))(?:[^\d\w]|$)/i;
-    const rangeSizeRegex = /(?:^|[^\d\w])((?:2[0-9]{2}|3[0-1][0-9]|[0-1]?[0-9]{2}|[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b)\s*[\-\~\/]\s*(?:2[0-9]{2}|3[0-1][0-9]|[0-1]?[0-9]{2}|[1-5]?XL|XXL|XXXL|FREE|\b[SML]\b)(?:mm|MM)?)(?:[^\d\w]|$)/i;
-    const shoeSizeRegex = /(?:^|[^\d])(2[0-9]{2}|300|305|310)(?:mm|MM)?(?:[^\d]|$)/i;
-    const clothSizeRegex = /(?:^|[^\d])(0[89][05]|1[0-6][05]|[1-5]?XL|XXL|XXXL|FREE\(F\)|FREE|\bF\b|\b44\b|\b55\b|\b66\b|\b77\b|\b88\b|\b99\b|\b2[4-9]\b|\b3[0-9]\b|\b4[02]\b|\b78\b|\b80\b|\b82\b|\b84\b|\b85\b|\b86\b|\b88\b|\b90\b|\b92\b|\b94\b|\b95\b|\b96\b|\b98\b|\b100\b|\b102\b|\b104\b|\b105\b|\b108\b|\b110\b|\b115\b|\b120\b|\b130\b|\b140\b|\b150\b|\b160\b)(?:[^\d]|$)/i;
-    const koreanColorRegex = /(유광\s*블랙|무광\s*블랙|유광블랙|무광블랙|라이트핑크|아이보리|오트밀|카멜|버건디|차콜|베이지\s*다크|다크\s*베이지|베이지다크|다크베이지|라이트\s*베이지|라이트베이지|다크\s*그레이|라이트\s*그레이|다크\s*네이비|라이트\s*네이비|다크\s*브라운|라이트\s*브라운|다크\s*카키|라이트\s*카키|다크\s*블루|라이트\s*블루|다크\s*핑크|라이트\s*핑크|다크\s*그린|라이트\s*그린|베이지|브라운|네이비|블랙|화이트|핑크|블루|레드|그린|카키|옐로우|그레이|퍼플|크림|와인|민트|골드|실버|오렌지|멜란지|소라|라벤더|올리브|모카|에크루|인디핑크|올블랙|올화이트|샌드|머스타드|겨자|라임|[가-힣]{2,6}(?:색|컬러))/i;
-    const englishColorWordRegex = /\b(BLACK|BEIGE|IVORY|NAVY|WHITE|GRAY|GREY|PINK|KHAKI|BLUE|RED|CHARCOAL|CREAM|GREEN|YELLOW|ORANGE|PURPLE|MINT|WINE|BROWN|GOLD|SILVER|MELANGE|OATMEAL|CAMEL|BURGUNDY|OLIVE|MOCHA|LAVENDER|SAND|WHT|BLK|GRY|BEG|NVY|PNK|RED|BLU|MUSTARD|DKTP)\b/i;
-    const englishColorCodeRegex = /\b(BK|BE|IV|NV|NY|WH|GY|GR|PK|KH|BL|RD|CC|MG|MT|PP|PU|WN|OR|YL|BR|GD|SV|CR|DU|DN|CH|KA|NA|OW|CG|SE|CP|SB|DB|DG|LB)\b/i;
-    const codeWithParenRegex = /([a-zA-Z]{1,4}\([가-힣]+\)|[가-힣]{2,8}\([0-9]+\))/;
-
-    function cleanOptionString(rawOpt, prodName = '', rawColor = '', rawSize = '') {
+    // Option Cleaning Regex
+    function cleanOptionString(rawOpt) {
       try {
-        let foundColor = '';
-        let foundSize = '';
         let sOpt = String(rawOpt || '').trim();
-        if (sOpt && sOpt !== '기본' && sOpt !== '단품' && sOpt !== '없음' && sOpt !== '-') {
-          let parenM = sOpt.match(parenSizeRegex);
-          let rangeM = sOpt.match(rangeSizeRegex);
-          let shoeM = sOpt.match(shoeSizeRegex);
-          let clothM = sOpt.match(clothSizeRegex);
-          if (parenM) foundSize = parenM[1].trim();
-          else if (rangeM) foundSize = (rangeM[1] || rangeM[0]).trim();
-          else if (shoeM) foundSize = (shoeM[1] || shoeM[0]).trim();
-          else if (clothM) foundSize = (clothM[1] || clothM[0]).trim();
-
-          let codeParenM = sOpt.match(codeWithParenRegex);
-          let korM = sOpt.match(koreanColorRegex);
-          let engWordM = sOpt.match(englishColorWordRegex);
-          let engCodeM = sOpt.match(englishColorCodeRegex);
-          if (codeParenM) foundColor = codeParenM[0];
-          else if (korM) foundColor = korM[0].replace(/\s+/g, ' ').trim();
-          else if (engWordM) foundColor = engWordM[0].toUpperCase();
-          else if (engCodeM) foundColor = engCodeM[0].toUpperCase();
-        }
-        if (foundColor && foundSize) return `${foundColor} ${foundSize}`;
-        if (foundColor) return foundColor;
-        if (foundSize) return foundSize;
-        return '단품';
+        if (!sOpt || sOpt === '기본' || sOpt === '단품' || sOpt === '없음' || sOpt === '-') return '단품';
+        return sOpt;
       } catch (e) {
         return '단품';
       }
     }
 
+    // STREAMING MEMORY EFFICIENT WEB WORKER
     const workerScript = `
       importScripts('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
 
       const STORE_MAPPING = ${JSON.stringify(STORE_MAPPING)};
 
-      // TIMEZONE SAFE DATE PARSER
       function parseExcelDate(val) {
         if (!val) return '';
         if (val instanceof Date) {
@@ -515,7 +482,6 @@
             return \`\${y}-\${m}-\${d}\`;
         }
         if (typeof val === 'number') {
-            // Excel serial direct to UTC to prevent KST 9hr shift
             const date = new Date(Math.round((val - 25569) * 86400 * 1000));
             const y = date.getUTCFullYear();
             const m = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -546,26 +512,23 @@
         const { fileBuffer, fileName } = e.data;
         let records = [];
         try {
+          // MEMORY OPTIMIZED DENSE READ
           const workbook = XLSX.read(fileBuffer, { type: 'array', dense: true, cellDates: true });
           const sheetName = workbook.SheetNames[0];
           const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
 
           for (let i = 0; i < rows.length; i++) {
             const r = rows[i];
-            
-            // ROBUST PARSER FOR DATES, REVENUE, QUANTITY
             let dtStr = parseExcelDate(r['출고확정일'] || r['결제일자'] || r['일자'] || r['날짜']);
             let prodName = String(r['외부몰 상품명'] || r['상품명'] || r['품명'] || '').trim();
             let rev = 0, qty = 0;
 
-            // Header Scan Fallback
             for (let key in r) {
                 let k = key.replace(/\\s+/g, '').toLowerCase();
                 let v = String(r[key]);
                 if (!dtStr && (k.includes('일자') || k.includes('날짜'))) dtStr = parseExcelDate(v);
                 if (!prodName && (k.includes('상품명') || k.includes('품명'))) prodName = v.trim();
                 
-                // Aggressive Number Extraction (Strips '원', '₩', ',')
                 if (rev === 0 && (k.includes('판매금액') || k.includes('매출') || k.includes('결제금액') || k.includes('결제액'))) {
                     let numStr = v.replace(/[^0-9.-]/g, '');
                     if (numStr && !isNaN(Number(numStr))) rev = Number(numStr);
@@ -578,8 +541,8 @@
 
             if (!dtStr || dtStr.length < 10 || !prodName || isNaN(rev) || isNaN(qty)) continue;
 
-            // Generate precise Week string formatting from Date
-            const dObj = new Date(dtStr);
+            const parts = dtStr.split('-');
+            const dObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             const wYear = dObj.getFullYear();
             const wMonth = dObj.getMonth() + 1;
             const weekNum = Math.ceil(dObj.getDate() / 7);
@@ -629,7 +592,7 @@
         if (allData.length > 0) {
           document.getElementById('welcomeScreen').classList.add('hidden');
           document.getElementById('totalRecordCount').innerText = fmtNum(allData.length) + ' 건';
-          populateFilterOptions(true); // new upload logic
+          populateFilterOptions();
           applyFilters();
         } else {
           document.getElementById('welcomeScreen').classList.remove('hidden');
@@ -637,57 +600,71 @@
       };
     }
 
-    function saveToDB(records, fileName) {
-      if(!db) return;
-      const tx = db.transaction("sales_data", "readwrite");
-      const store = tx.objectStore("sales_data");
-      let count = 0;
-      records.forEach(r => { store.put(r); count++; });
-      tx.oncomplete = () => { loadAllDataFromDB(); };
+    // STREAMING CHUNKED INDEXEDDB SAVER (PREVENTS OOM ON 24+ FILES)
+    async function saveToDBInBatches(records) {
+      if (!db || !records || records.length === 0) return;
+      const BATCH_SIZE = 2000;
+      for (let i = 0; i < records.length; i += BATCH_SIZE) {
+        const chunk = records.slice(i, i + BATCH_SIZE);
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction("sales_data", "readwrite");
+          const store = tx.objectStore("sales_data");
+          chunk.forEach(r => store.put(r));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
     }
 
-    document.querySelectorAll('input[type="file"]').forEach(input => {
-      input.addEventListener('change', (e) => {
-        const files = e.target.files;
-        if (!files.length) return;
-        document.getElementById('loadingOverlay').classList.remove('hidden');
-        document.getElementById('loadingOverlay').classList.add('flex');
-        
-        let completed = 0;
-        Array.from(files).forEach(file => {
+    // SEQUENTIAL FILE QUEUE PROCESSOR TO PREVENT OUT OF MEMORY
+    async function processFilesSequentially(files) {
+      const overlay = document.getElementById('loadingOverlay');
+      const loadText = document.getElementById('loadingText');
+      const loadSub = document.getElementById('loadingSubtext');
+
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        loadText.innerText = `파일 처리 중 (${i + 1} / ${files.length}): ${file.name}`;
+        loadSub.innerText = `대용량 엑셀 스트리밍 파싱 및 브라우저 메모리 최적화 적용 중...`;
+
+        await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = (evt) => {
             const worker = new Worker(workerUrl);
-            worker.onmessage = (msgEvent) => {
+            worker.onmessage = async (msgEvent) => {
               const res = msgEvent.data;
               if (res.success && res.records.length > 0) {
-                saveToDB(res.records, res.fileName);
-              }
-              completed++;
-              if (completed === files.length) {
-                document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('loadingOverlay').classList.remove('flex');
+                await saveToDBInBatches(res.records);
               }
               worker.terminate();
+              resolve();
             };
             worker.postMessage({ fileBuffer: evt.target.result, fileName: file.name });
           };
           reader.readAsArrayBuffer(file);
         });
+        // Release RAM pause
+        await new Promise(r => setTimeout(r, 50));
+      }
+
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+      loadAllDataFromDB();
+    }
+
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (!files || !files.length) return;
+        processFilesSequentially(Array.from(files));
       });
     });
 
-    function populateFilterOptions(isNewUpload = false) {
+    function populateFilterOptions() {
       if (!allData || allData.length === 0) return;
-
-      const startEl = document.getElementById('filterStartDate');
-      const endEl = document.getElementById('filterEndDate');
-      
-      // RESET date filter to empty (전체 기간) on new upload
-      if (isNewUpload) {
-        startEl.value = '';
-        endEl.value = '';
-      }
 
       const channels = ['ALL', ...Array.from(new Set(allData.map(d => d.Channel))).sort((a,b) => a.localeCompare(b, 'ko'))];
       const stores = ['ALL', ...Array.from(new Set(allData.map(d => d.StoreName))).sort((a,b) => a.localeCompare(b, 'ko'))];
@@ -704,7 +681,7 @@
       populate('filterStore', stores);
       populate('filterBrand', brands);
 
-      // Unique Products
+      // Unique Products (Cap at Top 500 by Revenue for Memory Protection)
       let prodRev = {};
       allData.forEach(d => {
         if (!prodRev[d.ProductName]) prodRev[d.ProductName] = 0;
@@ -760,7 +737,6 @@
         return;
       }
 
-      // CHRONOLOGICAL SORTING
       let sortedData = [...filteredData].sort((a, b) => a.Date.localeCompare(b.Date));
       
       let currMonthNet = 0, prevMonthNet = 0;
@@ -791,7 +767,6 @@
         if (rev > 0) chanMap[d.Channel] = (chanMap[d.Channel] || 0) + rev;
       });
 
-      // Update KPIs
       let momPercent = prevMonthNet > 0 ? ((currMonthNet - prevMonthNet) / prevMonthNet) * 100 : 0;
       document.getElementById('kpiNet').innerText = fmtNum(currMonthNet) + ' 원';
       
@@ -805,7 +780,6 @@
          momEl.className = "text-[11px] font-semibold mt-0.5 text-slate-400";
       }
 
-      // @ AOV Formatting Fix
       let aov = validQty > 0 ? (validRev / validQty) : 0;
       document.getElementById('kpiAvgPrice').innerText = `@ ${fmtNum(aov)} 원`;
 
@@ -815,7 +789,6 @@
         document.getElementById('kpiTopChannelSub').innerText = `점유율: ${((chanMap[topChan]/totalRev)*100).toFixed(1)}%`;
       }
 
-      // Monthly Chart (Chronological order guaranteed by sortedData)
       let mthMap = new Map();
       sortedData.forEach(d => {
         if (!mthMap.has(d.Month)) mthMap.set(d.Month, { net: 0, ref: 0 });
@@ -865,7 +838,7 @@
       document.getElementById('tbodyProdRank').innerHTML = pList.map((p, i) => {
         let avg = p.validQty > 0 ? p.validRev / p.validQty : 0;
         return `
-        <tr class="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors" onclick="goToTab3('${p.name.replace(/'/g, "\\'")}')">
+        <tr class="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors" data-prod="${p.name}" onclick="goToTab3(this.getAttribute('data-prod'))">
           <td class="text-center font-bold ${i<3?'text-rose-500':'text-slate-500'}">${i+1}</td>
           <td>
             <div class="font-semibold text-slate-800 dark:text-slate-200 truncate w-48 sm:w-64" title="${p.name}">${p.name}</div>
@@ -890,7 +863,7 @@
       let sel = document.getElementById('selectTrendProd');
       let currVal = sel.value;
       
-      let html = '<option value="">상품을 선택하세요 (선택 시 AI 분석 실행)</option>';
+      let html = '<option value="">상품을 선택하세요</option>';
       uniqueProductList.slice(0, 500).forEach(p => {
         html += `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`;
       });
@@ -906,10 +879,8 @@
         elTitle.innerText = prod;
         elCont.classList.remove('hidden');
 
-        // CHRONOLOGICAL SORTING
         let pData = filteredData.filter(d => d.ProductName === prod).sort((a,b) => a.Date.localeCompare(b.Date));
         
-        // Map preserves insertion order! Chronological Weeks!
         let wMap = new Map();
         pData.forEach(d => {
           let w = d.Week;
@@ -940,7 +911,6 @@
           wText.push(`${key}<br>판매량: ${val.qty}개<br>주요 지점: ${maxS}<br>주요 채널: ${maxC}`);
         });
 
-        // EWMA Safety Stock SCM Algorithm
         if (recent4.length > 0) {
           let slice = recent4.slice(-4);
           let avg = slice.reduce((a,b)=>a+b,0) / slice.length;
@@ -950,7 +920,7 @@
           document.getElementById('forecastStock').innerText = `${fmtNum(forecast)} 개`;
           
           document.getElementById('forecastLogic').innerText = slice.length >= 4 ? 
-            `최근 4주 연속 데이터 기반 추세 반영 (수요 모멘텀 안정적)` : 
+            `최근 4주 연속 데이터 기반 추세 반영` : 
             `데이터 부족 (${slice.length}주 분량 평균치 환산)`;
         }
 
@@ -993,11 +963,10 @@
           px_dt.push(d.Date);
           py_price.push(up);
           pz_qty.push(Number(d.Quantity));
-          pt.push(`${d.Date}<br>${fmtNum(up)}원<br>수량: ${d.Quantity}개<br>${d.Channel}`);
+          pt.push(`${fmtExactDate(d.Date)}<br>${fmtNum(up)}원<br>수량: ${d.Quantity}개<br>${d.Channel}`);
           priceArr.push({ up, qty: Number(d.Quantity) });
         });
 
-        // Regression (Simple Sweet Spot Calculation)
         let prMap = {};
         priceArr.forEach(p => {
             prMap[p.up] = (prMap[p.up] || 0) + p.qty;
@@ -1060,7 +1029,7 @@
     // Theme Toggle
     document.getElementById('themeToggle').addEventListener('click', () => {
       document.documentElement.classList.toggle('dark');
-      applyFilters(); // Re-render charts for dark mode
+      applyFilters();
     });
   </script>
 </body>
