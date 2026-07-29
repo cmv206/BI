@@ -22,7 +22,7 @@
       overflow-y: auto; 
       border-radius: 0.75rem; 
       border: 1px solid #e2e8f0; 
-      height: calc(100vh - 220px); /* Custom height to prevent empty bottom space */
+      height: calc(100vh - 220px);
       margin-bottom: 0; 
     }
     .dark .data-table-container { border-color: #334155; }
@@ -31,13 +31,13 @@
       background: #f8fafc; padding: 12px 8px; font-size: 0.75rem; font-weight: 600; 
       color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; 
       white-space: nowrap; position: sticky; top: 0; z-index: 10; 
-      text-align: center; /* Centered Headers */
+      text-align: center;
     }
     .dark th { background: #1e293b; color: #94a3b8; border-color: #334155; }
     td { 
       padding: 10px 8px; font-size: 0.8125rem; color: #334155; 
       border-bottom: 1px solid #f1f5f9; white-space: nowrap; 
-      text-align: center; /* Centered Data */
+      text-align: center;
     }
     .dark td { color: #cbd5e1; border-color: #1e293b; }
     tr:hover td { background-color: #f8fafc; }
@@ -85,6 +85,7 @@
     </div>
   </header>
 
+  <!-- Clear DB Confirmation Modal -->
   <div id="clearModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
     <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-2xl max-w-sm w-full space-y-3 text-center">
       <div class="w-10 h-10 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-full mx-auto flex items-center justify-center text-lg">
@@ -99,6 +100,7 @@
     </div>
   </div>
 
+  <!-- Loading Overlay -->
   <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 transition-opacity">
     <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-brand-500 mb-4"></div>
     <div id="loadingText" class="text-brand-400 font-medium text-sm text-center">데이터베이스 분석 중...</div>
@@ -192,27 +194,28 @@
           </div>
         </div>
 
+        <!-- TAB 1: 종합 대시보드 -->
         <div id="tab1" class="tab-content space-y-6">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="stat-card">
-              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">순매출 (Net Sales)</div>
-              <div class="text-2xl font-black text-white mb-1" id="kpiSales">₩0</div>
-              <div class="text-xs text-slate-400">정상 누적 매출액</div>
+              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">월평균 순매출액</div>
+              <div class="text-2xl font-black text-white mb-1" id="kpiSales">0원</div>
+              <div class="text-xs text-slate-400" id="kpiSalesSub">조회 기간 월평균 순매출</div>
             </div>
             <div class="stat-card border-t-2 border-t-emerald-500">
-              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">총 판매 수량</div>
-              <div class="text-2xl font-black text-white mb-1" id="kpiQty">0 EA</div>
-              <div class="text-xs text-slate-400">정상 거래 수량</div>
+              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">월평균 판매 수량</div>
+              <div class="text-2xl font-black text-white mb-1" id="kpiQty">0개</div>
+              <div class="text-xs text-slate-400" id="kpiQtySub">조회 기간 월평균 거래량</div>
             </div>
             <div class="stat-card border-t-2 border-t-brand-500">
               <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">실판매 평균 단가 (AOV)</div>
-              <div class="text-2xl font-black text-brand-400 mb-1" id="kpiAov">@ 0 원</div>
+              <div class="text-2xl font-black text-brand-400 mb-1" id="kpiAov">@ 0원</div>
               <div class="text-xs text-slate-400">총매출액 ÷ 총수량</div>
             </div>
             <div class="stat-card border-t-2 border-t-rose-500">
-              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">환불 / 취소액</div>
-              <div class="text-2xl font-black text-rose-400 mb-1" id="kpiRefund">₩0</div>
-              <div class="text-xs text-slate-400" id="kpiRefundRate">환불율 0.0%</div>
+              <div class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-1">평균 환불율 (Return Rate)</div>
+              <div class="text-2xl font-black text-rose-400 mb-1" id="kpiRefund">0.0%</div>
+              <div class="text-xs text-slate-400" id="kpiRefundSub">환불액 0원 (총매출 대비)</div>
             </div>
           </div>
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -227,6 +230,7 @@
           </div>
         </div>
 
+        <!-- TAB 2: 베스트 상품 & 브랜드 -->
         <div id="tab2" class="tab-content space-y-6 hidden h-full">
           <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
             <div class="flex-1 glass-panel p-4 rounded-xl flex flex-col">
@@ -254,37 +258,83 @@
           </div>
         </div>
 
+        <!-- TAB 3: 가격 분석 (Sweet Spot) -->
         <div id="tab3" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
-            <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 적정가 (Sweet Spot) 분석</h3>
-            <p class="text-xs text-slate-500 mb-4">특정 상품의 가격대별 판매 성과를 분석하여 고객 심리 적정가를 도출합니다.</p>
+            <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 경제학적 최적 가격 (Optimal Price) 분석</h3>
+            <p class="text-xs text-slate-500 mb-4">가격 탄력성(Elasticity) 및 수요 곡선 회귀 분석을 통해 매출을 극대화하는 경제학/마케팅 최적가를 제안합니다.</p>
             <select id="priceProdSelect" onchange="renderTab3()" class="w-full max-w-md bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-emerald-500">
                 <div class="text-xs font-bold text-slate-500 mb-1">볼륨 피크 (최대 수량 가격대)</div>
-                <div class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="ssVol">₩0</div>
+                <div class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="ssVol">0원</div>
+                <div class="text-[10px] text-slate-400 mt-1">최대 판매량 형성 가격</div>
               </div>
-              <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-brand-500">
+              <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-amber-500">
                 <div class="text-xs font-bold text-slate-500 mb-1">매출 피크 (최대 매출 가격대)</div>
-                <div class="text-xl font-bold text-brand-600 dark:text-brand-400" id="ssRev">₩0</div>
+                <div class="text-xl font-bold text-amber-600 dark:text-amber-400" id="ssRev">0원</div>
+                <div class="text-[10px] text-slate-400 mt-1">실제 최고 매출액 실적 가격</div>
+              </div>
+              <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-brand-500 bg-brand-50/20 dark:bg-brand-900/10">
+                <div class="text-xs font-bold text-brand-600 dark:text-brand-400 mb-1">🎯 AI 마케팅 최적 가격 (Optimal P*)</div>
+                <div class="text-xl font-bold text-brand-600 dark:text-brand-400" id="ssOpt">0원</div>
+                <div class="text-[10px] text-brand-500 mt-1">수요곡선 회귀분석 극대화 도출가</div>
               </div>
             </div>
+
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 mb-6 space-y-1 text-xs">
+              <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span><i class="fa-solid fa-chart-line text-brand-500"></i> 경제학 수요 탄력성 분석 & 마케팅 제언</span>
+                <span class="text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-100 dark:bg-brand-900/50 px-2.5 py-0.5 rounded-full" id="elasticityTag">수요 탄력성: 계산 중</span>
+              </div>
+              <div class="text-slate-600 dark:text-slate-400 pt-1 leading-relaxed" id="elasticityDesc">
+                가격 탄력성 및 수요 반응성을 분석 중입니다.
+              </div>
+            </div>
+
             <div id="chartPrice" class="w-full h-[400px]"></div>
           </div>
         </div>
 
+        <!-- TAB 4: 52주 재고 예측 -->
         <div id="tab4" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
-            <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 향후 4주 권장 재고 예측</h3>
-            <p class="text-xs text-slate-500 mb-4">실제 업로드된 주차 기반으로 시계열 트렌드를 추적하고 권장 재고를 산출합니다.</p>
+            <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 향후 4주 권장 재고 예측</h3>
+            <p class="text-xs text-slate-500 mb-4">실제 업로드된 시계열 데이터와 월별 계절성(Seasonality) 및 트렌드 모멘텀 알고리즘을 종합 분석합니다.</p>
             <select id="trendProdSelect" onchange="renderTab4()" class="w-full max-w-md bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 mb-6 flex justify-between items-center">
-              <div>
-                <div class="text-xs font-bold text-indigo-500 dark:text-indigo-400 mb-1">💡 향후 4주 권장 재고량</div>
-                <div class="text-sm text-slate-500">최근 실제 발생 4주 평균치 기반</div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div class="md:col-span-1 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
+                <div>
+                  <div class="text-xs font-bold text-indigo-500 dark:text-indigo-400 mb-1">💡 AI 향후 4주 권장 재고량</div>
+                  <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-2" id="recStock">0개</div>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700/50" id="recStockSub">최근 동향 + 계절성 + 트렌드 종합 반영</div>
               </div>
-              <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400" id="recStock">0 EA</div>
+              
+              <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 space-y-2 text-xs">
+                <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"><i class="fa-solid fa-brain text-brand-500"></i> AI 재고 예측 산출 근거 (Rationale)</div>
+                <div class="grid grid-cols-3 gap-2 py-1 text-center">
+                  <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <span class="block text-[10px] text-slate-400">최근 4주 기준 Base</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-200" id="aiBaseVal">0개/주</span>
+                  </div>
+                  <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <span class="block text-[10px] text-slate-400">월별 계절성 지수</span>
+                    <span class="font-bold text-brand-500" id="aiSeasonVal">1.00배</span>
+                  </div>
+                  <div class="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <span class="block text-[10px] text-slate-400">트렌드 모멘텀</span>
+                    <span class="font-bold text-emerald-500" id="aiTrendVal">1.00배</span>
+                  </div>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 pt-1 leading-relaxed" id="aiReasonDesc">
+                  분석 데이터 대기 중...
+                </div>
+              </div>
             </div>
+
             <div id="chartTrend" class="w-full h-[400px]"></div>
           </div>
         </div>
@@ -294,7 +344,7 @@
   </div>
 
   <script>
-    // Global Regex for Tab 2 Option Parsing
+    // Global Regex Constants for Option Cleaning
     const rangeSizeRegex = /[SMLXLXXL3XL]+|[0-9]{2,3}/g;
     const shoeSizeRegex = /2[2-9]0|3[0-2]0/g;
     const clothSizeRegex = /XS|S|M|L|XL|XXL|FREE/gi;
@@ -318,7 +368,7 @@
       }
     }
 
-    // Sidebar and Theme Toggles
+    // Sidebar & Theme Toggles
     function toggleTheme() { document.documentElement.classList.toggle('dark'); }
     function toggleSidebar() {
       const sb = document.getElementById('sidebar');
@@ -383,7 +433,6 @@
       } catch (err) {
         console.error("DB Reset Error, forcing state reset:", err);
       } finally {
-        // Unconditionally reset UI
         globalData = []; 
         fd = [];
         document.getElementById('dbCount').textContent = "0 건";
@@ -395,9 +444,9 @@
       }
     }
 
-    // Global App State
+    // Global State
     let globalData = []; 
-    let fd = []; // Filtered Data
+    let fd = []; 
 
     function createWorker() {
       const workerCode = `
@@ -554,7 +603,6 @@
         
         loadingText.textContent = "데이터 인덱싱 완료! 화면 갱신 중...";
         
-        // Reset Date filters to empty for 'All Period' default
         document.getElementById('filterStartDate').value = '';
         document.getElementById('filterEndDate').value = '';
         
@@ -664,10 +712,12 @@
     function renderTab1() {
       let netSales = 0, totalQty = 0, refundAmt = 0;
       const dailyMap = {}, chanMap = {};
+      const uniqueMonths = new Set();
 
       for (let i = 0; i < fd.length; i++) {
         const d = fd[i];
         const dt = d.Date;
+        if (dt && dt.length >= 7) uniqueMonths.add(dt.substring(0, 7));
         if (!dailyMap[dt]) dailyMap[dt] = { sales: 0, refund: 0 };
         
         if (d.IsRefund) {
@@ -681,14 +731,21 @@
         }
       }
 
+      const mCount = Math.max(1, uniqueMonths.size);
+      const monthlyAvgSales = Math.round(netSales / mCount);
+      const monthlyAvgQty = Math.round(totalQty / mCount);
       const aov = totalQty > 0 ? Math.round(netSales / totalQty) : 0;
       const refRate = netSales > 0 ? (refundAmt / netSales * 100) : 0;
 
-      document.getElementById('kpiSales').textContent = '₩' + netSales.toLocaleString();
-      document.getElementById('kpiQty').textContent = totalQty.toLocaleString() + ' EA';
-      document.getElementById('kpiAov').textContent = '@ ' + aov.toLocaleString() + ' 원';
-      document.getElementById('kpiRefund').textContent = '₩' + refundAmt.toLocaleString();
-      document.getElementById('kpiRefundRate').textContent = '환불율 ' + refRate.toFixed(1) + '%';
+      document.getElementById('kpiSales').textContent = monthlyAvgSales.toLocaleString() + '원';
+      document.getElementById('kpiSalesSub').textContent = `조회 기간 월평균 순매출 (총 ${mCount}개월)`;
+      
+      document.getElementById('kpiQty').textContent = monthlyAvgQty.toLocaleString() + '개';
+      document.getElementById('kpiQtySub').textContent = `조회 기간 월평균 거래량`;
+      
+      document.getElementById('kpiAov').textContent = '@ ' + aov.toLocaleString() + '원';
+      document.getElementById('kpiRefund').textContent = refRate.toFixed(1) + '%';
+      document.getElementById('kpiRefundSub').textContent = `환불액 ${Math.round(refundAmt).toLocaleString()}원 (총매출 대비)`;
 
       const dates = Object.keys(dailyMap).sort();
       const sVals = dates.map(dt => dailyMap[dt].sales);
@@ -701,7 +758,8 @@
         { x: dates, y: rVals, name: '환불액', type: 'bar', marker: { color: '#ef4444' } }
       ], {
         barmode: 'stack', margin: { t: 10, l: 40, r: 10, b: 30 },
-        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: fontCol }
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: fontCol },
+        xaxis: { tickformat: '%Y-%m-%d' }
       }, { displayModeBar: false, responsive: true });
 
       const cKeys = Object.keys(chanMap).sort((a,b)=>chanMap[b]-chanMap[a]);
@@ -712,6 +770,7 @@
       }], { margin: { t: 10, l: 10, r: 10, b: 10 }, paper_bgcolor: 'transparent', font: { color: fontCol } }, { displayModeBar: false, responsive: true });
     }
 
+    // Render Tab 2: Best Products & Brands
     function renderTab2() {
       const pMap = {}, bMap = {};
       for (let i = 0; i < fd.length; i++) {
@@ -726,7 +785,6 @@
       }
 
       const pList = Object.values(pMap).sort((a,b)=>b.rev - a.rev).slice(0, 100);
-      
       const esc = str => String(str).replace(/[&<>'"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[m]));
       
       document.getElementById('bestTbody').innerHTML = pList.map((item, idx) => `
@@ -735,8 +793,8 @@
           <td class="font-medium text-brand-600 dark:text-brand-400">${esc(item.b)}</td>
           <td class="max-w-[200px] truncate" title="${esc(item.p)}">${esc(item.p)}</td>
           <td class="text-slate-500 text-xs">${esc(cleanOptionString(item.opt, item.p))}</td>
-          <td class="font-semibold text-emerald-600">${item.qty.toLocaleString()}</td>
-          <td class="font-bold">₩${item.rev.toLocaleString()}</td>
+          <td class="font-semibold text-emerald-600">${item.qty.toLocaleString()}개</td>
+          <td class="font-bold">${item.rev.toLocaleString()}원</td>
         </tr>
       `).join('');
 
@@ -765,6 +823,7 @@
       if(!prod) return;
       
       const pd = fd.filter(d => d.ProductName === prod && !d.IsRefund && d.UnitPrice > 0);
+      pd.sort((a,b) => a.Date.localeCompare(b.Date));
       
       let vMax = 0, rMax = 0, bpVol = 0, bpRev = 0;
       const pGroup = {};
@@ -773,28 +832,78 @@
         pGroup[d.UnitPrice].q += d.Quantity;
         pGroup[d.UnitPrice].r += d.Revenue;
       });
-      Object.keys(pGroup).forEach(p => {
+
+      const priceKeys = Object.keys(pGroup).map(Number).sort((a,b)=>a-b);
+      priceKeys.forEach(p => {
         if(pGroup[p].q > vMax) { vMax = pGroup[p].q; bpVol = p; }
         if(pGroup[p].r > rMax) { rMax = pGroup[p].r; bpRev = p; }
       });
 
-      document.getElementById('ssVol').textContent = '₩' + Number(bpVol).toLocaleString();
-      document.getElementById('ssRev').textContent = '₩' + Number(bpRev).toLocaleString();
+      // Econometric OLS Regression for Demand Elasticity: Q = a - b*P
+      let optPrice = bpRev; 
+      let elasticity = 1.0;
+      
+      if (priceKeys.length >= 2) {
+        let sumP = 0, sumQ = 0, sumP2 = 0, sumPQ = 0, n = priceKeys.length;
+        priceKeys.forEach(p => {
+          const q = pGroup[p].q;
+          sumP += p; sumQ += q; sumP2 += p * p; sumPQ += p * q;
+        });
+        const meanP = sumP / n;
+        const meanQ = sumQ / n;
+        const denom = (sumP2 - n * meanP * meanP);
+        
+        if (denom !== 0) {
+          const b = - (sumPQ - n * meanP * meanQ) / denom;
+          if (b > 0) {
+            const a = meanQ + b * meanP;
+            optPrice = Math.round(a / (2 * b));
+            elasticity = Math.abs(b * (meanP / Math.max(1, meanQ)));
+          }
+        }
+      }
+
+      if (optPrice < priceKeys[0] * 0.7 || optPrice > priceKeys[priceKeys.length - 1] * 1.5) {
+        optPrice = bpRev;
+      }
+
+      document.getElementById('ssVol').textContent = Number(bpVol).toLocaleString() + '원';
+      document.getElementById('ssRev').textContent = Number(bpRev).toLocaleString() + '원';
+      document.getElementById('ssOpt').textContent = Number(optPrice).toLocaleString() + '원';
+
+      const tagEl = document.getElementById('elasticityTag');
+      const descEl = document.getElementById('elasticityDesc');
+
+      if (elasticity > 1.1) {
+        tagEl.textContent = `탄력적 수요 (Elastic: ε=${elasticity.toFixed(2)})`;
+        tagEl.className = "text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/50 px-2.5 py-0.5 rounded-full";
+        descEl.innerHTML = `💡 <b>가격 민감형 상품:</b> 가격 변화에 대한 고객 수요 반응이 민감합니다. 최적 적정가 <b>${Number(optPrice).toLocaleString()}원</b> 부근에서 소폭 할인 프로모션을 진행할 때 구매 전환량이 크게 늘어 연간 총 매출액이 극대화됩니다.`;
+      } else if (elasticity < 0.9) {
+        tagEl.textContent = `비탄력적 수요 (Inelastic: ε=${elasticity.toFixed(2)})`;
+        tagEl.className = "text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 px-2.5 py-0.5 rounded-full";
+        descEl.innerHTML = `💎 <b>브랜드 충성형 상품:</b> 가격 변화에 따른 수량 이탈이 적은 비탄력적 특성을 보입니다. 가격을 과도하게 할인하기보다는 브랜드 프리미엄 가치를 유지하며 최적 가격 <b>${Number(optPrice).toLocaleString()}원</b> 수준으로 단가를 방어하는 전략이 유리합니다.`;
+      } else {
+        tagEl.textContent = `단위 탄력적 수요 (Unit Elastic: ε=${elasticity.toFixed(2)})`;
+        tagEl.className = "text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-100 dark:bg-brand-900/50 px-2.5 py-0.5 rounded-full";
+        descEl.innerHTML = `⚖️ <b>균형 가격대 형성:</b> 가격과 수요량이 정비례 수준으로 균형을 이루고 있습니다. 도출된 경제학적 최적가 <b>${Number(optPrice).toLocaleString()}원</b>를 실판매 기준으로 삼고 번들 구성이나 사은품 마케팅을 병행하세요.`;
+      }
 
       const dates = pd.map(d => d.Date);
       const prices = pd.map(d => d.UnitPrice);
-      const qtys = pd.map(d => d.Quantity * 2); 
-      const texts = pd.map(d => `${d.Date}<br>채널: ${d.Channel}<br>수량: ${d.Quantity}`);
+      const qtys = pd.map(d => Math.max(d.Quantity * 2, 6)); 
+      const texts = pd.map(d => `일자: ${d.Date}<br>채널: ${d.Channel}<br>수량: ${d.Quantity}개<br>단가: ${d.UnitPrice.toLocaleString()}원`);
 
       const isDark = document.documentElement.classList.contains('dark');
       Plotly.react('chartPrice', [{
-        x: dates, y: prices, text: texts, mode: 'markers',
+        x: dates, y: prices, text: texts, hoverinfo: 'text', mode: 'markers',
         marker: { size: qtys, sizemode: 'area', sizeref: 2, sizemin: 4, color: '#3b82f6', opacity: 0.6 }
       }], {
         margin: { t: 20, l: 50, r: 20, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: isDark ? '#94a3b8' : '#64748b' },
+        xaxis: { tickformat: '%Y-%m-%d' },
         shapes: [
-          { type: 'line', y0: bpVol, y1: bpVol, x0: dates[0], x1: dates[dates.length-1], line: { color: '#10b981', dash: 'dash', width: 2 } },
-          { type: 'line', y0: bpRev, y1: bpRev, x0: dates[0], x1: dates[dates.length-1], line: { color: '#f59e0b', dash: 'dot', width: 2 } }
+          { type: 'line', y0: bpVol, y1: bpVol, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#10b981', dash: 'dash', width: 2 } },
+          { type: 'line', y0: bpRev, y1: bpRev, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#f59e0b', dash: 'dot', width: 2 } },
+          { type: 'line', y0: optPrice, y1: optPrice, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#3b82f6', width: 2.5 } }
         ]
       }, { displayModeBar: false, responsive: true });
     }
@@ -804,7 +913,7 @@
        const date = new Date(y, m-1, d);
        const fDay = new Date(y, m-1, 1).getDay();
        const wNum = Math.ceil((date.getDate() + fDay) / 7);
-       return `${y.substring(2)}년 ${parseInt(m)}월 ${wNum}주차`;
+       return `${y}년<br>${parseInt(m)}월 ${wNum}주차`;
     }
 
     function renderTab4() {
@@ -822,7 +931,9 @@
       const orderedWeeks = Array.from(allWeeksSet).sort((a,b) => weekDateMap[a].localeCompare(weekDateMap[b]));
 
       const pwMap = {};
-      fd.filter(d => d.ProductName === prod && !d.IsRefund).forEach(d => {
+      const prodAllData = fd.filter(d => d.ProductName === prod && !d.IsRefund);
+      
+      prodAllData.forEach(d => {
          const wStr = getWeekString(d.Date);
          pwMap[wStr] = pwMap[wStr] || { q:0, stores:{}, channels:{} };
          pwMap[wStr].q += d.Quantity;
@@ -846,12 +957,68 @@
          }
       });
 
+      // AI Multi-Factor Forecast Algorithm
+      let baseWkAvg = 0;
+      let seasonalityIndex = 1.0;
+      let trendMomentum = 1.0;
       let recStock = 0;
-      if(yVals.length >= 4) {
-         const last4 = yVals.slice(-4);
-         recStock = (last4.reduce((a,b)=>a+b,0) / 4) * 4;
+
+      if (yVals.length >= 4) {
+        const last4 = yVals.slice(-4);
+        baseWkAvg = last4.reduce((a,b)=>a+b, 0) / 4;
+
+        const lastDateStr = prodAllData.length > 0 ? prodAllData[prodAllData.length-1].Date : '2026-01-01';
+        const targetMonth = (parseInt(lastDateStr.substring(5,7)) % 12) + 1;
+
+        const monthSalesMap = {};
+        let totalSalesAllMonths = 0;
+
+        prodAllData.forEach(d => {
+          const m = parseInt(d.Date.substring(5,7));
+          monthSalesMap[m] = (monthSalesMap[m] || 0) + d.Quantity;
+          totalSalesAllMonths += d.Quantity;
+        });
+
+        const distinctMonthsCount = Math.max(1, Object.keys(monthSalesMap).length);
+        const overallMonthlyAvg = totalSalesAllMonths / distinctMonthsCount;
+        
+        if (monthSalesMap[targetMonth] && overallMonthlyAvg > 0) {
+          seasonalityIndex = Math.min(2.0, Math.max(0.5, monthSalesMap[targetMonth] / overallMonthlyAvg));
+        }
+
+        if (yVals.length >= 8) {
+          const prev4 = yVals.slice(-8, -4);
+          const prev4Avg = prev4.reduce((a,b)=>a+b, 0) / 4;
+          if (prev4Avg > 0) {
+            trendMomentum = Math.min(1.8, Math.max(0.6, baseWkAvg / prev4Avg));
+          }
+        }
+
+        recStock = Math.round(baseWkAvg * 4 * seasonalityIndex * trendMomentum * 1.10);
       }
-      document.getElementById('recStock').textContent = Math.round(recStock).toLocaleString() + ' EA';
+
+      document.getElementById('recStock').textContent = recStock.toLocaleString() + '개';
+      document.getElementById('aiBaseVal').textContent = Math.round(baseWkAvg).toLocaleString() + '개/주';
+      document.getElementById('aiSeasonVal').textContent = seasonalityIndex.toFixed(2) + '배';
+      document.getElementById('aiTrendVal').textContent = trendMomentum.toFixed(2) + '배';
+
+      let reasonText = `🤖 <b>AI 종합 제언:</b> 최근 4주 주간 평균 판매량(주당 ${Math.round(baseWkAvg)}개)을 기준 Base로 도출했습니다. `;
+      if (seasonalityIndex > 1.1) {
+        reasonText += `다가올 절기는 해당 상품의 <b>성수기(계절 가중치 +${Math.round((seasonalityIndex-1)*100)}%)</b>에 해당하며, `;
+      } else if (seasonalityIndex < 0.9) {
+        reasonText += `다가올 절기는 계절적 수요 감소기(가중치 -${Math.round((1-seasonalityIndex)*100)}%)로 예측되며, `;
+      } else {
+        reasonText += `평년 수준의 계절적 수요(가중치 ${seasonalityIndex.toFixed(2)}배)를 보이고 있으며, `;
+      }
+
+      if (trendMomentum > 1.1) {
+        reasonText += `최근 구매 상승 모멘텀(전주 대비 +${Math.round((trendMomentum-1)*100)}% 붐업)이 감지되었습니다. `;
+      } else if (trendMomentum < 0.9) {
+        reasonText += `최근 구매 속도가 소폭 둔화되는 추세를 감안했습니다. `;
+      }
+
+      reasonText += `공급망 지연에 대비한 <b>10% 안전재고</b>를 가산하여 총 <b>${recStock.toLocaleString()}개</b> 수량을 최종 권장합니다.`;
+      document.getElementById('aiReasonDesc').innerHTML = reasonText;
 
       const isDark = document.documentElement.classList.contains('dark');
       Plotly.react('chartTrend', [{
@@ -859,7 +1026,7 @@
         line: { color: '#6366f1', width: 3 }, marker: { size: 8 }
       }], {
         margin: { t: 20, l: 40, r: 20, b: 60 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: isDark ? '#94a3b8' : '#64748b' },
-        xaxis: { tickangle: 45 }
+        xaxis: { tickangle: 0, type: 'category' }
       }, { displayModeBar: false, responsive: true });
     }
 
