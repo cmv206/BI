@@ -174,7 +174,7 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
-      <!-- Top Navigation Menu (Matching Image image_8eb855.png) -->
+      <!-- Top Navigation Menu -->
       <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
           <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
@@ -400,33 +400,34 @@
       }
     }
 
-    // Modal & Safety Overlay Control
+    // Modal Control
     const clearModal = document.getElementById('clearModal');
     function showClearModal() { clearModal.classList.remove('hidden'); }
     function hideClearModal() { clearModal.classList.add('hidden'); }
     
+    // ==========================================
+    // BUG FIX 1: Removed the 12-second hard cap in showLoading
+    // The UI will NEVER unexpectedly turn off during file uploads.
+    // ==========================================
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
     const loadingProgress = document.getElementById('loadingProgress');
-    let loadingTimer = null;
     
     function showLoading(text) {
       loadingText.textContent = text;
       loadingProgress.style.width = '10%';
       loadingOverlay.classList.remove('hidden');
-      
-      if (loadingTimer) clearTimeout(loadingTimer);
-      // Hard cap 12-second safety timer to force-close loading overlay if blocked
-      loadingTimer = setTimeout(() => { hideLoading(); }, 12000);
     }
     
     function hideLoading() { 
-      if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
       loadingOverlay.classList.add('hidden'); 
       setTimeout(() => { loadingProgress.style.width = '0%'; }, 300);
     }
 
-    // High Reliability Anti-Hang IndexedDB Engine
+    // ==========================================
+    // BUG FIX 2 & 3: Reliable DB connection with strict 3000ms safety fuse.
+    // Prevents "통합 데이터베이스 조회 중..." infinite lock.
+    // ==========================================
     let db = null;
     const DB_NAME = 'O2O_Enterprise_DB_v4'; 
     const STORE_NAME = 'sales_data';
@@ -443,10 +444,11 @@
           }
         };
 
+        // Strict timeout to prevent hanging forever
         const timer = setTimeout(() => {
-          console.warn("DB connection timed out, using memory fallback");
+          console.warn("DB connection timed out (3s). Proceeding to memory fallback.");
           done(null);
-        }, 1500);
+        }, 3000);
 
         try {
           if (!window.indexedDB) { done(null); return; }
@@ -467,7 +469,8 @@
           };
           req.onerror = req.onblocked = (e) => {
             clearTimeout(timer);
-            done(null);
+            console.error("DB connection error/blocked.");
+            done(null); // Immediate exit if blocked by browser
           };
         } catch(err) {
           clearTimeout(timer);
@@ -744,35 +747,36 @@
       }
     }
 
-    let saveQueue = Promise.resolve();
-    function queueSaveToDB(chunk) {
-      saveQueue = saveQueue.then(async () => {
-        if (!chunk || !chunk.length) return;
-        const database = await getDB();
-        if (!database) {
-          globalData.push(...chunk);
-          return;
-        }
-        
-        const BATCH_SIZE = 2000;
-        for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
-          const subChunk = chunk.slice(i, i + BATCH_SIZE);
-          await new Promise((res) => {
-            try {
-              const tx = database.transaction(STORE_NAME, 'readwrite');
-              const store = tx.objectStore(STORE_NAME);
-              for (let j = 0; j < subChunk.length; j++) {
-                const item = subChunk[j];
-                delete item.id;
-                store.put(item);
-              }
-              tx.oncomplete = () => res();
-              tx.onerror = tx.onabort = () => res();
-            } catch(err) { res(); }
-          });
-        }
-      }).catch(err => console.error("Save queue error:", err));
-      return saveQueue;
+    // ==========================================
+    // BUG FIX 4: Replaced Memory-hogging chained Promise queue
+    // with sequential direct-to-DB saving and immediate memory freeing.
+    // ==========================================
+    async function saveToDBDirect(chunk) {
+      if (!chunk || !chunk.length) return;
+      const database = await getDB();
+      if (!database) {
+        console.warn("DB connection missing. Temporarily holding chunk in memory.");
+        globalData.push(...chunk);
+        return;
+      }
+      
+      const BATCH_SIZE = 2000;
+      for (let i = 0; i < chunk.length; i += BATCH_SIZE) {
+        const subChunk = chunk.slice(i, i + BATCH_SIZE);
+        await new Promise((res) => {
+          try {
+            const tx = database.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            for (let j = 0; j < subChunk.length; j++) {
+              const item = subChunk[j];
+              delete item.id;
+              store.put(item);
+            }
+            tx.oncomplete = () => res();
+            tx.onerror = tx.onabort = () => res(); // Do not throw, move onto next batch
+          } catch(err) { res(); }
+        });
+      }
     }
 
     async function handleFileUpload(e) {
@@ -788,11 +792,12 @@
           loadingProgress.style.width = Math.min(((i + 1) / files.length) * 100, 100) + '%';
           loadingText.textContent = `[${i + 1} / ${files.length}] 파싱 및 병합 중... (${file.name})`;
           
-          let parsedData = [];
+          let parsedData = null;
           try {
             const buffer = await file.arrayBuffer();
             parsedData = await new Promise((resolve) => {
-              const pTimer = setTimeout(() => resolve(null), 10000);
+              // 30 second safety timer for a single file in Worker
+              const pTimer = setTimeout(() => resolve(null), 30000);
               try {
                 const worker = createWorker();
                 worker.onmessage = (msg) => {
@@ -805,23 +810,28 @@
                   worker.terminate();
                   resolve(null);
                 };
+                // We do NOT transfer buffer to allow fallback usage
                 worker.postMessage({ fileBuffer: buffer, applyIqr });
               } catch(e) { clearTimeout(pTimer); resolve(null); }
             });
 
+            // If Worker failed, crashed, or timed out, fallback to Main Thread immediately
             if (!parsedData || !Array.isArray(parsedData) || parsedData.length === 0) {
-              parsedData = parseFileMainThread(buffer, applyIqr);
+              const fallbackBuffer = await file.arrayBuffer();
+              parsedData = parseFileMainThread(fallbackBuffer, applyIqr);
             }
           } catch(fileErr) {
             console.error("File Buffer Error:", fileErr);
           }
 
+          // Directly save and free memory immediately to prevent "Out of Memory"
           if (parsedData && parsedData.length > 0) {
-            await queueSaveToDB(parsedData);
+            loadingText.textContent = `[${i + 1} / ${files.length}] DB에 안전하게 저장 중...`;
+            await saveToDBDirect(parsedData);
           }
+          parsedData = null; // FORCE GARBAGE COLLECTION
         }
 
-        await saveQueue;
         loadingText.textContent = "데이터 인덱싱 완료! 화면 갱신 중...";
         
         document.getElementById('filterStartDate').value = '';
@@ -832,30 +842,33 @@
         console.error("Upload Error:", err);
       } finally {
         document.getElementById('fileUpload').value = "";
-        hideLoading();
+        hideLoading(); // Guaranteed to run after loop ends
       }
     }
 
     async function loadData() {
       showLoading("통합 데이터베이스 조회 중...");
       
-      // Absolute safety timeout: force hide loading overlay after 2.5s
+      let isLoaded = false;
+      // Absolute safety timeout: force hide loading overlay after 5s if DB deadlocks
       const safetyTimer = setTimeout(() => {
-        hideLoading();
-      }, 2500);
+        if (!isLoaded) {
+           console.warn("DB Deadlock detected. Force closing loading screen.");
+           hideLoading();
+        }
+      }, 5000);
 
       try {
         const database = await getDB();
         if (database) {
           const records = await new Promise((res) => {
-            const reqTimer = setTimeout(() => res([]), 1500);
             try {
               const tx = database.transaction(STORE_NAME, 'readonly');
               const store = tx.objectStore(STORE_NAME);
               const req = store.getAll();
-              req.onsuccess = () => { clearTimeout(reqTimer); res(req.result || []); };
-              req.onerror = req.onabort = () => { clearTimeout(reqTimer); res([]); };
-            } catch(e) { clearTimeout(reqTimer); res([]); }
+              req.onsuccess = () => res(req.result || []);
+              req.onerror = req.onabort = () => res([]);
+            } catch(e) { res([]); }
           });
           if (records && records.length > 0) {
             globalData = records;
@@ -863,6 +876,7 @@
         }
 
         if (!globalData) globalData = [];
+        // Safe Locale Compare
         globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
         
         document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
@@ -871,6 +885,7 @@
       } catch (err) {
         console.error("Load Data Error:", err);
       } finally {
+        isLoaded = true;
         clearTimeout(safetyTimer);
         hideLoading();
       }
@@ -1247,7 +1262,7 @@
       }
     }
 
-    // TAB 4: 가격 변동 & 적정가 분석
+    // TAB 4: 가격 변동 & 적정가 분석 (Sweet Spot)
     function renderTab4() {
       const prodSelect = document.getElementById('priceProdSelect');
       if (!prodSelect) return;
