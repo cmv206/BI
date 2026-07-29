@@ -100,11 +100,11 @@
     </div>
   </div>
 
-  <!-- Loading Overlay -->
+  <!-- Loading Overlay with High-Contrast Text for File Upload Progress -->
   <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 transition-opacity">
     <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-brand-500 mb-4"></div>
-    <div id="loadingText" class="text-brand-400 font-medium text-sm text-center">데이터베이스 분석 중...</div>
-    <div class="w-64 bg-slate-800 rounded-full h-1.5 mt-4 overflow-hidden">
+    <div id="loadingText" class="text-white font-bold text-base text-center tracking-wide drop-shadow">데이터베이스 분석 중...</div>
+    <div class="w-64 bg-slate-800 rounded-full h-1.5 mt-4 overflow-hidden border border-slate-700">
       <div id="loadingProgress" class="bg-brand-500 h-1.5 rounded-full transition-all duration-300 w-0"></div>
     </div>
   </div>
@@ -172,7 +172,7 @@
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
       <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <!-- Top Menu Tabs directly matching image_8eb855.png -->
+        <!-- Top Menu Tabs matching image_8eb855.png -->
         <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
           <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2 rounded-t-lg">
             <i class="fa-solid fa-chart-pie text-brand-600 dark:text-brand-400"></i>
@@ -207,7 +207,7 @@
           </div>
         </div>
 
-        <!-- TAB 1: 종합 대시보드 (KPI Cards updated to Theme Adaptive & 5 Specific Items) -->
+        <!-- TAB 1: 종합 대시보드 (KPI Cards with YoY and Theme Adaptive styling) -->
         <div id="tab1" class="tab-content space-y-6">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-brand-500">
@@ -569,8 +569,13 @@
         return new Promise((res, rej) => {
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const store = tx.objectStore(STORE_NAME);
-          chunk.forEach(item => store.put(item));
-          tx.oncomplete = res;
+          for (let i = 0; i < chunk.length; i++) {
+            store.put(chunk[i]);
+          }
+          tx.oncomplete = () => {
+            chunk.length = 0; // Immediate memory release
+            res();
+          };
           tx.onerror = rej;
         });
       }).catch(err => console.error("Chunk save error:", err));
@@ -582,41 +587,39 @@
       if (!files.length) return;
       
       const applyIqr = document.getElementById('applyIqr').checked;
-      showLoading(`0 / ${files.length} 파일 준비 중...`);
+      showLoading(`[0 / ${files.length}] 파싱 및 병합 준비 중...`);
       
       let processedCount = 0;
-      const workers = [];
-      const coreCount = navigator.hardwareConcurrency || 4;
+      const concurrencyLimit = 2; // Memory safe concurrency limit to prevent Out of Memory
 
       try {
-        for(let i=0; i<files.length; i++) {
-          const file = files[i];
-          const buffer = await file.arrayBuffer();
-          const worker = createWorker();
-          
-          workers.push(new Promise((resolve) => {
-            worker.onmessage = async (msg) => {
-              try {
-                const data = msg.data.result;
-                if (data && data.length > 0) await queueSaveToDB(data);
-              } finally {
-                processedCount++;
-                loadingProgress.style.width = Math.min((processedCount / files.length) * 100, 100) + '%';
-                loadingText.textContent = `[${processedCount} / ${files.length}] 파싱 및 병합 중...`;
-                worker.terminate();
-                resolve();
-              }
-            };
-            worker.onerror = () => { worker.terminate(); resolve(); };
-            worker.postMessage({ fileBuffer: buffer, applyIqr });
-          }));
+        for (let i = 0; i < files.length; i += concurrencyLimit) {
+          const batch = Array.from(files).slice(i, i + concurrencyLimit);
+          const batchPromises = batch.map((file) => {
+            return new Promise(async (resolve) => {
+              const buffer = await file.arrayBuffer();
+              const worker = createWorker();
 
-          if (workers.length >= coreCount) {
-            await Promise.all(workers);
-            workers.length = 0;
-          }
+              worker.onmessage = async (msg) => {
+                try {
+                  const data = msg.data.result;
+                  if (data && data.length > 0) await queueSaveToDB(data);
+                } finally {
+                  processedCount++;
+                  loadingProgress.style.width = Math.min((processedCount / files.length) * 100, 100) + '%';
+                  loadingText.textContent = `[${processedCount} / ${files.length}] 파싱 및 병합 중...`;
+                  worker.terminate();
+                  resolve();
+                }
+              };
+              worker.onerror = () => { worker.terminate(); resolve(); };
+              // Zero-copy transfer ArrayBuffer to release main thread memory
+              worker.postMessage({ fileBuffer: buffer, applyIqr }, [buffer]);
+            });
+          });
+
+          await Promise.all(batchPromises);
         }
-        await Promise.all(workers);
         await saveQueue;
         
         loadingText.textContent = "데이터 인덱싱 완료! 화면 갱신 중...";
@@ -727,7 +730,7 @@
       });
     }
 
-    // Render Tab 1: Executive Dashboard (Updated with 5 requested KPI metrics)
+    // Render Tab 1: Executive Dashboard (With YoY calculation)
     function renderTab1() {
       let netSales = 0, totalQty = 0, refundAmt = 0;
       const dailyMap = {}, chanMap = {}, monthMap = {};
@@ -768,6 +771,22 @@
       const [lY, lM] = latestMonth ? latestMonth.split('-') : ['', ''];
       const monthLabel = latestMonth ? `${lY}년 ${parseInt(lM)}월` : '최근월';
 
+      // YoY Calculation
+      let yoyHtml = '';
+      if (latestMonth) {
+        const currY = parseInt(lY);
+        const prevYearMonth = `${currY - 1}-${lM}`;
+        if (monthMap[prevYearMonth] && monthMap[prevYearMonth].sales > 0) {
+          const priorSales = monthMap[prevYearMonth].sales;
+          const diffPct = ((recentMonthSales - priorSales) / priorSales) * 100;
+          const sign = diffPct >= 0 ? '+' : '';
+          const colorClass = diffPct >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-600 dark:text-rose-400 font-bold';
+          yoyHtml = ` <span class="${colorClass} ml-1">(YoY ${sign}${diffPct.toFixed(1)}%)</span>`;
+        } else {
+          yoyHtml = ` <span class="text-slate-400 ml-1">(YoY -)</span>`;
+        }
+      }
+
       const aov = totalQty > 0 ? Math.round(netSales / totalQty) : 0;
       const totalWeeks = Math.max(1, weekSet.size);
       const weeklySpeed = Math.round(totalQty / totalWeeks);
@@ -784,7 +803,7 @@
       }
 
       document.getElementById('kpiSales').textContent = recentMonthSales.toLocaleString() + '원';
-      document.getElementById('kpiSalesSub').textContent = `${monthLabel} 순매출액`;
+      document.getElementById('kpiSalesSub').innerHTML = `${monthLabel} 실적${yoyHtml}`;
 
       document.getElementById('kpiQty').textContent = recentMonthQty.toLocaleString() + '개';
       document.getElementById('kpiQtySub').textContent = `${monthLabel} 판매 수량`;
