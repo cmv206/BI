@@ -1387,7 +1387,7 @@
         return;
       }
 
-      const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0);
+      const pData = filteredData.filter(d => d.ProductName === prod);
       if (pData.length === 0) {
         if (banner) banner.classList.add('hidden');
         return;
@@ -1418,30 +1418,37 @@
         if (isNaN(dt.getTime())) return;
         let wLabel = getWeekFormat(dt);
         if (!weekDataMap[wLabel]) {
-          weekDataMap[wLabel] = { qty: 0, stores: {}, chans: {} };
+          weekDataMap[wLabel] = { qty: 0, stores: {}, chans: {}, minTs: dt.getTime() };
         }
-        weekDataMap[wLabel].qty += d.Quantity;
-        weekDataMap[wLabel].stores[d.StoreName] = (weekDataMap[wLabel].stores[d.StoreName] || 0) + d.Quantity;
-        weekDataMap[wLabel].chans[d.Channel] = (weekDataMap[wLabel].chans[d.Channel] || 0) + d.Quantity;
+        let q = Math.max(0, d.Quantity || 0);
+        weekDataMap[wLabel].qty += q;
+        if (q > 0) {
+          if (d.StoreName) weekDataMap[wLabel].stores[d.StoreName] = (weekDataMap[wLabel].stores[d.StoreName] || 0) + q;
+          if (d.Channel) weekDataMap[wLabel].chans[d.Channel] = (weekDataMap[wLabel].chans[d.Channel] || 0) + q;
+        }
+        if (dt.getTime() < weekDataMap[wLabel].minTs) weekDataMap[wLabel].minTs = dt.getTime();
       });
 
-      // Build continuous week array
-      let continuousWeeks = [];
-      let cur = new Date(startDate.getTime());
-      while (cur <= endDate || continuousWeeks.length < 4) {
-        let label = getWeekFormat(cur);
-        if (!continuousWeeks.some(w => w.label === label)) {
-          let data = weekDataMap[label] || { qty: 0, stores: {}, chans: {} };
-          continuousWeeks.push({
+      // Extract only actual data weeks present in dataset (chronologically sorted)
+      let continuousWeeks = Object.entries(weekDataMap)
+        .map(([label, info]) => {
+          let topStore = '없음';
+          let topChan = '없음';
+          if (info.qty > 0) {
+            const sortedS = Object.entries(info.stores).sort((a,b)=>b[1]-a[1]);
+            if (sortedS.length > 0) topStore = sortedS[0][0];
+            const sortedC = Object.entries(info.chans).sort((a,b)=>b[1]-a[1]);
+            if (sortedC.length > 0) topChan = sortedC[0][0];
+          }
+          return {
             label: label,
-            date: new Date(cur.getTime()),
-            qty: data.qty,
-            topStore: Object.entries(data.stores).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타',
-            topChan: Object.entries(data.chans).sort((a,b)=>b[1]-a[1])[0]?.[0] || '기타'
-          });
-        }
-        cur.setDate(cur.getDate() + 7);
-      }
+            minTs: info.minTs,
+            qty: info.qty,
+            topStore: topStore,
+            topChan: topChan
+          };
+        })
+        .sort((a, b) => a.minTs - b.minTs);
 
       // Plot continuous timeline
       const xLabels = continuousWeeks.map(w => w.label);
