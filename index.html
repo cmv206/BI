@@ -452,9 +452,10 @@
           fixedrange: true,
           exponentformat: 'none',
           separatethousands: true,
-          tickformat: ',d'
+          tickformat: ',d',
+          automargin: true
         },
-        margin: { t: title ? 30 : 10, r: 10, b: 30, l: 50 },
+        margin: { t: title ? 30 : 10, r: 10, b: 30, l: 75 },
         title: title ? { text: title, font: { size: 12, color: isDark ? '#f1f5f9' : '#1e293b' } } : undefined
       };
     };
@@ -954,8 +955,12 @@
         const maxDate = dates[dates.length - 1];
         const startEl = document.getElementById('filterStartDate');
         const endEl = document.getElementById('filterEndDate');
-        if (startEl && !startEl.value) startEl.value = minDate;
-        if (endEl && !endEl.value) endEl.value = maxDate;
+        if (startEl) {
+          if (!startEl.value || startEl.value > minDate) startEl.value = minDate;
+        }
+        if (endEl) {
+          if (!endEl.value || endEl.value < maxDate) endEl.value = maxDate;
+        }
       }
 
       const channels = ['ALL', ...Array.from(new Set(allData.map(d => d.Channel))).sort((a,b) => a.localeCompare(b, 'ko'))];
@@ -1300,10 +1305,8 @@
         bMap[d.Brand].rev += d.Revenue;
         bMap[d.Brand].qty += d.Quantity;
 
-        let unitPrice = d.Quantity > 0 ? (d.Revenue / d.Quantity) : 0;
-        if (unitPrice > 400000 && d.Quantity === 1) return;
-
         let pKey = d.ProductName;
+        if (!pKey) return;
         if (!pMap[pKey]) pMap[pKey] = {rev:0, qty:0, rows:[], storeMap:{}, brandMap:{}, cleanedOptMap:{}};
         pMap[pKey].rev += d.Revenue;
         pMap[pKey].qty += d.Quantity;
@@ -1344,8 +1347,8 @@
         let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${opt[0]} (${fmtNum(opt[1])}개)`).join('\n');
         if (!subOptsTooltip) subOptsTooltip = '차순위 옵션 데이터 없음';
 
-        const escapedName = prodName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return `<tr onclick="selectProductAndNavigate('${escapedName}')" class="hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition group">
+        const safeProdName = prodName.replace(/"/g, '&quot;');
+        return `<tr data-prod="${safeProdName}" onclick="selectProductAndNavigate(this.getAttribute('data-prod'))" class="hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition group">
           <td class="px-2.5 py-2.5 text-xs sm:text-sm truncate max-w-[320px]">
             <span class="text-xs font-normal text-slate-400 dark:text-slate-500 mr-1.5 font-mono">${i+1}</span>
             <span class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:underline transition">${prodName}</span>
@@ -1368,7 +1371,7 @@
       const sel = document.getElementById('selectInvProd');
       if (!sel) return;
       const prod = sel.value;
-      
+
       const elTitle = document.getElementById('selectedProdTitle');
       const elTitleContainer = document.getElementById('selectedProdTitleContainer');
       if (prod) {
@@ -1541,7 +1544,6 @@
       let priceAgg = {};
       pData.forEach(d => {
         let unit = Math.round(d.Revenue / d.Quantity);
-        if (unit > 400000 && d.Quantity === 1) return; // filter outliers
         if (!priceAgg[unit]) priceAgg[unit] = { qty: 0, rev: 0, count: 0 };
         priceAgg[unit].qty += d.Quantity;
         priceAgg[unit].rev += d.Revenue;
