@@ -378,6 +378,17 @@
   </div>
 
   <script>
+    // HTML Escaping Utility for Safety
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // Store plant code mapping
     const STORE_MAPPING = {
       7204: '중계점', 7206: '안양점', 7209: '분당점', 7214: '해운대점', 7215: '천호2점', 
@@ -580,18 +591,13 @@
 
     // Clean Average Unit Price calculation
     function calculateCleanAverageUnitPrice(rows) {
+      if (!rows || rows.length === 0) return 0;
       const validRows = rows.filter(r => r.Revenue > 0 && r.Quantity > 0);
       if (validRows.length === 0) return 0;
 
-      const prices = validRows.map(r => r.Revenue / r.Quantity).filter(p => p < 400000);
-      if (prices.length === 0) {
-        let totalRev = 0, totalQty = 0;
-        validRows.forEach(r => { totalRev += r.Revenue; totalQty += r.Quantity; });
-        return totalQty > 0 ? (totalRev / totalQty) : 0;
-      }
-
-      const sum = prices.reduce((a, b) => a + b, 0);
-      return sum / prices.length;
+      let totalRev = 0, totalQty = 0;
+      validRows.forEach(r => { totalRev += r.Revenue; totalQty += r.Quantity; });
+      return totalQty > 0 ? (totalRev / totalQty) : 0;
     }
 
     function initTheme() {
@@ -707,7 +713,7 @@
     function resolveStoreName(row) {
       let code = row['플랜트(R100)'] || row['플랜트'] || row['점포번호'];
       if (code && STORE_MAPPING[code]) return STORE_MAPPING[code];
-      let outlet = row['출고지명'] || row['매장'];
+      let outlet = row['출고지명'] || row['매장'] || row['지점명'] || row['점포명'];
       if (outlet && typeof outlet === 'string') {
         let m = outlet.match(/([가-힣]+점)/);
         if (m) return m[1];
@@ -723,7 +729,7 @@
     }
 
     function resolveBrand(row) {
-      let b = row['브랜드 내역'] || row['브랜드명'] || row['브랜드'] || '기타 브랜드';
+      let b = row['브랜드 내역'] || row['브랜드명'] || row['브랜드'] || row['Brand'] || '기타 브랜드';
       b = String(b).replace(/\(.*?\)/g, '').trim();
       if (b.includes('모던하우스')) return '모던하우스';
       if (b.includes('스케쳐스')) return '스케쳐스';
@@ -756,7 +762,7 @@
       function resolveStoreName(row) {
         let code = row['플랜트(R100)'] || row['플랜트'] || row['점포번호'];
         if (code && STORE_MAPPING[code]) return STORE_MAPPING[code];
-        let outlet = row['출고지명'] || row['매장'];
+        let outlet = row['출고지명'] || row['매장'] || row['지점명'] || row['점포명'];
         if (outlet && typeof outlet === 'string') {
           let m = outlet.match(/([가-힣]+점)/);
           if (m) return m[1];
@@ -772,7 +778,7 @@
       }
 
       function resolveBrand(row) {
-        let b = row['브랜드 내역'] || row['브랜드명'] || row['브랜드'] || '기타 브랜드';
+        let b = row['브랜드 내역'] || row['브랜드명'] || row['브랜드'] || row['Brand'] || '기타 브랜드';
         b = String(b).replace(/\\(.*?\\)/g, '').trim();
         if (b.includes('모던하우스')) return '모던하우스';
         if (b.includes('스케쳐스')) return '스케쳐스';
@@ -816,17 +822,17 @@
 
             for (let i = 0; i < rows.length; i++) {
               const r = rows[i];
-              let dtStr = parseExcelDate(r['출고확정일'] || r['결제일자'] || r['구매확정일']);
-              let prodName = r['외부몰 상품명'] || r['상품명'];
-              let rev = Number(r['판매금액'] || r['총판매액(판매가)'] || 0);
-              let qty = Number(r['오더 수량'] || r['실주문수량'] || 0);
+              let dtStr = parseExcelDate(r['출고확정일'] || r['결제일자'] || r['구매확정일'] || r['출고일자'] || r['주문일자'] || r['일자'] || r['날짜'] || r['Date']);
+              let prodName = r['외부몰 상품명'] || r['외부몰상품명'] || r['상품명'] || r['상품명(외부몰)'] || r['품명'] || r['외부상품명'] || r['주문상품명'] || r['Product'];
+              let rev = Number(r['판매금액'] || r['총판매액(판매가)'] || r['판매금액(원)'] || r['실판매금액'] || r['결제금액'] || r['총금액'] || r['매출액'] || r['순매출액'] || r['Revenue'] || 0);
+              let qty = Number(r['오더 수량'] || r['실주문수량'] || r['오더수량'] || r['주문수량'] || r['수량'] || r['판매수량'] || r['Quantity'] || 0);
 
               if (!dtStr || !prodName || isNaN(rev) || isNaN(qty)) continue;
 
               let chan = resolveChannel(r, sheetName);
               let store = resolveStoreName(r);
               let brand = resolveBrand(r);
-              let opt = r['외부몰 옵션명'] || r['외부몰옵션명'] || r['단품명'] || r['옵션명'] || r['옵션'] || '기본';
+              let opt = r['외부몰 옵션명'] || r['외부몰옵션명'] || r['단품명'] || r['옵션명'] || r['옵션'] || r['Option'] || '기본';
               let rawColor = r['칼라명'] || r['컬러명'] || r['색상'] || r['칼라'] || '';
               let rawSize = r['사이즈명'] || r['사이즈'] || r['호수'] || '';
 
@@ -948,7 +954,7 @@
     function populateFilterOptions() {
       if (!allData || allData.length === 0) return;
 
-      // Set date inputs initial range from dataset if not manually set
+      // Set date inputs initial range from dataset
       const dates = allData.map(d => d.Date).filter(Boolean).sort();
       if (dates.length > 0) {
         const minDate = dates[0];
@@ -973,8 +979,8 @@
 
       let prodRevMap = {};
       allData.forEach(d => {
-        if (d.Quantity > 0) {
-          prodRevMap[d.ProductName] = (prodRevMap[d.ProductName] || 0) + d.Revenue;
+        if (d.ProductName) {
+          prodRevMap[d.ProductName] = (prodRevMap[d.ProductName] || 0) + (d.Revenue || 0);
         }
       });
       
@@ -993,7 +999,7 @@
       const displayList = prodList.slice(0, MAX_DISPLAY);
 
       const defaultOption = `<option value="">상품 선택 (${prodList.length.toLocaleString()}개 중 상위 ${displayList.length}개)</option>`;
-      const pOptions = displayList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
+      const pOptions = displayList.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
       
       if (pSelect3) pSelect3.innerHTML = defaultOption + pOptions;
       if (pSelect4) pSelect4.innerHTML = defaultOption + pOptions;
@@ -1012,7 +1018,7 @@
         if (pSelect) {
           const currentVal = pSelect.value;
           const defaultText = q ? `검색 결과 (${filtered.length.toLocaleString()}개)` : `상품 선택 (${uniqueProductList.length.toLocaleString()}개 중 상위 ${displayList.length}개)`;
-          let html = `<option value="">${defaultText}</option>` + displayList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
+          let html = `<option value="">${defaultText}</option>` + displayList.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
           pSelect.innerHTML = html;
           if (currentVal && Array.from(pSelect.options).some(o => o.value === currentVal)) {
             pSelect.value = currentVal;
@@ -1034,7 +1040,7 @@
         if (pSelect) {
           const currentVal = pSelect.value;
           const defaultText = q ? `검색 결과 (${filtered.length.toLocaleString()}개)` : `상품 선택 (${uniqueProductList.length.toLocaleString()}개 중 상위 ${displayList.length}개)`;
-          let html = `<option value="">${defaultText}</option>` + displayList.map(p => `<option value="${p.replace(/"/g, '&quot;')}">${p}</option>`).join('');
+          let html = `<option value="">${defaultText}</option>` + displayList.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
           pSelect.innerHTML = html;
           if (currentVal && Array.from(pSelect.options).some(o => o.value === currentVal)) {
             pSelect.value = currentVal;
@@ -1199,24 +1205,27 @@
       let monthMap = {};
 
       filteredData.forEach(d => {
-        if (d.Revenue > 0) gross += d.Revenue;
-        else refund += Math.abs(d.Revenue);
+        let rev = Number(d.Revenue) || 0;
+        let qty = Number(d.Quantity) || 0;
 
-        if (d.Revenue > 0 && d.Quantity > 0) {
-          totalValidRev += d.Revenue;
-          totalValidQty += d.Quantity;
-          chanMap[d.Channel] = (chanMap[d.Channel] || 0) + d.Revenue;
+        if (rev > 0) gross += rev;
+        else refund += Math.abs(rev);
+
+        if (rev > 0 && qty > 0) {
+          totalValidRev += rev;
+          totalValidQty += qty;
+          chanMap[d.Channel] = (chanMap[d.Channel] || 0) + rev;
         }
 
         if (d.Month === latestMonthStr) {
-          currMonthNet += d.Revenue;
+          currMonthNet += rev;
         } else if (d.Month === prevMonthStr) {
-          prevMonthNet += d.Revenue;
+          prevMonthNet += rev;
         }
 
         if (!monthMap[d.Month]) monthMap[d.Month] = {net:0, refund:0};
-        if (d.Revenue > 0) monthMap[d.Month].net += d.Revenue;
-        else monthMap[d.Month].refund += Math.abs(d.Revenue);
+        if (rev > 0) monthMap[d.Month].net += rev;
+        else monthMap[d.Month].refund += Math.abs(rev);
       });
 
       // 1. Recent Month Net Sales & MoM %
@@ -1246,8 +1255,9 @@
       let recent4wQty = 0;
       filteredData.forEach(d => {
         let dtTs = new Date(d.Date).getTime();
-        if (dtTs >= min4wTs && d.Quantity > 0) {
-          recent4wQty += d.Quantity;
+        let qty = Number(d.Quantity) || 0;
+        if (dtTs >= min4wTs && qty > 0) {
+          recent4wQty += qty;
         }
       });
       let weeklyVelocity = recent4wQty / 4;
@@ -1298,72 +1308,87 @@
     }
 
     function renderTab2() {
-      let bMap = {}, pMap = {};
-      
-      filteredData.forEach(d => {
-        if (!bMap[d.Brand]) bMap[d.Brand] = {rev:0, qty:0};
-        bMap[d.Brand].rev += d.Revenue;
-        bMap[d.Brand].qty += d.Quantity;
-
-        let pKey = d.ProductName;
-        if (!pKey) return;
-        if (!pMap[pKey]) pMap[pKey] = {rev:0, qty:0, rows:[], storeMap:{}, brandMap:{}, cleanedOptMap:{}};
-        pMap[pKey].rev += d.Revenue;
-        pMap[pKey].qty += d.Quantity;
-        pMap[pKey].rows.push(d);
-
-        pMap[pKey].storeMap[d.StoreName] = (pMap[pKey].storeMap[d.StoreName] || 0) + d.Quantity;
-        pMap[pKey].brandMap[d.Brand] = (pMap[pKey].brandMap[d.Brand] || 0) + d.Quantity;
-
-        let cleanedOpt = cleanOptionString(d.Option, d.ProductName, d.RawColor, d.RawSize);
-        pMap[pKey].cleanedOptMap[cleanedOpt] = (pMap[pKey].cleanedOptMap[cleanedOpt] || 0) + d.Quantity;
-      });
-
-      const bHtml = Object.entries(bMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,50).map((x,i) => 
-        `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40 transition">
-          <td class="px-2.5 py-2.5 text-center text-slate-400 font-mono text-xs font-normal">${i+1}</td>
-          <td class="px-2.5 py-2.5 font-medium text-xs sm:text-sm truncate max-w-[130px]" title="${x[0]}">${x[0]}</td>
-          <td class="px-2.5 py-2.5 text-right font-bold text-xs sm:text-sm text-brand-600 dark:text-brand-400 whitespace-nowrap">${fmtKoreanNum(x[1].rev)} 원</td>
-          <td class="px-2.5 py-2.5 text-right font-normal text-xs sm:text-sm whitespace-nowrap">${fmtKoreanNum(x[1].qty)} 개</td>
-        </tr>`
-      ).join('');
-      const tb1 = document.getElementById('tblBrands');
-      if (tb1) tb1.innerHTML = bHtml || '<tr><td colspan="4" class="px-3 py-10 text-center text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
-
-      const pHtml = Object.entries(pMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,100).map((x,i) => {
-        const prodName = x[0];
-        const data = x[1];
+      try {
+        let bMap = {}, pMap = {};
         
-        const unit = calculateCleanAverageUnitPrice(data.rows);
-        
-        const topStore = Object.entries(data.storeMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '본사/기타';
-        const topBrand = Object.entries(data.brandMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
-        const storeBrandStr = topBrand ? `${topStore} ${topBrand}` : topStore;
+        filteredData.forEach(d => {
+          let brand = d.Brand || '기타 브랜드';
+          let rev = Number(d.Revenue) || 0;
+          let qty = Number(d.Quantity) || 0;
 
-        const sortedOpts = Object.entries(data.cleanedOptMap).sort((a,b)=>b[1]-a[1]);
-        const topOptName = sortedOpts[0] ? sortedOpts[0][0] : '단품';
-        const topOptTooltip = sortedOpts[0] ? `${topOptName} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
-        
-        let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${opt[0]} (${fmtNum(opt[1])}개)`).join('\n');
-        if (!subOptsTooltip) subOptsTooltip = '차순위 옵션 데이터 없음';
+          if (!bMap[brand]) bMap[brand] = {rev:0, qty:0};
+          bMap[brand].rev += rev;
+          bMap[brand].qty += qty;
 
-        const safeProdName = prodName.replace(/"/g, '&quot;');
-        return `<tr data-prod="${safeProdName}" onclick="selectProductAndNavigate(this.getAttribute('data-prod'))" class="hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition group">
-          <td class="px-2.5 py-2.5 text-xs sm:text-sm truncate max-w-[320px]">
-            <span class="text-xs font-normal text-slate-400 dark:text-slate-500 mr-1.5 font-mono">${i+1}</span>
-            <span class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:underline transition">${prodName}</span>
-          </td>
-          <td class="px-2.5 py-2.5 text-right text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-mono whitespace-nowrap font-normal">@${fmtKoreanNum(unit)}원</td>
-          <td class="px-2.5 py-2.5 truncate max-w-[120px] text-slate-700 dark:text-slate-300 font-normal text-xs sm:text-sm" title="${storeBrandStr}">${storeBrandStr}</td>
-          <td class="px-2.5 py-2.5 truncate max-w-[110px]" title="[옵션 순위]\n1위: ${topOptTooltip}\n${subOptsTooltip}">
-            <span class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-xs font-normal">${topOptName}</span>
-          </td>
-          <td class="px-2.5 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm whitespace-nowrap">${fmtKoreanNum(data.rev)} 원</td>
-          <td class="px-2.5 py-2.5 text-right font-medium text-xs sm:text-sm whitespace-nowrap">${fmtKoreanNum(data.qty)} 개</td>
-        </tr>`;
-      }).join('');
-      const tb2 = document.getElementById('tblProducts');
-      if (tb2) tb2.innerHTML = pHtml || '<tr><td colspan="6" class="px-3 py-10 text-center text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
+          let pKey = d.ProductName || '기타 상품';
+          if (!pMap[pKey]) pMap[pKey] = {rev:0, qty:0, rows:[], storeMap:{}, brandMap:{}, cleanedOptMap:{}};
+          pMap[pKey].rev += rev;
+          pMap[pKey].qty += qty;
+          pMap[pKey].rows.push(d);
+
+          let store = d.StoreName || '본사/기타';
+          pMap[pKey].storeMap[store] = (pMap[pKey].storeMap[store] || 0) + qty;
+          pMap[pKey].brandMap[brand] = (pMap[pKey].brandMap[brand] || 0) + qty;
+
+          let cleanedOpt = cleanOptionString(d.Option, d.ProductName, d.RawColor, d.RawSize);
+          pMap[pKey].cleanedOptMap[cleanedOpt] = (pMap[pKey].cleanedOptMap[cleanedOpt] || 0) + qty;
+        });
+
+        const bEntries = Object.entries(bMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,50);
+        const bHtml = bEntries.map((x,i) => 
+          `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/40 transition">
+            <td class="px-2.5 py-2.5 text-center text-slate-400 font-mono text-xs font-normal">${i+1}</td>
+            <td class="px-2.5 py-2.5 font-medium text-xs sm:text-sm truncate max-w-[130px]" title="${escapeHtml(x[0])}">${escapeHtml(x[0])}</td>
+            <td class="px-2.5 py-2.5 text-right font-bold text-xs sm:text-sm text-brand-600 dark:text-brand-400 whitespace-nowrap">${fmtKoreanNum(x[1].rev)} 원</td>
+            <td class="px-2.5 py-2.5 text-right font-normal text-xs sm:text-sm whitespace-nowrap">${fmtKoreanNum(x[1].qty)} 개</td>
+          </tr>`
+        ).join('');
+        const tb1 = document.getElementById('tblBrands');
+        if (tb1) tb1.innerHTML = bHtml || '<tr><td colspan="4" class="px-3 py-10 text-center text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
+
+        const pEntries = Object.entries(pMap).sort((a,b)=>b[1].rev - a[1].rev).slice(0,100);
+        const pHtml = pEntries.map((x,i) => {
+          const prodName = x[0];
+          const data = x[1];
+          
+          const unit = calculateCleanAverageUnitPrice(data.rows);
+          
+          const topStore = Object.entries(data.storeMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '본사/기타';
+          const topBrand = Object.entries(data.brandMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+          const storeBrandStr = topBrand ? `${topStore} ${topBrand}` : topStore;
+
+          const sortedOpts = Object.entries(data.cleanedOptMap).sort((a,b)=>b[1]-a[1]);
+          const topOptName = sortedOpts[0] ? sortedOpts[0][0] : '단품';
+          const topOptTooltip = sortedOpts[0] ? `${topOptName} (${fmtNum(sortedOpts[0][1])}개)` : '단품';
+          
+          let subOptsTooltip = sortedOpts.slice(1, 6).map((opt, idx) => `${idx + 2}위: ${opt[0]} (${fmtNum(opt[1])}개)`).join('\n');
+          if (!subOptsTooltip) subOptsTooltip = '차순위 옵션 데이터 없음';
+
+          const safeProdAttr = escapeHtml(prodName);
+          const safeProdText = escapeHtml(prodName);
+          const safeStoreBrand = escapeHtml(storeBrandStr);
+          const safeTopOpt = escapeHtml(topOptName);
+          const safeTooltip = escapeHtml(`[옵션 순위]\n1위: ${topOptTooltip}\n${subOptsTooltip}`);
+
+          return `<tr data-prod="${safeProdAttr}" onclick="selectProductAndNavigate(this.getAttribute('data-prod'))" class="hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition group">
+            <td class="px-2.5 py-2.5 text-xs sm:text-sm truncate max-w-[320px]">
+              <span class="text-xs font-normal text-slate-400 dark:text-slate-500 mr-1.5 font-mono">${i+1}</span>
+              <span class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:underline transition">${safeProdText}</span>
+            </td>
+            <td class="px-2.5 py-2.5 text-right text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-mono whitespace-nowrap font-normal">@${fmtKoreanNum(unit)}원</td>
+            <td class="px-2.5 py-2.5 truncate max-w-[120px] text-slate-700 dark:text-slate-300 font-normal text-xs sm:text-sm" title="${safeStoreBrand}">${safeStoreBrand}</td>
+            <td class="px-2.5 py-2.5 truncate max-w-[110px]" title="${safeTooltip}">
+              <span class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-xs font-normal">${safeTopOpt}</span>
+            </td>
+            <td class="px-2.5 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm whitespace-nowrap">${fmtKoreanNum(data.rev)} 원</td>
+            <td class="px-2.5 py-2.5 text-right font-medium text-xs sm:text-sm whitespace-nowrap">${fmtKoreanNum(data.qty)} 개</td>
+          </tr>`;
+        }).join('');
+        const tb2 = document.getElementById('tblProducts');
+        if (tb2) tb2.innerHTML = pHtml || '<tr><td colspan="6" class="px-3 py-10 text-center text-slate-400 font-medium">데이터가 없습니다.</td></tr>';
+      } catch (err) {
+        console.error("renderTab2 execution error:", err);
+      }
     }
 
     /* Enterprise Demand Planning AI Algorithm (Continuous Time-Series + EWMA + Safety Stock) */
@@ -1393,24 +1418,6 @@
         return;
       }
 
-      // 1. Establish Continuous Weekly Timeline (Continuous 7-Day Intervals)
-      let timestamps = pData.map(d => new Date(d.Date).getTime()).filter(t => !isNaN(t));
-      if (timestamps.length === 0) return;
-
-      // Find overall timeline boundary (or product min/max boundary)
-      let minTs = Math.min(...timestamps);
-      let maxTs = Math.max(...timestamps);
-
-      // Start from Monday of minTs
-      let startDate = new Date(minTs);
-      startDate.setHours(0,0,0,0);
-      let day = startDate.getDay();
-      let diffToMon = (day === 0 ? -6 : 1 - day);
-      startDate.setDate(startDate.getDate() + diffToMon);
-
-      let endDate = new Date(maxTs);
-      endDate.setHours(23,59,59,999);
-
       // Map raw data records into week slots
       let weekDataMap = {};
       pData.forEach(d => {
@@ -1420,7 +1427,7 @@
         if (!weekDataMap[wLabel]) {
           weekDataMap[wLabel] = { qty: 0, stores: {}, chans: {}, minTs: dt.getTime() };
         }
-        let q = Math.max(0, d.Quantity || 0);
+        let q = Math.max(0, Number(d.Quantity) || 0);
         weekDataMap[wLabel].qty += q;
         if (q > 0) {
           if (d.StoreName) weekDataMap[wLabel].stores[d.StoreName] = (weekDataMap[wLabel].stores[d.StoreName] || 0) + q;
@@ -1470,12 +1477,12 @@
       const last4Continuous = continuousWeeks.slice(-4);
       const recent4Qtys = last4Continuous.map(w => w.qty);
       const sumRecent4 = recent4Qtys.reduce((a, b) => a + b, 0);
-      const recent4wAvg = sumRecent4 / 4;
+      const recent4wAvg = sumRecent4 / Math.max(1, last4Continuous.length);
 
       // Exponentially Weighted Moving Average (EWMA): Weights [0.05, 0.15, 0.30, 0.50]
       const ewmaWeights = [0.05, 0.15, 0.30, 0.50];
       let ewmaWeeklyRate = 0;
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < Math.min(4, recent4Qtys.length); i++) {
         ewmaWeeklyRate += (recent4Qtys[i] || 0) * ewmaWeights[i];
       }
 
@@ -1483,16 +1490,16 @@
       let expectedDemand4w = ewmaWeeklyRate * 4;
 
       // Standard Deviation (Volatility) Calculation for Safety Stock (95% Service Level)
-      const variance = recent4Qtys.reduce((acc, q) => acc + Math.pow(q - recent4wAvg, 2), 0) / 4;
+      const variance = recent4Qtys.reduce((acc, q) => acc + Math.pow(q - recent4wAvg, 2), 0) / Math.max(1, recent4Qtys.length);
       const stdDev = Math.sqrt(variance);
       const safetyStock = Math.ceil(1.65 * stdDev); // 95% service level factor Z=1.65
 
       // Final Enterprise Recommended Inventory
-      let recQty = Math.max(recent4Qtys[3], Math.round(expectedDemand4w + safetyStock));
+      let recQty = Math.max(recent4Qtys[recent4Qtys.length - 1] || 0, Math.round(expectedDemand4w + safetyStock));
 
       // Trend Momentum Classification
-      const latestQty = recent4Qtys[3];
-      const prevQty = recent4Qtys[2];
+      const latestQty = recent4Qtys[recent4Qtys.length - 1] || 0;
+      const prevQty = recent4Qtys[recent4Qtys.length - 2] || 0;
       let statusText = "안정적 판매";
       let statusClass = "text-xl sm:text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1";
 
@@ -1550,10 +1557,12 @@
       // Group transactions by price points
       let priceAgg = {};
       pData.forEach(d => {
-        let unit = Math.round(d.Revenue / d.Quantity);
+        let rev = Number(d.Revenue) || 0;
+        let qty = Number(d.Quantity) || 1;
+        let unit = Math.round(rev / qty);
         if (!priceAgg[unit]) priceAgg[unit] = { qty: 0, rev: 0, count: 0 };
-        priceAgg[unit].qty += d.Quantity;
-        priceAgg[unit].rev += d.Revenue;
+        priceAgg[unit].qty += qty;
+        priceAgg[unit].rev += rev;
         priceAgg[unit].count += 1;
       });
 
@@ -1624,7 +1633,7 @@
       if (elV) elV.innerText = fmtNum(sweetSpotPrice) + ' 원';
       if (elR) elR.innerText = fmtNum(optimalPrice) + ' 원';
 
-      let yValues = pData.map(d => Math.round(d.Revenue / d.Quantity));
+      let yValues = pData.map(d => Math.round(Number(d.Revenue) / Math.max(1, Number(d.Quantity))));
       let minY = Math.min(...yValues);
       let maxY = Math.max(...yValues);
 
@@ -1643,8 +1652,8 @@
         mode: 'markers', type: 'scatter',
         text: pData.map(d => d.StoreName),
         customdata: pData.map(d => d.Channel),
-        customdata2: pData.map(d => fmtNum(d.Revenue / d.Quantity) + '원'),
-        marker: { size: pData.map(d => Math.max(6, Math.min(22, d.Quantity * 2))), color: '#38bdf8', opacity: 0.65 },
+        customdata2: pData.map(d => fmtNum(Number(d.Revenue) / Math.max(1, Number(d.Quantity))) + '원'),
+        marker: { size: pData.map(d => Math.max(6, Math.min(22, Number(d.Quantity) * 2))), color: '#38bdf8', opacity: 0.65 },
         hovertemplate: '일자: %{x}<br>지점: %{text}<br>채널: %{customdata}<br>단가: %{customdata2}<extra></extra>'
       }], scatterLayout, getPlotlyConfig());
     }
