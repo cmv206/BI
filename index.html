@@ -28,7 +28,7 @@
     }
   </script>
   <style>
-    /* Prominent customized scrollbars for easy click-and-drag */
+    /* Customized scrollbars */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: #0f172a; border-radius: 6px; }
     ::-webkit-scrollbar-thumb { background: #475569; border-radius: 6px; border: 2px solid #0f172a; }
@@ -121,7 +121,7 @@
   <!-- Main Container -->
   <main class="flex-1 max-w-[1800px] w-full mx-auto px-6 py-2 space-y-2.5">
 
-    <!-- Navigation Tabs (4 Core Views) -->
+    <!-- Navigation Tabs -->
     <div class="flex items-center gap-2 border-b border-slate-200 dark:border-panelborder overflow-x-auto text-xs sm:text-sm">
       <button onclick="switchTab('tab1', this)" class="tab-btn active px-3.5 py-2 flex items-center gap-2 transition whitespace-nowrap font-semibold">
         <i class="fa-solid fa-chart-pie text-base"></i> 종합 대시보드
@@ -139,7 +139,7 @@
 
     <!-- TAB 1: 종합 대시보드 -->
     <div id="tab1" class="tab-content active space-y-3">
-      <!-- Strategic Executive KPI Row -->
+      <!-- Executive KPI Row -->
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">최근월 순매출 (MoM)</p>
@@ -148,7 +148,7 @@
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm">
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">실판매 평균 단가 (AOV)</p>
-          <h3 id="kpiAvgPrice" class="text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
+          <h3 id="kpiAvgPrice" class="text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">@ 0 원</h3>
           <p id="kpiAvgPriceSub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">건당 평균 실구매 금액</p>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm">
@@ -184,14 +184,13 @@
     <!-- TAB 2: 베스트 상품 & 브랜드 -->
     <div id="tab2" class="tab-content space-y-2">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-        <!-- Top Brands (Left - 4 cols) -->
+        <!-- Top Brands -->
         <div class="lg:col-span-4 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-3 shadow-sm space-y-2 flex flex-col justify-between">
           <div class="flex items-center justify-between h-5">
             <h4 class="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
               <i class="fa-solid fa-award text-amber-500 text-base"></i> 브랜드별 매출 순위 Top 50
             </h4>
           </div>
-          <!-- Exact matching height container fitting 15 rows cleanly without page scrolling -->
           <div class="h-[calc(100vh-275px)] min-h-[350px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-700 dark:text-slate-200">
               <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 sticky top-0 font-semibold z-10 shadow-sm">
@@ -209,14 +208,13 @@
           </div>
         </div>
 
-        <!-- Top Products (Right - 8 cols) -->
+        <!-- Top Products -->
         <div class="lg:col-span-8 bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder rounded-2xl p-3 shadow-sm space-y-2 flex flex-col justify-between">
           <div class="flex items-center justify-between h-5">
             <h4 class="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
               <i class="fa-solid fa-box-open text-brand-500 text-base"></i> 베스트 상품 순위 Top 100
             </h4>
           </div>
-          <!-- Exact matching height container fitting 15 rows cleanly without page scrolling -->
           <div class="h-[calc(100vh-275px)] min-h-[350px] overflow-y-auto pr-1">
             <table class="w-full text-xs text-left text-slate-700 dark:text-slate-200">
               <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 sticky top-0 font-semibold z-10 shadow-sm">
@@ -256,7 +254,7 @@
           </div>
         </div>
 
-        <!-- Selected Product Title Display Banner -->
+        <!-- Selected Product Title Banner -->
         <div id="selectedProdTitleContainer" class="hidden bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3 transition">
           <div class="flex items-center gap-2.5 overflow-hidden w-full">
             <span class="bg-brand-500/10 text-brand-600 dark:text-brand-400 p-2.5 rounded-lg shrink-0">
@@ -315,7 +313,7 @@
           </div>
         </div>
 
-        <!-- Selected Product Title Display Banner -->
+        <!-- Selected Product Title Banner -->
         <div id="selectedPriceProdTitleContainer" class="hidden bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3 transition">
           <div class="flex items-center gap-2.5 overflow-hidden w-full">
             <span class="bg-brand-500/10 text-brand-600 dark:text-brand-400 p-2.5 rounded-lg shrink-0">
@@ -348,7 +346,6 @@
   </main>
 
   <!-- Modals -->
-  <!-- Processing Modal Overlay -->
   <div id="uploadLoader" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center">
     <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-3">
       <div class="w-12 h-10 text-brand-500 mx-auto flex items-center justify-center text-2xl animate-bounce">
@@ -362,7 +359,6 @@
     </div>
   </div>
 
-  <!-- Clear DB Modal -->
   <div id="clearModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
     <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-5 rounded-2xl shadow-2xl max-w-sm w-full space-y-3 text-center">
       <div class="w-10 h-10 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-full mx-auto flex items-center justify-center text-lg">
@@ -402,22 +398,20 @@
       8502: '수성점', 8503: '구미점', 8504: '강북점'
     };
 
-    // Plotly config (Disable modebar & crosshair + fix range)
     const getPlotlyConfig = () => ({
       responsive: true,
       displayModeBar: false
     });
 
-    // State Variables
     let allData = [];
     let filteredData = [];
     let uniqueProductList = [];
     let isInternalNav = false;
 
-    // Integer / Number formatting helpers (No decimals)
+    // Integer formatting helper (No decimals)
     const fmtNum = (num) => Math.round(num || 0).toLocaleString('ko-KR');
 
-    // Korean Business Units Formatting (e.g., 64.5만, 120만, 91)
+    // Korean Business Units Formatting (e.g., 64.5만, 120만)
     const fmtKoreanNum = (val) => {
       val = Math.round(val || 0);
       const absVal = Math.abs(val);
@@ -429,7 +423,7 @@
       return val.toLocaleString('ko-KR');
     };
 
-    // Date formatting helper functions
+    // Date formatting helpers
     const fmtExactDate = (dtStr) => {
       if (!dtStr) return '';
       const str = String(dtStr).substring(0, 10);
@@ -471,7 +465,6 @@
       };
     };
 
-    // High Precision 4-Tier Priority Hierarchy Option Parser
     function cleanOptionString(rawOpt, prodName = '', rawColor = '', rawSize = '') {
       let foundColor = '';
       let foundSize = '';
@@ -589,7 +582,6 @@
       return '단품';
     }
 
-    // Clean Average Unit Price calculation
     function calculateCleanAverageUnitPrice(rows) {
       if (!rows || rows.length === 0) return 0;
       const validRows = rows.filter(r => r.Revenue > 0 && r.Quantity > 0);
@@ -696,50 +688,6 @@
       }
     });
 
-    function parseExcelDate(val) {
-      if (!val) return '';
-      if (val instanceof Date) return val.toISOString().split('T')[0];
-      if (typeof val === 'number') {
-        const date = new Date(Math.round((val - 25569) * 86400 * 1000));
-        return date.toISOString().split('T')[0];
-      }
-      let str = String(val).trim();
-      if (str.length === 8 && !isNaN(str)) {
-        return `${str.substring(0,4)}-${str.substring(4,6)}-${str.substring(6,8)}`;
-      }
-      return str.substring(0, 10);
-    }
-
-    function resolveStoreName(row) {
-      let code = row['플랜트(R100)'] || row['플랜트'] || row['점포번호'];
-      if (code && STORE_MAPPING[code]) return STORE_MAPPING[code];
-      let outlet = row['출고지명'] || row['매장'] || row['지점명'] || row['점포명'];
-      if (outlet && typeof outlet === 'string') {
-        let m = outlet.match(/([가-힣]+점)/);
-        if (m) return m[1];
-        if (outlet.includes('본사')) return '본사/기타';
-      }
-      return '본사/기타';
-    }
-
-    function resolveChannel(row, sheetName) {
-      if (row['채널명']) return String(row['채널명']).trim();
-      if (sheetName === 'EM') return '이랜드몰(EM)';
-      return '기타채널';
-    }
-
-    function resolveBrand(row) {
-      let b = row['브랜드 내역'] || row['브랜드명'] || row['브랜드'] || row['Brand'] || '기타 브랜드';
-      b = String(b).replace(/\(.*?\)/g, '').trim();
-      if (b.includes('모던하우스')) return '모던하우스';
-      if (b.includes('스케쳐스')) return '스케쳐스';
-      if (b.includes('크록스')) return '크록스';
-      if (b.includes('아디다스')) return '아디다스';
-      if (b.includes('엘칸토')) return '엘칸토';
-      return b || '기타 브랜드';
-    }
-
-    /* WEB WORKER SCRIPT FOR ULTRA FAST PARSING IN MULTI-THREAD */
     const workerScript = `
       importScripts('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
 
@@ -824,8 +772,15 @@
               const r = rows[i];
               let dtStr = parseExcelDate(r['출고확정일'] || r['결제일자'] || r['구매확정일'] || r['출고일자'] || r['주문일자'] || r['일자'] || r['날짜'] || r['Date']);
               let prodName = r['외부몰 상품명'] || r['외부몰상품명'] || r['상품명'] || r['상품명(외부몰)'] || r['품명'] || r['외부상품명'] || r['주문상품명'] || r['Product'];
-              let rev = Number(r['판매금액'] || r['총판매액(판매가)'] || r['판매금액(원)'] || r['실판매금액'] || r['결제금액'] || r['총금액'] || r['매출액'] || r['순매출액'] || r['Revenue'] || 0);
-              let qty = Number(r['오더 수량'] || r['실주문수량'] || r['오더수량'] || r['주문수량'] || r['수량'] || r['판매수량'] || r['Quantity'] || 0);
+              
+              // Robust numeric cleaning for formatted strings (e.g. 48,500원, ₩48,500)
+              let rawRevVal = String(r['판매금액'] || r['총판매액(판매가)'] || r['판매금액(원)'] || r['실판매금액'] || r['결제금액'] || r['총금액'] || r['매출액'] || r['순매출액'] || r['Revenue'] || 0);
+              let cleanRevVal = rawRevVal.replace(/[^0-9.-]/g, '');
+              let rev = Number(cleanRevVal) || 0;
+
+              let rawQtyVal = String(r['오더 수량'] || r['실주문수량'] || r['오더수량'] || r['주문수량'] || r['수량'] || r['판매수량'] || r['Quantity'] || 0);
+              let cleanQtyVal = rawQtyVal.replace(/[^0-9.-]/g, '');
+              let qty = Number(cleanQtyVal) || 0;
 
               if (!dtStr || !prodName || isNaN(rev) || isNaN(qty)) continue;
 
@@ -936,7 +891,7 @@
 
       setTimeout(() => {
         if (loader) loader.classList.add('hidden');
-        populateFilterOptions();
+        populateFilterOptions(true); // Reset date bounds to full dataset range
         applyFilters();
         const inputEl = document.getElementById('excelInput');
         if (inputEl) inputEl.value = '';
@@ -951,21 +906,20 @@
       if (list.includes(curr)) el.value = curr;
     }
 
-    function populateFilterOptions() {
+    function populateFilterOptions(isNewUpload = false) {
       if (!allData || allData.length === 0) return;
 
-      // Set date inputs initial range from dataset
       const dates = allData.map(d => d.Date).filter(Boolean).sort();
       if (dates.length > 0) {
         const minDate = dates[0];
         const maxDate = dates[dates.length - 1];
         const startEl = document.getElementById('filterStartDate');
         const endEl = document.getElementById('filterEndDate');
-        if (startEl) {
-          if (!startEl.value || startEl.value > minDate) startEl.value = minDate;
+        if (startEl && (isNewUpload || !startEl.value || startEl.value > minDate)) {
+          startEl.value = minDate;
         }
-        if (endEl) {
-          if (!endEl.value || endEl.value < maxDate) endEl.value = maxDate;
+        if (endEl && (isNewUpload || !endEl.value || endEl.value < maxDate)) {
+          endEl.value = maxDate;
         }
       }
 
@@ -1173,17 +1127,15 @@
       renderTab4();
     }
 
-    /* Actionable Executive KPI Engine for Dashboard (Tab 1) */
     function renderTab1() {
       if (!filteredData || filteredData.length === 0) {
         const setTxtNull = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
         setTxtNull('kpiNet', '0 원'); setTxtNull('kpiNetSub', 'MoM: - %');
-        setTxtNull('kpiAvgPrice', '0 원'); setTxtNull('kpiTopChannel', '-');
+        setTxtNull('kpiAvgPrice', '@ 0 원'); setTxtNull('kpiTopChannel', '-');
         setTxtNull('kpiVelocity', '0 개 / 주'); setTxtNull('kpiRefund', '0.0 %');
         return;
       }
 
-      // Sort dataset chronologically to locate latest month & previous month
       let sortedDates = filteredData.map(d => d.Date).filter(Boolean).sort();
       let latestDateStr = sortedDates[sortedDates.length - 1];
       let latestDt = new Date(latestDateStr);
@@ -1228,7 +1180,6 @@
         else monthMap[d.Month].refund += Math.abs(rev);
       });
 
-      // 1. Recent Month Net Sales & MoM %
       let momPercent = 0;
       let momText = "MoM: 전월 데이터 없음";
       let momClass = "text-[11px] font-semibold text-slate-400 mt-0.5";
@@ -1241,15 +1192,13 @@
         momText = `당월 순매출 (${latestM}월)`;
       }
 
-      // 2. Average Order / Unit Selling Price (AOV / 객단가)
+      // Average Order / Unit Selling Price (AOV / 객단가) with @ symbol
       let avgUnitPrice = totalValidQty > 0 ? (totalValidRev / totalValidQty) : 0;
 
-      // 3. Top Revenue Channel & Share %
       let sortedChans = Object.entries(chanMap).sort((a, b) => b[1] - a[1]);
       let topChanName = sortedChans[0] ? sortedChans[0][0] : '-';
       let topChanShare = totalValidRev > 0 && sortedChans[0] ? ((sortedChans[0][1] / totalValidRev) * 100).toFixed(1) : 0;
 
-      // 4. Recent 4-Week Weekly Sales Velocity
       let maxTs = new Date(sortedDates[sortedDates.length - 1]).getTime();
       let min4wTs = maxTs - (28 * 24 * 60 * 60 * 1000);
       let recent4wQty = 0;
@@ -1262,7 +1211,6 @@
       });
       let weeklyVelocity = recent4wQty / 4;
 
-      // 5. Refund Rate & Health Status
       let refundRate = gross > 0 ? (refund / gross) * 100 : 0;
       let refundStatusText = "🟢 양호 (안정적)";
       let refundStatusClass = "text-[11px] font-semibold text-emerald-500 mt-0.5";
@@ -1274,14 +1222,13 @@
         refundStatusClass = "text-[11px] font-semibold text-amber-500 mt-0.5";
       }
 
-      // Update UI elements
       const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
       setTxt('kpiNet', fmtKoreanNum(currMonthNet > 0 ? currMonthNet : gross - refund) + ' 원');
       
       const elNetSub = document.getElementById('kpiNetSub');
       if (elNetSub) { elNetSub.innerText = momText; elNetSub.className = momClass; }
 
-      setTxt('kpiAvgPrice', '@' + fmtKoreanNum(avgUnitPrice) + ' 원');
+      setTxt('kpiAvgPrice', '@ ' + fmtKoreanNum(avgUnitPrice) + ' 원');
       setTxt('kpiTopChannel', topChanName);
       setTxt('kpiTopChannelSub', `점유율 ${topChanShare}%`);
       
@@ -1391,7 +1338,6 @@
       }
     }
 
-    /* Enterprise Demand Planning AI Algorithm (Continuous Time-Series + EWMA + Safety Stock) */
     function renderTab3() {
       const sel = document.getElementById('selectInvProd');
       if (!sel) return;
@@ -1418,7 +1364,6 @@
         return;
       }
 
-      // Map raw data records into week slots
       let weekDataMap = {};
       pData.forEach(d => {
         let dt = new Date(d.Date);
@@ -1436,7 +1381,7 @@
         if (dt.getTime() < weekDataMap[wLabel].minTs) weekDataMap[wLabel].minTs = dt.getTime();
       });
 
-      // Extract only actual data weeks present in dataset (chronologically sorted)
+      // Sort strictly by minimum timestamp to preserve chronological week order
       let continuousWeeks = Object.entries(weekDataMap)
         .map(([label, info]) => {
           let topStore = '없음';
@@ -1457,7 +1402,6 @@
         })
         .sort((a, b) => a.minTs - b.minTs);
 
-      // Plot continuous timeline
       const xLabels = continuousWeeks.map(w => w.label);
       const yQuantities = continuousWeeks.map(w => Math.round(w.qty));
       const topStores = continuousWeeks.map(w => w.topStore);
@@ -1472,32 +1416,24 @@
         hovertemplate: '<b>%{x}</b><br>판매량: %{y:,}개<br>주요 지점: %{text}<br>주요 채널: %{customdata}<extra></extra>'
       }], getChartLayout(`[${prod}] 주차별 누적 판매 트렌드`), getPlotlyConfig());
 
-      // 2. Enterprise SCM Inventory Demand Forecasting Model
-      // Extract continuous last 4 weeks
       const last4Continuous = continuousWeeks.slice(-4);
       const recent4Qtys = last4Continuous.map(w => w.qty);
       const sumRecent4 = recent4Qtys.reduce((a, b) => a + b, 0);
       const recent4wAvg = sumRecent4 / Math.max(1, last4Continuous.length);
 
-      // Exponentially Weighted Moving Average (EWMA): Weights [0.05, 0.15, 0.30, 0.50]
       const ewmaWeights = [0.05, 0.15, 0.30, 0.50];
       let ewmaWeeklyRate = 0;
       for (let i = 0; i < Math.min(4, recent4Qtys.length); i++) {
         ewmaWeeklyRate += (recent4Qtys[i] || 0) * ewmaWeights[i];
       }
 
-      // Expected base demand for upcoming 4 weeks
       let expectedDemand4w = ewmaWeeklyRate * 4;
-
-      // Standard Deviation (Volatility) Calculation for Safety Stock (95% Service Level)
       const variance = recent4Qtys.reduce((acc, q) => acc + Math.pow(q - recent4wAvg, 2), 0) / Math.max(1, recent4Qtys.length);
       const stdDev = Math.sqrt(variance);
-      const safetyStock = Math.ceil(1.65 * stdDev); // 95% service level factor Z=1.65
+      const safetyStock = Math.ceil(1.65 * stdDev);
 
-      // Final Enterprise Recommended Inventory
       let recQty = Math.max(recent4Qtys[recent4Qtys.length - 1] || 0, Math.round(expectedDemand4w + safetyStock));
 
-      // Trend Momentum Classification
       const latestQty = recent4Qtys[recent4Qtys.length - 1] || 0;
       const prevQty = recent4Qtys[recent4Qtys.length - 2] || 0;
       let statusText = "안정적 판매";
@@ -1511,7 +1447,6 @@
         statusClass = "text-xl sm:text-2xl font-bold text-rose-500 dark:text-rose-400 mt-1";
       }
 
-      // Build AI SCM Rationale Explanation Text
       const recentSalesStr = recent4Qtys.map(q => Math.round(q) + '개').join(', ');
       let aiReasonHTML = `<strong>[기업 SCM 재고 예측 모델]</strong> 연속 4주 실적(<b>${recentSalesStr}</b> / 총 <b>${Math.round(sumRecent4)}개</b>)에 <b>지수가중 이동평균(EWMA) 및 안전재고(Safety Stock)</b> 알고리즘을 적용했습니다. `;
       aiReasonHTML += `최근 주차 실적(<b>${Math.round(latestQty)}개</b>)과 수요 감쇄 추세를 종합 반영하여, 과잉 재고 손실을 막기 위해 <b>${fmtKoreanNum(recQty)}개</b>를 확보할 것을 권장합니다.`;
@@ -1554,7 +1489,6 @@
       const pData = filteredData.filter(d => d.ProductName === prod && d.Quantity > 0);
       if (pData.length === 0) return;
 
-      // Group transactions by price points
       let priceAgg = {};
       pData.forEach(d => {
         let rev = Number(d.Revenue) || 0;
@@ -1569,7 +1503,6 @@
       const pricePoints = Object.keys(priceAgg).map(Number).sort((a, b) => a - b);
       if (pricePoints.length === 0) return;
 
-      // 1. Empirical Maxima Baseline
       let maxQtyPrice = pricePoints[0], maxQty = -1;
       let maxRevPrice = pricePoints[0], maxRev = -1;
       pricePoints.forEach(p => {
@@ -1577,7 +1510,6 @@
         if (priceAgg[p].rev > maxRev) { maxRev = priceAgg[p].rev; maxRevPrice = p; }
       });
 
-      // 2. Econometric Demand Curve ML Model (Q(P) = a - b*P & Price Elasticity Ep = -1)
       let optimalPrice = maxRevPrice;
       let sweetSpotPrice = maxQtyPrice;
 
@@ -1596,15 +1528,12 @@
 
         let denominator = (n * sumX2 - sumX * sumX);
         if (denominator !== 0) {
-          let slopeB = (n * sumXY - sumX * sumY) / denominator; // b in Q = a + b*P
+          let slopeB = (n * sumXY - sumX * sumY) / denominator;
           let interceptA = (sumY - slopeB * sumX) / n;
 
-          // Downward-sloping demand curve Q(P) = a - b*P
           if (slopeB < 0) {
             let b = -slopeB;
             let a = interceptA;
-            // Revenue Function R(P) = P * Q(P) = a*P - b*P^2
-            // First Derivative dR/dP = a - 2*b*P = 0 => P* = a / (2b) (Point of Unitary Elasticity Ep = -1)
             let theoreticalOptimal = a / (2 * b);
 
             let minP = pricePoints[0];
@@ -1616,7 +1545,6 @@
         }
       }
 
-      // 3. Marketing Balanced Sweet Spot (Revenue Velocity vs. Volume Elasticity)
       let bestScore = -1;
       pricePoints.forEach(p => {
         let revShare = priceAgg[p].rev / (maxRev || 1);
