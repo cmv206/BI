@@ -87,6 +87,14 @@
           <i class="fa-solid fa-filter text-brand-500 text-sm"></i>
           <span class="text-slate-600 dark:text-slate-300">글로벌 필터:</span>
         </div>
+
+        <!-- Date Range Filter -->
+        <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-300 dark:border-slate-700 text-xs">
+          <i class="fa-solid fa-calendar text-brand-500 text-xs"></i>
+          <input type="date" id="filterStartDate" onchange="applyFilters()" class="bg-transparent text-slate-800 dark:text-slate-100 text-xs focus:outline-none font-normal cursor-pointer">
+          <span class="text-slate-400 font-bold">~</span>
+          <input type="date" id="filterEndDate" onchange="applyFilters()" class="bg-transparent text-slate-800 dark:text-slate-100 text-xs focus:outline-none font-normal cursor-pointer">
+        </div>
         
         <!-- Channel Select -->
         <select id="filterChannel" onchange="applyFilters()" class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 font-normal">
@@ -131,27 +139,32 @@
 
     <!-- TAB 1: 종합 대시보드 -->
     <div id="tab1" class="tab-content active space-y-3">
-      <!-- KPI Row -->
+      <!-- Strategic Executive KPI Row -->
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm">
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">순매출액 (Net)</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">최근월 순매출 (MoM)</p>
           <h3 id="kpiNet" class="text-base sm:text-xl font-bold text-brand-600 dark:text-brand-400 mt-1">0 원</h3>
+          <p id="kpiNetSub" class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">MoM: - %</p>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm">
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">총매출액 (Gross)</p>
-          <h3 id="kpiGross" class="text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">실판매 평균 단가 (AOV)</p>
+          <h3 id="kpiAvgPrice" class="text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">0 원</h3>
+          <p id="kpiAvgPriceSub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">건당 평균 실구매 금액</p>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm">
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">환불액 (Refund)</p>
-          <h3 id="kpiRefund" class="text-base sm:text-xl font-bold text-rose-600 dark:text-rose-400 mt-1">0 원</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">1위 주력 채널 & 점유율</p>
+          <h3 id="kpiTopChannel" class="text-base sm:text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-1 truncate">-</h3>
+          <p id="kpiTopChannelSub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">점유율 0%</p>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm">
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">환불율 (Refund Rate)</p>
-          <h3 id="kpiRefundRate" class="text-base sm:text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">0.0 %</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">주간 판매 속도 (Velocity)</p>
+          <h3 id="kpiVelocity" class="text-base sm:text-xl font-bold text-sky-600 dark:text-sky-400 mt-1">0 개 / 주</h3>
+          <p id="kpiVelocitySub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">최근 4주 출고 회전 속도</p>
         </div>
         <div class="bg-white dark:bg-panelbg border border-slate-200 dark:border-panelborder p-3.5 rounded-2xl shadow-sm col-span-2 md:col-span-1">
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">총 판매 수량</p>
-          <h3 id="kpiQty" class="text-base sm:text-xl font-bold text-sky-600 dark:text-sky-400 mt-1">0 개</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">환불율 & 건강도</p>
+          <h3 id="kpiRefund" class="text-base sm:text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">0.0 %</h3>
+          <p id="kpiRefundSub" class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">🟢 양호</p>
         </div>
       </div>
 
@@ -934,6 +947,17 @@
     function populateFilterOptions() {
       if (!allData || allData.length === 0) return;
 
+      // Set date inputs initial range from dataset if not manually set
+      const dates = allData.map(d => d.Date).filter(Boolean).sort();
+      if (dates.length > 0) {
+        const minDate = dates[0];
+        const maxDate = dates[dates.length - 1];
+        const startEl = document.getElementById('filterStartDate');
+        const endEl = document.getElementById('filterEndDate');
+        if (startEl && !startEl.value) startEl.value = minDate;
+        if (endEl && !endEl.value) endEl.value = maxDate;
+      }
+
       const channels = ['ALL', ...Array.from(new Set(allData.map(d => d.Channel))).sort((a,b) => a.localeCompare(b, 'ko'))];
       const stores = ['ALL', ...Array.from(new Set(allData.map(d => d.StoreName))).sort((a,b) => a.localeCompare(b, 'ko'))];
       const brands = ['ALL', ...Array.from(new Set(allData.map(d => d.Brand))).sort((a,b) => a.localeCompare(b, 'ko'))];
@@ -1018,13 +1042,19 @@
       const cEl = document.getElementById('filterChannel');
       const sEl = document.getElementById('filterStore');
       const bEl = document.getElementById('filterBrand');
+      const dtStartEl = document.getElementById('filterStartDate');
+      const dtEndEl = document.getElementById('filterEndDate');
 
       const c = cEl ? cEl.value : 'ALL';
       const s = sEl ? sEl.value : 'ALL';
       const b = bEl ? bEl.value : 'ALL';
+      const dtStart = dtStartEl ? dtStartEl.value : '';
+      const dtEnd = dtEndEl ? dtEndEl.value : '';
 
       filteredData = allData.filter(d => {
-        return (c === 'ALL' || d.Channel === c) &&
+        const dateValid = (!dtStart || d.Date >= dtStart) && (!dtEnd || d.Date <= dtEnd);
+        return dateValid &&
+               (c === 'ALL' || d.Channel === c) &&
                (s === 'ALL' || d.StoreName === s) &&
                (b === 'ALL' || d.Brand === b);
       });
@@ -1132,38 +1162,128 @@
       renderTab4();
     }
 
+    /* Actionable Executive KPI Engine for Dashboard (Tab 1) */
     function renderTab1() {
-      let gross = 0, refund = 0, net = 0, qty = 0;
-      let monthMap = {}, chanMap = {};
+      if (!filteredData || filteredData.length === 0) {
+        const setTxtNull = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+        setTxtNull('kpiNet', '0 원'); setTxtNull('kpiNetSub', 'MoM: - %');
+        setTxtNull('kpiAvgPrice', '0 원'); setTxtNull('kpiTopChannel', '-');
+        setTxtNull('kpiVelocity', '0 개 / 주'); setTxtNull('kpiRefund', '0.0 %');
+        return;
+      }
+
+      // Sort dataset chronologically to locate latest month & previous month
+      let sortedDates = filteredData.map(d => d.Date).filter(Boolean).sort();
+      let latestDateStr = sortedDates[sortedDates.length - 1];
+      let latestDt = new Date(latestDateStr);
+
+      let latestY = latestDt.getFullYear();
+      let latestM = latestDt.getMonth() + 1;
+      let latestMonthStr = `${latestY}년 ${latestM}월`;
+
+      let prevDt = new Date(latestDt);
+      prevDt.setMonth(prevDt.getMonth() - 1);
+      let prevY = prevDt.getFullYear();
+      let prevM = prevDt.getMonth() + 1;
+      let prevMonthStr = `${prevY}년 ${prevM}월`;
+
+      let currMonthNet = 0, prevMonthNet = 0;
+      let totalValidRev = 0, totalValidQty = 0;
+      let gross = 0, refund = 0;
+      let chanMap = {};
+      let monthMap = {};
 
       filteredData.forEach(d => {
         if (d.Revenue > 0) gross += d.Revenue;
         else refund += Math.abs(d.Revenue);
-        net += d.Revenue;
-        qty += d.Quantity;
+
+        if (d.Revenue > 0 && d.Quantity > 0) {
+          totalValidRev += d.Revenue;
+          totalValidQty += d.Quantity;
+          chanMap[d.Channel] = (chanMap[d.Channel] || 0) + d.Revenue;
+        }
+
+        if (d.Month === latestMonthStr) {
+          currMonthNet += d.Revenue;
+        } else if (d.Month === prevMonthStr) {
+          prevMonthNet += d.Revenue;
+        }
 
         if (!monthMap[d.Month]) monthMap[d.Month] = {net:0, refund:0};
         if (d.Revenue > 0) monthMap[d.Month].net += d.Revenue;
         else monthMap[d.Month].refund += Math.abs(d.Revenue);
-
-        if (d.Revenue > 0) {
-          chanMap[d.Channel] = (chanMap[d.Channel] || 0) + d.Revenue;
-        }
       });
 
-      const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
-      setTxt('kpiNet', fmtKoreanNum(net) + ' 원');
-      setTxt('kpiGross', fmtKoreanNum(gross) + ' 원');
-      setTxt('kpiRefund', fmtKoreanNum(refund) + ' 원');
-      setTxt('kpiRefundRate', (gross > 0 ? (refund / gross * 100) : 0).toFixed(1) + ' %');
-      setTxt('kpiQty', fmtKoreanNum(qty) + ' 개');
+      // 1. Recent Month Net Sales & MoM %
+      let momPercent = 0;
+      let momText = "MoM: 전월 데이터 없음";
+      let momClass = "text-[11px] font-semibold text-slate-400 mt-0.5";
+      if (prevMonthNet > 0) {
+        momPercent = ((currMonthNet - prevMonthNet) / prevMonthNet) * 100;
+        let isUp = momPercent >= 0;
+        momText = `MoM: ${isUp ? '▲ +' : '▼ '}${Math.abs(momPercent).toFixed(1)}% (${latestM}월)`;
+        momClass = `text-[11px] font-semibold ${isUp ? 'text-emerald-500' : 'text-rose-500'} mt-0.5`;
+      } else if (currMonthNet > 0) {
+        momText = `당월 순매출 (${latestM}월)`;
+      }
 
+      // 2. Average Order / Unit Selling Price (AOV / 객단가)
+      let avgUnitPrice = totalValidQty > 0 ? (totalValidRev / totalValidQty) : 0;
+
+      // 3. Top Revenue Channel & Share %
+      let sortedChans = Object.entries(chanMap).sort((a, b) => b[1] - a[1]);
+      let topChanName = sortedChans[0] ? sortedChans[0][0] : '-';
+      let topChanShare = totalValidRev > 0 && sortedChans[0] ? ((sortedChans[0][1] / totalValidRev) * 100).toFixed(1) : 0;
+
+      // 4. Recent 4-Week Weekly Sales Velocity
+      let maxTs = new Date(sortedDates[sortedDates.length - 1]).getTime();
+      let min4wTs = maxTs - (28 * 24 * 60 * 60 * 1000);
+      let recent4wQty = 0;
+      filteredData.forEach(d => {
+        let dtTs = new Date(d.Date).getTime();
+        if (dtTs >= min4wTs && d.Quantity > 0) {
+          recent4wQty += d.Quantity;
+        }
+      });
+      let weeklyVelocity = recent4wQty / 4;
+
+      // 5. Refund Rate & Health Status
+      let refundRate = gross > 0 ? (refund / gross) * 100 : 0;
+      let refundStatusText = "🟢 양호 (안정적)";
+      let refundStatusClass = "text-[11px] font-semibold text-emerald-500 mt-0.5";
+      if (refundRate > 10.0) {
+        refundStatusText = "🔴 경고 (반품 주의)";
+        refundStatusClass = "text-[11px] font-semibold text-rose-500 mt-0.5";
+      } else if (refundRate > 5.0) {
+        refundStatusText = "🟡 주의 (모니터링)";
+        refundStatusClass = "text-[11px] font-semibold text-amber-500 mt-0.5";
+      }
+
+      // Update UI elements
+      const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+      setTxt('kpiNet', fmtKoreanNum(currMonthNet > 0 ? currMonthNet : gross - refund) + ' 원');
+      
+      const elNetSub = document.getElementById('kpiNetSub');
+      if (elNetSub) { elNetSub.innerText = momText; elNetSub.className = momClass; }
+
+      setTxt('kpiAvgPrice', '@' + fmtKoreanNum(avgUnitPrice) + ' 원');
+      setTxt('kpiTopChannel', topChanName);
+      setTxt('kpiTopChannelSub', `점유율 ${topChanShare}%`);
+      
+      setTxt('kpiVelocity', fmtKoreanNum(weeklyVelocity) + ' 개 / 주');
+      setTxt('kpiRefund', refundRate.toFixed(1) + ' %');
+      
+      const elRefundSub = document.getElementById('kpiRefundSub');
+      if (elRefundSub) { elRefundSub.innerText = refundStatusText; elRefundSub.className = refundStatusClass; }
+
+      // Chart 1: Monthly Trends
       const months = Object.keys(monthMap).sort();
       Plotly.react('chartMonthly', [
         { x: months, y: months.map(m=>Math.round(monthMap[m].net)), type: 'bar', name: '순매출', marker: {color: '#6366f1'}, hovertemplate: '%{x}<br>순매출: %{y:,}원<extra></extra>' },
         { x: months, y: months.map(m=>Math.round(monthMap[m].refund)), type: 'bar', name: '환불액', marker: {color: '#f43f5e'}, hovertemplate: '%{x}<br>환불액: %{y:,}원<extra></extra>' }
       ], {...getChartLayout(), barmode: 'group'}, getPlotlyConfig());
 
+      // Chart 2: Channel Share Pie Chart
       Plotly.react('chartChannel', [{
         labels: Object.keys(chanMap), values: Object.values(chanMap).map(v => Math.round(v)),
         type: 'pie', hole: 0.5, textinfo: 'label+percent',
