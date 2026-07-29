@@ -114,14 +114,14 @@
 
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">글로벌 통합 필터</h2>
+            <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">통합 조건 선택</h2>
             <button onclick="clearFilters()" class="text-[10px] text-brand-600 dark:text-brand-400 font-medium hover:underline">필터 초기화</button>
           </div>
           
           <!-- 기간 필터 -->
           <div class="space-y-1.5">
             <label class="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-              <i class="fa-regular fa-calendar text-slate-400"></i> 조회 기간 설정
+              <i class="fa-regular fa-calendar text-slate-400"></i> 조회 기간 설정 (미선택 시 전체)
             </label>
             <div class="flex items-center gap-2">
               <input type="date" id="filterStartDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500">
@@ -612,45 +612,71 @@
     function loadAllDataFromDB() {
       if(!db) return;
       const overlay = document.getElementById('loadingOverlay');
+      const loadText = document.getElementById('loadingText');
+      const loadSub = document.getElementById('loadingSubtext');
+
       overlay.classList.remove('hidden');
       overlay.classList.add('flex');
+      if (loadText) loadText.innerText = "통합 데이터베이스 조회 및 인덱싱 중...";
+      if (loadSub) loadSub.innerText = "대용량 누적 데이터 요약 집계를 생성하고 있습니다...";
 
-      const tx = db.transaction("sales_data", "readonly");
-      const store = tx.objectStore("sales_data");
-      const req = store.getAll();
+      try {
+        const tx = db.transaction("sales_data", "readonly");
+        const store = tx.objectStore("sales_data");
+        const req = store.getAll();
 
-      req.onsuccess = () => {
-        allData = req.result || [];
-        if (allData.length > 0) {
-          document.getElementById('welcomeScreen').classList.add('hidden');
-          document.getElementById('totalRecordCount').innerText = fmtNum(allData.length) + ' 건';
-          
-          // FAST SINGLE PASS OPTIMIZATION
-          requestAnimationFrame(() => {
-            populateFilterOptions();
-            applyFilters();
+        req.onsuccess = () => {
+          allData = req.result || [];
+          if (allData.length > 0) {
+            document.getElementById('welcomeScreen').classList.add('hidden');
+            document.getElementById('totalRecordCount').innerText = fmtNum(allData.length) + ' 건';
+            
+            requestAnimationFrame(() => {
+              populateFilterOptions();
+              applyFilters();
+              overlay.classList.add('hidden');
+              overlay.classList.remove('flex');
+            });
+          } else {
+            document.getElementById('welcomeScreen').classList.remove('hidden');
             overlay.classList.add('hidden');
             overlay.classList.remove('flex');
-          });
-        } else {
-          document.getElementById('welcomeScreen').classList.remove('hidden');
+          }
+        };
+        req.onerror = (err) => {
+          console.error("IndexedDB read error:", err);
           overlay.classList.add('hidden');
           overlay.classList.remove('flex');
-        }
-      };
+        };
+      } catch (err) {
+        console.error("Transaction error:", err);
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+      }
     }
 
     async function saveToDBInBatches(records) {
       if (!db || !records || records.length === 0) return;
-      const BATCH_SIZE = 10000;
+      const BATCH_SIZE = 5000;
       for (let i = 0; i < records.length; i += BATCH_SIZE) {
         const chunk = records.slice(i, i + BATCH_SIZE);
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction("sales_data", "readwrite");
-          const store = tx.objectStore("sales_data");
-          chunk.forEach(r => store.put(r));
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
+        await new Promise((resolve) => {
+          try {
+            const tx = db.transaction("sales_data", "readwrite");
+            const store = tx.objectStore("sales_data");
+            for (let j = 0; j < chunk.length; j++) {
+              store.put(chunk[j]);
+            }
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => {
+              console.warn("Batch write warn:", e);
+              resolve();
+            };
+            tx.onabort = () => resolve();
+          } catch(e) {
+            console.error("Batch transaction fail:", e);
+            resolve();
+          }
         });
       }
     }
@@ -670,8 +696,8 @@
       const concurrency = Math.min(navigator.hardwareConcurrency || 4, 4);
       const workers = [];
 
-      loadText.innerText = `초고속 병렬 데이터 파싱 중 (0 / ${totalFiles})`;
-      loadSub.innerText = `${concurrency}개의 멀티 스레드 워커가 동시 가동 중입니다...`;
+      loadText.innerText = `초고속 데이터 분석 중 (0 / ${totalFiles})`;
+      loadSub.innerText = `${concurrency}개의 멀티스레드 가동 중...`;
 
       const processNextFile = async (worker) => {
         if (fileQueue.length === 0) return;
@@ -682,17 +708,26 @@
           reader.onload = (evt) => {
             const onWorkerMessage = async (msgEvent) => {
               worker.removeEventListener('message', onWorkerMessage);
-              const res = msgEvent.data;
-              if (res.success && res.records.length > 0) {
-                await saveToDBInBatches(res.records);
+              try {
+                const res = msgEvent.data;
+                if (res.success && res.records && res.records.length > 0) {
+                  await saveToDBInBatches(res.records);
+                }
+              } catch (err) {
+                console.error("Worker processing error:", err);
+              } finally {
+                completedCount++;
+                loadText.innerText = `초고속 데이터 분석 중 (${completedCount} / ${totalFiles})`;
+                resolve();
               }
-              completedCount++;
-              loadText.innerText = `초고속 병렬 데이터 파싱 중 (${completedCount} / ${totalFiles})`;
-              resolve();
             };
 
             worker.addEventListener('message', onWorkerMessage);
             worker.postMessage({ fileBuffer: evt.target.result, fileName: file.name });
+          };
+          reader.onerror = () => {
+            completedCount++;
+            resolve();
           };
           reader.readAsArrayBuffer(file);
         });
@@ -707,6 +742,7 @@
 
       for (let i = 0; i < workerCount; i++) {
         const worker = new Worker(workerUrl);
+        worker.onerror = () => { completedCount++; };
         workers.push(worker);
         poolPromises.push(processNextFile(worker));
       }
@@ -729,7 +765,6 @@
     function populateFilterOptions() {
       if (!allData || allData.length === 0) return;
 
-      // SINGLE-PASS COLLECTION OF CHANNELS, STORES, BRANDS, & PRODUCTS
       const chanSet = new Set();
       const storeSet = new Set();
       const brandSet = new Set();
@@ -762,7 +797,6 @@
       populate('filterStore', stores);
       populate('filterBrand', brands);
 
-      // Sort unique products by revenue using fast Array sort
       const prodList = Array.from(prodRevMap.entries())
         .sort((a, b) => b[1] - a[1])
         .map(entry => entry[0]);
@@ -778,7 +812,6 @@
       const fStore = document.getElementById('filterStore').value;
       const fBrand = document.getElementById('filterBrand').value;
 
-      // FAST SINGLE-PASS FILTERING WITHOUT SORTING RAW RECORDS
       const filtered = [];
       for (let i = 0; i < allData.length; i++) {
         const d = allData[i];
@@ -827,7 +860,6 @@
         return;
       }
 
-      // SINGLE-PASS KPI AND MONTHLY AGGREGATION WITHOUT RAW ARRAY SORTING
       let latestDateStr = "";
       let totalRev = 0, validRev = 0, validQty = 0, totalQty = 0, refundAmt = 0;
       const chanMap = {};
@@ -850,14 +882,12 @@
 
         if (rev > 0) chanMap[d.Channel] = (chanMap[d.Channel] || 0) + rev;
 
-        // Month aggregation
         if (!mthMap.has(d.Month)) mthMap.set(d.Month, { net: 0, ref: 0 });
         const obj = mthMap.get(d.Month);
         if (qty < 0 || rev < 0) obj.ref += Math.abs(rev);
         else obj.net += rev;
       }
 
-      // Latest and previous month calculations
       let currMonthNet = 0, prevMonthNet = 0;
       if (latestDateStr) {
         const parts = latestDateStr.split('-');
@@ -896,7 +926,6 @@
         document.getElementById('kpiTopChannelSub').innerText = `점유율: ${((chanMap[topChan]/totalRev)*100).toFixed(1)}%`;
       }
 
-      // Sort only small 12-24 month keys instead of 100,000 raw rows
       const sortedMonths = Array.from(mthMap.keys()).sort();
       const mx = [], myNet = [], myRef = [];
       for (let i = 0; i < sortedMonths.length; i++) {
@@ -907,7 +936,6 @@
         myRef.push(val.ref);
       }
 
-      // ASYNC PLOTLY RENDERING PREVENTS UI FREEZE
       requestAnimationFrame(() => {
         Plotly.react('chartMonthlySales', [
           { x: mx, y: myNet, type: 'bar', name: '순매출', marker: { color: '#3b82f6' } },
@@ -996,7 +1024,6 @@
         elTitle.innerText = prod;
         elCont.classList.remove('hidden');
 
-        // SINGLE-PASS FILTER FOR SELECTED PRODUCT
         const pData = [];
         for (let i = 0; i < filteredData.length; i++) {
           if (filteredData[i].ProductName === prod) pData.push(filteredData[i]);
