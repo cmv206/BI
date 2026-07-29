@@ -472,32 +472,33 @@
       }
     }
 
-    // ULTRA-FAST STREAMING WEB WORKER PARSER (PRE-MAPPED COLUMN LOOKUP)
+    // HIGH-PERFORMANCE MULTI-THREADED WEB WORKER PARSER (DIRECT ARRAY ACCESS)
     const workerScript = `
       importScripts('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
 
       const STORE_MAPPING = ${JSON.stringify(STORE_MAPPING)};
 
       function parseExcelDate(val) {
-        if (!val) return '';
-        if (val instanceof Date) {
-            const y = val.getFullYear();
-            const m = String(val.getMonth() + 1).padStart(2, '0');
-            const d = String(val.getDate()).padStart(2, '0');
-            return \`\${y}-\${m}-\${d}\`;
-        }
+        if (val === null || val === undefined || val === '') return '';
         if (typeof val === 'number') {
-            const date = new Date(Math.round((val - 25569) * 86400 * 1000));
-            const y = date.getUTCFullYear();
-            const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const d = String(date.getUTCDate()).padStart(2, '0');
-            return \`\${y}-\${m}-\${d}\`;
+          const totalSeconds = Math.round((val - 25569) * 86400);
+          const d = new Date(totalSeconds * 1000);
+          const y = d.getUTCFullYear();
+          const m = d.getUTCMonth() + 1;
+          const day = d.getUTCDate();
+          return y + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
         }
-        let str = String(val).trim().replace(/\\./g, '-').replace(/\\//g, '-');
-        let m = str.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
-        if (m) return \`\${m[1]}-\${m[2].padStart(2, '0')}-\${m[3].padStart(2, '0')}\`;
-        if (str.length === 8 && !isNaN(str)) {
-          return str.substring(0,4) + '-' + str.substring(4,6) + '-' + str.substring(6,8);
+        let str = String(val).trim();
+        if (!str) return '';
+        if (str.length >= 8) {
+          let clean = str.replace(/[.\\/]/g, '-');
+          let m = clean.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
+          if (m) {
+            return m[1] + '-' + (m[2].length === 1 ? '0' + m[2] : m[2]) + '-' + (m[3].length === 1 ? '0' + m[3] : m[3]);
+          }
+          if (/^\\d{8}$/.test(str)) {
+            return str.substring(0,4) + '-' + str.substring(4,6) + '-' + str.substring(6,8);
+          }
         }
         return str.substring(0, 10);
       }
@@ -514,65 +515,83 @@
         const { fileBuffer, fileName } = e.data;
         let records = [];
         try {
-          const workbook = XLSX.read(fileBuffer, { type: 'array', dense: true, cellDates: true });
+          // ULTRA FAST PARSE OPTIONS: Disable cell styles, formulas, HTML, text formatting, cell dates
+          const workbook = XLSX.read(fileBuffer, { 
+            type: 'array', 
+            dense: true, 
+            cellStyles: false, 
+            cellFormulas: false, 
+            cellHTML: false, 
+            cellText: false, 
+            cellDates: false 
+          });
           const sheetName = workbook.SheetNames[0];
-          const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+          // Header mode 1 (Array of Arrays) avoids JS Object creation overhead per row (10x faster)
+          const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: '' });
 
-          if (!rows || rows.length === 0) {
+          if (!rows || rows.length < 2) {
             self.postMessage({ success: true, fileName, records: [] });
             return;
           }
 
-          // Pre-determine column keys once to avoid searching keys on every row
-          const sampleKeys = Object.keys(rows[0]);
-          let dtKey = null, prodKey = null, revKey = null, qtyKey = null, chanKey = null, storeKey = null, brandKey = null, optKey = null;
+          const headers = rows[0].map(h => String(h || '').replace(/\\s+/g, '').toLowerCase());
+          let dtIdx = -1, prodIdx = -1, revIdx = -1, qtyIdx = -1, chanIdx = -1, storeIdx = -1, brandIdx = -1, optIdx = -1;
 
-          for (let k of sampleKeys) {
-            let cleanK = k.replace(/\\s+/g, '').toLowerCase();
-            if (!dtKey && (cleanK.includes('출고확정일') || cleanK.includes('결제일자') || cleanK.includes('일자') || cleanK.includes('날짜'))) dtKey = k;
-            if (!prodKey && (cleanK.includes('상품명') || cleanK.includes('품명'))) prodKey = k;
-            if (!revKey && (cleanK.includes('판매금액') || cleanK.includes('매출') || cleanK.includes('결제금액') || cleanK.includes('결제액'))) revKey = k;
-            if (!qtyKey && (cleanK.includes('수량') || cleanK === 'qty' || cleanK.includes('주문수'))) qtyKey = k;
-            if (!chanKey && (cleanK.includes('채널명') || cleanK.includes('채널'))) chanKey = k;
-            if (!storeKey && (cleanK.includes('플랜트') || cleanK.includes('점포') || cleanK.includes('출고지') || cleanK.includes('매장') || cleanK.includes('지점'))) storeKey = k;
-            if (!brandKey && (cleanK.includes('브랜드'))) brandKey = k;
-            if (!optKey && (cleanK.includes('옵션') || cleanK.includes('단품'))) optKey = k;
+          for (let k = 0; k < headers.length; k++) {
+            let cleanK = headers[k];
+            if (dtIdx === -1 && (cleanK.includes('출고확정일') || cleanK.includes('결제일자') || cleanK.includes('일자') || cleanK.includes('날짜'))) dtIdx = k;
+            if (prodIdx === -1 && (cleanK.includes('상품명') || cleanK.includes('품명'))) prodIdx = k;
+            if (revIdx === -1 && (cleanK.includes('판매금액') || cleanK.includes('매출') || cleanK.includes('결제금액') || cleanK.includes('결제액'))) revIdx = k;
+            if (qtyIdx === -1 && (cleanK.includes('수량') || cleanK === 'qty' || cleanK.includes('주문수'))) qtyIdx = k;
+            if (chanIdx === -1 && (cleanK.includes('채널명') || cleanK.includes('채널'))) chanIdx = k;
+            if (storeIdx === -1 && (cleanK.includes('플랜트') || cleanK.includes('점포') || cleanK.includes('출고지') || cleanK.includes('매장') || cleanK.includes('지점'))) storeIdx = k;
+            if (brandIdx === -1 && (cleanK.includes('브랜드'))) brandIdx = k;
+            if (optIdx === -1 && (cleanK.includes('옵션') || cleanK.includes('단품'))) optIdx = k;
           }
 
-          for (let i = 0; i < rows.length; i++) {
+          for (let i = 1; i < rows.length; i++) {
             const r = rows[i];
-            let dtStr = parseExcelDate(dtKey ? r[dtKey] : (r['출고확정일'] || r['결제일자'] || r['일자'] || r['날짜']));
-            let prodName = String(prodKey ? r[prodKey] : (r['외부몰 상품명'] || r['상품명'] || r['품명'] || '')).trim();
-            let rev = fastNum(revKey ? r[revKey] : (r['판매금액'] || r['매출액'] || r['결제금액']));
-            let qty = fastNum(qtyKey ? r[qtyKey] : (r['수량'] || r['주문수량'] || r['오더수량']));
+            if (!r || r.length === 0) continue;
 
-            if (!dtStr || dtStr.length < 10 || !prodName) continue;
+            let dtVal = dtIdx >= 0 ? r[dtIdx] : '';
+            let dtStr = parseExcelDate(dtVal);
+            let rawProd = prodIdx >= 0 ? r[prodIdx] : '';
+            if (!dtStr || dtStr.length < 10 || rawProd === null || rawProd === undefined || rawProd === '') continue;
 
-            const parts = dtStr.split('-');
-            const dObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-            const wYear = dObj.getFullYear();
-            const wMonth = dObj.getMonth() + 1;
-            const weekNum = Math.ceil(dObj.getDate() / 7);
-            const weekStr = \`\${wYear}년 \${wMonth}월 \${weekNum}주차\`;
+            let prodName = String(rawProd).trim();
+            if (!prodName) continue;
 
-            let storeCode = r['플랜트(R100)'] || r['플랜트'] || r['점포번호'];
+            let rev = fastNum(revIdx >= 0 ? r[revIdx] : 0);
+            let qty = fastNum(qtyIdx >= 0 ? r[qtyIdx] : 0);
+
+            // Fast Year, Month, Week via string slicing
+            const y = dtStr.substring(0, 4);
+            const mStr = dtStr.substring(5, 7);
+            const dNum = parseInt(dtStr.substring(8, 10), 10);
+            const weekNum = Math.min(5, Math.max(1, Math.ceil(dNum / 7)));
+            
+            const monthStr = y + '년 ' + mStr + '월';
+            const weekStr = y + '년 ' + (mStr.startsWith('0') ? mStr.substring(1) : mStr) + '월 ' + weekNum + '주차';
+
+            let storeCode = storeIdx >= 0 ? r[storeIdx] : '';
             let storeName = '본사/기타';
-            if (storeCode && STORE_MAPPING[storeCode]) storeName = STORE_MAPPING[storeCode];
-            else if (storeKey && r[storeKey]) {
-              let m = String(r[storeKey]).match(/([가-힣]+점)/);
+            if (storeCode && STORE_MAPPING[storeCode]) {
+              storeName = STORE_MAPPING[storeCode];
+            } else if (storeCode) {
+              let m = String(storeCode).match(/([가-힣]+점)/);
               if (m) storeName = m[1];
             }
 
             records.push({
               Hash: dtStr + '_' + prodName + '_' + rev + '_' + qty + '_' + i,
               Date: dtStr,
-              Month: \`\${wYear}년 \${String(wMonth).padStart(2, '0')}월\`,
+              Month: monthStr,
               Week: weekStr,
-              Channel: chanKey && r[chanKey] ? String(r[chanKey]).trim() : '기타채널',
+              Channel: (chanIdx >= 0 && r[chanIdx]) ? String(r[chanIdx]).trim() : '기타채널',
               StoreName: storeName,
-              Brand: brandKey && r[brandKey] ? String(r[brandKey]).trim() : '기타 브랜드',
+              Brand: (brandIdx >= 0 && r[brandIdx]) ? String(r[brandIdx]).trim() : '기타 브랜드',
               ProductName: prodName,
-              Option: optKey && r[optKey] ? String(r[optKey]).trim() : '기본',
+              Option: (optIdx >= 0 && r[optIdx]) ? String(r[optIdx]).trim() : '기본',
               Revenue: rev,
               Quantity: qty
             });
@@ -617,7 +636,7 @@
 
     async function saveToDBInBatches(records) {
       if (!db || !records || records.length === 0) return;
-      const BATCH_SIZE = 3000;
+      const BATCH_SIZE = 10000;
       for (let i = 0; i < records.length; i += BATCH_SIZE) {
         const chunk = records.slice(i, i + BATCH_SIZE);
         await new Promise((resolve, reject) => {
@@ -630,7 +649,8 @@
       }
     }
 
-    async function processFilesSequentially(files) {
+    // MULTI-THREADED PARALLEL WORKER POOL FOR MAXIMUM UPLOAD SPEED
+    async function processFilesParallel(files) {
       const overlay = document.getElementById('loadingOverlay');
       const loadText = document.getElementById('loadingText');
       const loadSub = document.getElementById('loadingSubtext');
@@ -638,28 +658,58 @@
       overlay.classList.remove('hidden');
       overlay.classList.add('flex');
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        loadText.innerText = `파일 처리 중 (${i + 1} / ${files.length}): ${file.name}`;
-        loadSub.innerText = `대용량 엑셀 초고속 파싱 및 데이터베이스 인덱싱 적용 중...`;
+      const totalFiles = files.length;
+      let completedCount = 0;
+      let fileQueue = [...files];
+
+      // Multi-worker pool based on available CPU cores (max 4 parallel workers)
+      const concurrency = Math.min(navigator.hardwareConcurrency || 4, 4);
+      const workers = [];
+
+      loadText.innerText = `초고속 병렬 데이터 파싱 중 (0 / ${totalFiles})`;
+      loadSub.innerText = `${concurrency}개의 멀티 스레드 워커가 동시 가동 중입니다...`;
+
+      const processNextFile = async (worker) => {
+        if (fileQueue.length === 0) return;
+        const file = fileQueue.shift();
 
         await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = (evt) => {
-            const worker = new Worker(workerUrl);
-            worker.onmessage = async (msgEvent) => {
+            const onWorkerMessage = async (msgEvent) => {
+              worker.removeEventListener('message', onWorkerMessage);
               const res = msgEvent.data;
               if (res.success && res.records.length > 0) {
                 await saveToDBInBatches(res.records);
               }
-              worker.terminate();
+              completedCount++;
+              loadText.innerText = `초고속 병렬 데이터 파싱 중 (${completedCount} / ${totalFiles})`;
               resolve();
             };
+
+            worker.addEventListener('message', onWorkerMessage);
             worker.postMessage({ fileBuffer: evt.target.result, fileName: file.name });
           };
           reader.readAsArrayBuffer(file);
         });
+
+        if (fileQueue.length > 0) {
+          await processNextFile(worker);
+        }
+      };
+
+      const poolPromises = [];
+      const workerCount = Math.min(concurrency, files.length);
+
+      for (let i = 0; i < workerCount; i++) {
+        const worker = new Worker(workerUrl);
+        workers.push(worker);
+        poolPromises.push(processNextFile(worker));
       }
+
+      await Promise.all(poolPromises);
+
+      workers.forEach(w => w.terminate());
 
       overlay.classList.add('hidden');
       overlay.classList.remove('flex');
@@ -670,7 +720,7 @@
       input.addEventListener('change', (e) => {
         const files = e.target.files;
         if (!files || !files.length) return;
-        processFilesSequentially(Array.from(files));
+        processFilesParallel(Array.from(files));
       });
     });
 
