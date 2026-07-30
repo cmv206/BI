@@ -560,6 +560,15 @@
       });
     }
 
+    function getStoreName(codeOrName) {
+      if (!codeOrName) return '';
+      let clean = String(codeOrName).replace(/\.0$/, '').trim();
+      if (STORE_MAPPING[clean]) return STORE_MAPPING[clean];
+      if (STORE_MAPPING[Number(clean)]) return STORE_MAPPING[Number(clean)];
+      if (clean.toLowerCase() === 'r100' || clean.toLowerCase() === 'null' || clean === '-') return '';
+      return clean;
+    }
+
     function cleanDataAnomalies(records) {
       if (!records || !records.length) return [];
       
@@ -855,11 +864,9 @@
         const findBestCol = (cells, priorities, excludes) => {
           for (const p of priorities) {
             const normP = cleanHeader(p);
-            // 1. Exact match for current priority item
             const exactIdx = cells.findIndex(h => cleanHeader(h) === normP);
             if (exactIdx !== -1) return exactIdx;
 
-            // 2. Substring match for current priority item
             const subIdx = cells.findIndex(h => {
               const normH = cleanHeader(h);
               if (!normH.includes(normP)) return false;
@@ -930,13 +937,13 @@
            let storeVal = null;
            if (hMap.storeR100 !== -1) {
              const rawR100 = v(hMap.storeR100);
-             if (rawR100 !== null && rawR100 !== undefined && String(rawR100).trim() !== '' && String(rawR100).trim() !== '-' && String(rawR100).trim().toLowerCase() !== 'null') {
+             if (rawR100 !== null && rawR100 !== undefined && String(rawR100).trim() !== '') {
                storeVal = rawR100;
              }
            }
-           if ((storeVal === null || storeVal === undefined || String(storeVal).trim() === '') && hMap.storePlant !== -1) {
+           if (!storeVal && hMap.storePlant !== -1) {
              const rawPlant = v(hMap.storePlant);
-             if (rawPlant !== null && rawPlant !== undefined && String(rawPlant).trim() !== '' && String(rawPlant).trim() !== '-' && String(rawPlant).trim().toLowerCase() !== 'null') {
+             if (rawPlant !== null && rawPlant !== undefined && String(rawPlant).trim() !== '') {
                storeVal = rawPlant;
              }
            }
@@ -1308,11 +1315,14 @@
           bMap[bName].qty += d.Quantity;
 
           let cleanCode = String(d.StoreCode || '').replace(/\.0$/, '').trim();
-          const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode || '';
-          const k = bName + '||' + d.ProductName;
+          const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || (cleanCode && cleanCode.toLowerCase() !== 'r100' ? cleanCode : '');
+          const fullStoreStr = storeName ? `${storeName} ${bName}` : bName;
+          
+          // Grouping strictly by [Store(Branch+Brand) + Product]
+          const k = fullStoreStr + '||' + d.ProductName;
           
           if (!pMap[k]) {
-            pMap[k] = { b: bName, p: d.ProductName, store: storeName, rev: 0, qty: 0, opts: {} };
+            pMap[k] = { b: bName, storeStr: fullStoreStr, p: d.ProductName, rev: 0, qty: 0, opts: {} };
           }
           pMap[k].rev += d.Revenue;
           pMap[k].qty += d.Quantity;
@@ -1344,7 +1354,7 @@
         `).join('');
       }
 
-      // 2. Render Right Card: Top 100 Best Product Ranking Table
+      // 2. Render Right Card: Top 100 Best Product Ranking Table (Store + Brand + Product Level)
       const pList = Object.values(pMap).sort((a,b) => b.rev - a.rev).slice(0, 100);
       const bestTbody = document.getElementById('bestTbody');
 
@@ -1360,8 +1370,6 @@
           
           let tooltip = sortedOpts.slice(0, 5).map((o, i) => `${i+1}위: ${cleanOptionString(o[0], item.p)} (${o[1]}개)`).join('\n');
 
-          const storeBrandStr = item.store ? `${item.store} ${item.b}` : item.b;
-
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               <td class="font-bold text-brand-600 dark:text-blue-400 text-center py-[9.5px] cursor-pointer hover:underline hover:text-brand-500" onclick="goToTrendForecast('${esc(item.p)}')" title="클릭 시 52주 트렌드 & 재고 예측 이동">${idx + 1}</td>
@@ -1369,7 +1377,7 @@
                 <span class="font-medium text-slate-800 dark:text-slate-200">${esc(item.p)}</span>
               </td>
               <td class="text-right px-2 text-slate-600 dark:text-slate-400 font-medium py-[9.5px] whitespace-nowrap">@ ${avgPrice.toLocaleString()}원</td>
-              <td class="text-left px-2 text-slate-500 dark:text-slate-400 truncate py-[9.5px]" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
+              <td class="text-left px-2 text-slate-500 dark:text-slate-400 truncate py-[9.5px]" title="${esc(item.storeStr)}">${esc(item.storeStr)}</td>
               <td class="text-center text-slate-600 dark:text-slate-300 truncate cursor-help px-2 py-[9.5px]" title="${esc(tooltip)}">${esc(topOptClean)}</td>
               <td class="font-bold text-slate-900 dark:text-white text-right px-2 py-[9.5px] whitespace-nowrap">${item.rev.toLocaleString()}원</td>
               <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-2 py-[9.5px] whitespace-nowrap">${item.qty.toLocaleString()}개</td>
