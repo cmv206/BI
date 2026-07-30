@@ -262,7 +262,7 @@
         <div id="tab2" class="tab-content space-y-6 hidden h-full">
           <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
             <!-- Left Card: Top 50 Brand Ranking Table -->
-            <div class="w-full lg:w-80 xl:w-96 flex-shrink-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
+            <div class="w-full lg:w-[28rem] xl:w-[32rem] flex-shrink-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
               <div class="flex items-center gap-2 mb-4">
                 <i class="fa-solid fa-award text-amber-500 text-base"></i>
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">브랜드별 매출 순위 Top 50</h3>
@@ -271,10 +271,10 @@
                 <table id="brandRankTable" class="w-full table-fixed text-xs">
                   <thead>
                     <tr>
-                      <th class="w-9 text-center py-2.5 px-0.5">순위</th>
-                      <th class="text-left py-2.5 px-1.5">브랜드명</th>
-                      <th class="w-24 text-right py-2.5 px-1">순매출액</th>
-                      <th class="w-16 text-right py-2.5 px-1">판매량</th>
+                      <th class="w-12 text-center py-2.5">순위</th>
+                      <th class="text-center py-2.5">브랜드명</th>
+                      <th class="w-28 text-center py-2.5 px-3">순매출액</th>
+                      <th class="w-24 text-center py-2.5 px-3">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="brandRankTbody"></tbody>
@@ -289,16 +289,16 @@
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">베스트 상품 순위 Top 100</h3>
               </div>
               <div class="data-table-container flex-1 overflow-x-auto">
-                <table id="bestTable" class="w-full text-xs">
+                <table id="bestTable" class="w-full table-fixed text-xs">
                   <thead>
                     <tr>
-                      <th class="w-10 text-center py-2.5 px-1">순위</th>
-                      <th class="text-center py-2.5 px-2">상품명</th>
-                      <th class="w-24 text-center py-2.5 px-1.5">평균단가</th>
-                      <th class="w-28 text-center py-2.5 px-1.5">매장 (지점명+브랜드)</th>
-                      <th class="w-24 text-center py-2.5 px-1.5">주요 옵션</th>
-                      <th class="w-28 text-center py-2.5 px-1.5">매출액</th>
-                      <th class="w-20 text-center py-2.5 px-1.5">판매량</th>
+                      <th class="w-12 text-center py-2.5">순위</th>
+                      <th class="text-center py-2.5">상품명</th>
+                      <th class="w-28 text-center py-2.5 px-3">평균단가</th>
+                      <th class="w-32 text-center py-2.5">매장</th>
+                      <th class="w-32 text-center py-2.5">주요 옵션</th>
+                      <th class="w-28 text-center py-2.5 px-3">매출액</th>
+                      <th class="w-24 text-center py-2.5 px-3">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="bestTbody"></tbody>
@@ -419,123 +419,36 @@
      * 4단계 우선순위 계층형 옵션 파싱 (cleanOptionString) - 정밀 엣지케이스 완전 해결
      */
     function cleanOptionString(opt, prod) {
-      const extractOptionTokens = (rawStr, isProd = false) => {
-        if (!rawStr) return null;
-        let s = String(rawStr).trim();
-        if (!s || s === '기본' || s === '단품' || s === 'NONE' || s === 'null' || s === 'undefined' || s === '-') return null;
+      let sOpt = String(opt || '').trim();
+      if (!sOpt || sOpt === '기본' || sOpt === '단품' || sOpt === 'null' || sOpt === 'undefined' || sOpt === '-') return '단품';
 
-        // 1. Remove parenthesized model/serial codes like (SL0WSCFM063) or [BA07010027] (alphanumeric >= 5 chars with digits)
-        s = s.replace(/[\(\[\{][A-Za-z0-9_-]{5,}[\)\]\}]/g, ' ');
+      // 1. 불필요한 접두어(색상:, 사이즈: 등) 제거
+      sOpt = sOpt.replace(/(색상|컬러|사이즈|size|color)\s*[:/]?\s*/gi, ' ').trim();
 
-        // 2. Remove noisy prefixes and labels
-        s = s.replace(/색상\s*[:\s]*|사이즈\s*[:\s]*|컬러\s*[:\s]*|옵션\s*[:\s]*|COLOR\s*[:\s]*|SIZE\s*[:\s]*/gi, ' ');
-        s = s.replace(/[\/|_:]/g, ' ');
-
-        // 3. Normalize spaced color names
-        s = s.replace(/유광\s*블랙/g, '유광블랙').replace(/무광\s*블랙/g, '무광블랙');
-        s = s.replace(/유광\s*화이트/g, '유광화이트').replace(/무광\s*화이트/g, '무광화이트');
-
-        // 4. Normalize size units like 275-280mm -> 275-280
-        s = s.replace(/(\d{2,3}(?:[-~]\d{2,3})?)\s*mm/gi, '$1');
-
-        // If parsing product name (isProd = true), strip brand prefix to prevent false color matching (e.g. 블랙야크)
-        if (isProd) {
-          s = s.replace(/^([가-힣a-zA-Z0-9]+야크|[가-힣a-zA-Z0-9]+밀레|[가-힣a-zA-Z0-9]+스포)/g, '');
-        }
-
-        // --- Color Extraction ---
-        const koreanColors = [
-          '유광블랙', '무광블랙', '유광화이트', '무광화이트', '블랙', '화이트', '네이비', '그레이', '베이지', 
-          '레드', '블루', '그린', '옐로우', '핑크', '퍼플', '브라운', '카키', '아이보리', '와인', '오트밀', 
-          '차콜', '다크그레이', '라이트그레이', '스카이블루', '민트', '라벤더', '오렌지', '골드', '실버', 
-          '소라', '인디핑크', '크림', '머스타드', '카멜', '올리브', '샌드', '연보라', '연청', '중청', '진청', '흑청'
-        ];
-
-        let foundColors = [];
-
-        // Search Korean colors
-        for (const c of koreanColors) {
-          if (s.includes(c)) {
-            foundColors.push(c);
-          }
-        }
-
-        // Search English / Code colors (standalone 2-5 capital letters)
-        const codeMatches = s.match(/\b(DKTP|DU|BK|WH|NV|GY|RD|BL|BE|IV|PK|CH|CC|NY|KA|LGY|DGY|SBL|MNT|CR|OR|WT|SE|DN|CG)\b/gi);
-        if (codeMatches) {
-          codeMatches.forEach(cm => foundColors.push(cm.toUpperCase()));
-        }
-
-        // Check for parens colors like C(그레이)
-        const parenColorMatches = s.match(/[A-Z0-9]*\(([가-힣]+)\)/g);
-        if (parenColorMatches) {
-          parenColorMatches.forEach(pcm => {
-            const inner = pcm.match(/\(([가-힣]+)\)/);
-            if (inner && inner[1]) foundColors.push(inner[1]);
+      // 2. 콤마(,)로 구분된 포맷 분리 (예: "[버커루] ... 티셔츠, 브라운(61), XXL(110)")
+      if (sOpt.includes(',')) {
+          let parts = sOpt.split(',').map(p => p.trim());
+          let validParts = parts.filter(p => {
+              if (p.includes('[')) return false; // 상품명 찌꺼기 제외
+              if (p.length > 20) return false;   // 너무 긴 문장 제외
+              return true;
           });
-        }
+          if (validParts.length > 0) return validParts.join(' ');
+      }
 
-        // --- Size Extraction ---
-        let foundSizes = [];
+      // 3. 정규식을 통한 색상 및 사이즈 정밀 추출
+      const sizeRegex = /\b(XS|S|M|L|XL|2XL|3XL|XXL|FREE)\b(?:\(\d+\))?|\b\d{2,3}\b(?:\(\d+\))?|\b\d{2,3}[-~]\d{2,3}(?:mm)?\b/gi;
+      const colorRegex = /[가-힣]*(블랙|화이트|네이비|그레이|베이지|레드|블루|그린|옐로우|핑크|라이트핑크|퍼플|브라운|카키|아이보리|와인|오트밀|차콜|소라|민트)[가-힣]*(?:\(\d+\))?|[A-Z]{2,4}(?:\([A-Z0-9]+\))?/gi;
 
-        // Size with parens like 88(34), 85(28), 100(34)
-        const parenSizeMatches = s.match(/\b\d{2,3}\(\d{2}\)/g);
-        if (parenSizeMatches) {
-          parenSizeMatches.forEach(psm => foundSizes.push(psm));
-        }
+      let sizes = sOpt.match(sizeRegex) || [];
+      let colors = sOpt.match(colorRegex) || [];
+      let combined = [...new Set([...colors, ...sizes])].join(' ');
 
-        // Size ranges like 275-280, 240~245
-        const rangeSizeMatches = s.match(/\b(2[2-9]0|3[0-2]0)[-~](2[2-9]0|3[0-2]0)\b/g);
-        if (rangeSizeMatches) {
-          rangeSizeMatches.forEach(rsm => foundSizes.push(rsm));
-        }
+      if (combined.trim().length > 0) return combined.trim();
 
-        // Standalone shoe sizes: 220-320
-        const shoeSizeMatches = s.match(/\b(2[2-9][05]|3[0-2]0)\b/g);
-        if (shoeSizeMatches) {
-          shoeSizeMatches.forEach(ssm => {
-            if (!foundSizes.some(fs => fs.includes(ssm))) {
-              foundSizes.push(ssm);
-            }
-          });
-        }
+      // 4. 단일 단어 등 짧은 옵션인 경우 원본 유지
+      if (sOpt.length <= 15) return sOpt;
 
-        // Standalone clothing sizes
-        const clothNumMatches = s.match(/\b(85|90|95|100|105|110|115|120|085|090|095|088|44|55|66|77|88|25|26|27|28|29|30|31|32|33|34|36|38)\b/g);
-        if (clothNumMatches) {
-          clothNumMatches.forEach(cnm => {
-            if (!foundSizes.some(fs => fs.includes(cnm))) {
-              foundSizes.push(cnm);
-            }
-          });
-        }
-
-        // Alpha clothing sizes: XS, S, M, L, XL, 2XL, 3XL, XXL, XXXL, FREE
-        const alphaSizeMatches = s.match(/\b(XS|S|M|L|XL|2XL|3XL|XXL|XXXL|FREE)\b/gi);
-        if (alphaSizeMatches) {
-          alphaSizeMatches.forEach(asm => foundSizes.push(asm.toUpperCase()));
-        }
-
-        // Deduplicate
-        const uniqueColors = [...new Set(foundColors)];
-        const uniqueSizes = [...new Set(foundSizes)];
-
-        if (uniqueColors.length > 0 || uniqueSizes.length > 0) {
-          return [...uniqueColors, ...uniqueSizes].join(' ');
-        }
-
-        return null;
-      };
-
-      // 우선순위 1 & 2: '외부몰 옵션명' 직접 확인 및 유효 색상/사이즈 추출
-      let resultFromOpt = extractOptionTokens(opt, false);
-      if (resultFromOpt) return resultFromOpt;
-
-      // 우선순위 3: '외부몰 옵션명'에 유효 정보가 없는 경우 '외부몰 상품명' 참조
-      let resultFromProd = extractOptionTokens(prod, true);
-      if (resultFromProd) return resultFromProd;
-
-      // 우선순위 4: 유효 색상/사이즈를 찾을 수 없는 경우 '단품' 처리
       return '단품';
     }
 
@@ -1273,10 +1186,14 @@
           const k = d.Brand + '||' + d.ProductName;
           
           if (!pMap[k]) {
-            pMap[k] = { b: d.Brand, p: d.ProductName, opt: d.Option, store: storeName, rev: 0, qty: 0 };
+            pMap[k] = { b: d.Brand, p: d.ProductName, store: storeName, rev: 0, qty: 0, opts: {} };
           }
           pMap[k].rev += d.Revenue;
           pMap[k].qty += d.Quantity;
+
+          // Option tracking for tooltip
+          const optStr = d.Option || '단품';
+          pMap[k].opts[optStr] = (pMap[k].opts[optStr] || 0) + d.Quantity;
         }
       }
 
@@ -1294,15 +1211,15 @@
       } else {
         brandTbody.innerHTML = bList.map((item, idx) => `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <td class="font-bold text-slate-500 text-center py-2 px-0.5">${idx + 1}</td>
-            <td class="font-semibold text-slate-800 dark:text-slate-200 text-left px-1.5 truncate" title="${esc(item.name)}">${esc(item.name)}</td>
-            <td class="font-bold text-brand-600 dark:text-brand-400 text-right px-1 whitespace-nowrap">${item.rev.toLocaleString()}원</td>
-            <td class="font-medium text-emerald-600 dark:text-emerald-400 text-right px-1 whitespace-nowrap">${item.qty.toLocaleString()}개</td>
+            <td class="font-bold text-slate-500 text-center py-2.5">${idx + 1}</td>
+            <td class="font-semibold text-slate-800 dark:text-slate-200 text-center px-1 truncate" title="${esc(item.name)}">${esc(item.name)}</td>
+            <td class="font-bold text-brand-600 dark:text-brand-400 text-right px-3 whitespace-nowrap">${item.rev.toLocaleString()}원</td>
+            <td class="font-medium text-emerald-600 dark:text-emerald-400 text-right px-3 whitespace-nowrap">${item.qty.toLocaleString()}개</td>
           </tr>
         `).join('');
       }
 
-      // 2. Render Right Card: Top 100 Best Products Table
+      // 2. Render Right Card: Top 100 Best Product Ranking Table
       const pList = Object.values(pMap).sort((a,b) => b.rev - a.rev).slice(0, 100);
       const bestTbody = document.getElementById('bestTbody');
 
@@ -1311,20 +1228,30 @@
       } else {
         bestTbody.innerHTML = pList.map((item, idx) => {
           const avgPrice = item.qty > 0 ? Math.round(item.rev / item.qty) : 0;
-          const cleanedOpt = cleanOptionString(item.opt, item.p);
-          const storeBrandStr = `${item.store} (${item.b})`;
+          
+          // Determine top option and build tooltip for other options
+          const sortedOpts = Object.entries(item.opts).sort((a,b) => b[1] - a[1]);
+          const topOptRaw = sortedOpts[0][0];
+          const topOptClean = cleanOptionString(topOptRaw, item.p);
+          
+          let tooltip = '';
+          if (sortedOpts.length > 1) {
+              tooltip = sortedOpts.slice(1, 11).map((o, i) => `${i+2}위: ${cleanOptionString(o[0], item.p)} (${o[1]}개)`).join('&#10;');
+          }
+
+          const storeBrandStr = `${item.store} ${item.b}`; // 지점명 브랜드명 표기
 
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <td class="font-bold text-slate-500 text-center py-2 px-1">${idx + 1}</td>
-              <td class="text-left px-2 max-w-[280px] lg:max-w-[400px] xl:max-w-[650px] truncate" title="${esc(item.p)}">
+              <td class="font-bold text-slate-500 text-center py-2.5">${idx + 1}</td>
+              <td class="text-left px-2 truncate" title="${esc(item.p)}">
                 <span class="font-bold text-slate-900 dark:text-white">${esc(item.p)}</span>
               </td>
-              <td class="text-right px-1.5 text-slate-600 dark:text-slate-300 font-medium">@ ${avgPrice.toLocaleString()}원</td>
-              <td class="text-left px-2 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px]" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
-              <td class="text-center text-slate-500 dark:text-slate-400 text-xs font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-1 rounded-md">${esc(cleanedOpt)}</td>
-              <td class="font-bold text-slate-900 dark:text-white text-right px-1.5">${item.rev.toLocaleString()}원</td>
-              <td class="font-bold text-emerald-600 dark:text-emerald-400 text-right px-1.5">${item.qty.toLocaleString()}개</td>
+              <td class="text-right px-3 text-slate-600 dark:text-slate-300 font-medium">@ ${avgPrice.toLocaleString()}원</td>
+              <td class="text-center px-2 text-slate-500 dark:text-slate-400 text-xs truncate" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
+              <td class="text-center text-slate-600 dark:text-slate-300 text-xs truncate cursor-help px-2" title="${esc(tooltip)}">${esc(topOptClean)}</td>
+              <td class="font-bold text-slate-900 dark:text-white text-right px-3">${item.rev.toLocaleString()}원</td>
+              <td class="font-bold text-emerald-600 dark:text-emerald-400 text-right px-3">${item.qty.toLocaleString()}개</td>
             </tr>
           `;
         }).join('');
