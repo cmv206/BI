@@ -657,8 +657,10 @@
         if (d.Channel) channels.add(d.Channel);
         if (d.StoreCode) {
           let cleanCode = String(d.StoreCode || '').replace(/\.0$/, '').trim();
-          const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode || '본사';
-          stores.add(storeName);
+          if (cleanCode) {
+            const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode;
+            if (storeName) stores.add(storeName);
+          }
         }
         if (d.Brand && d.Brand !== '기타 브랜드' && d.Brand !== '미지정' && d.Brand !== 'null' && d.Brand !== 'undefined') {
           let cleanBrand = String(d.Brand).replace(/@5B@|@5D@|\[|\]/gi, '').trim();
@@ -707,7 +709,7 @@
         // Store filter
         if (store !== 'ALL') {
           let cleanCode = String(d.StoreCode || '').replace(/\.0$/, '').trim();
-          const mappedStoreName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode || '본사';
+          const mappedStoreName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode;
           if (mappedStoreName !== store && cleanCode !== store) return false;
         }
 
@@ -887,8 +889,8 @@
             hMap.product = findBestCol(rowCells, ['외부몰상품명', '상품명', '품명', '상품', 'product'], ['코드', 'code', 'id', '번호', 'cd', '옵션']);
             hMap.option = findBestCol(rowCells, ['외부몰옵션명', '단품명', '옵션명', '옵션', 'option'], ['코드', 'code', 'id', '번호', 'cd']);
             hMap.channel = findBestCol(rowCells, ['채널명', '유통채널', '판매처', '채널', 'channel'], ['코드', 'code', 'id', '번호']);
-            // Priority: 플랜트(R100) first before plain 플랜트
-            hMap.store = findBestCol(rowCells, ['플랜트(r100)', '플랜트r100', 'r100', '점포코드', '출고점포', '출고지점', '점포', '지점', '매장', 'store', '플랜트'], ['코드', 'id']);
+            hMap.storeR100 = findBestCol(rowCells, ['플랜트(r100)', '플랜트r100', 'r100'], []);
+            hMap.storePlant = findBestCol(rowCells, ['플랜트', '점포코드', '출고점포', '출고지점', '점포', '지점', '매장', 'store'], []);
             break;
           }
         }
@@ -911,7 +913,7 @@
 
            let brandRaw = v(hMap.brand);
            let brand = String(brandRaw || '').trim();
-           brand = brand.replace(/@5B@/gi, '').replace(/@5D@/gi, '').replace(/[\r\n\t\[\]"']/g, '').replace(/^@+|@+$/g, '').trim();
+           brand = brand.replace(/@5B@/gi, '').replace(/@5D@/gi, '').replace(/^\[|\]$/g, '').replace(/^@+|@+$/g, '').trim();
            if (!brand || brand.toLowerCase() === 'null' || brand.toLowerCase() === 'undefined' || brand === '-') {
              brand = '미지정';
            }
@@ -925,7 +927,20 @@
            const option = String(v(hMap.option) || '기본');
            const channel = String(v(hMap.channel) || '본사채널');
            
-           const storeVal = v(hMap.store);
+           let storeVal = null;
+           if (hMap.storeR100 !== -1) {
+             const rawR100 = v(hMap.storeR100);
+             if (rawR100 !== null && rawR100 !== undefined && String(rawR100).trim() !== '' && String(rawR100).trim() !== '-' && String(rawR100).trim().toLowerCase() !== 'null') {
+               storeVal = rawR100;
+             }
+           }
+           if ((storeVal === null || storeVal === undefined || String(storeVal).trim() === '') && hMap.storePlant !== -1) {
+             const rawPlant = v(hMap.storePlant);
+             if (rawPlant !== null && rawPlant !== undefined && String(rawPlant).trim() !== '' && String(rawPlant).trim() !== '-' && String(rawPlant).trim().toLowerCase() !== 'null') {
+               storeVal = rawPlant;
+             }
+           }
+
            let store = '';
            if (storeVal !== null && storeVal !== undefined) {
              store = String(storeVal).trim();
@@ -1293,7 +1308,7 @@
           bMap[bName].qty += d.Quantity;
 
           let cleanCode = String(d.StoreCode || '').replace(/\.0$/, '').trim();
-          const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode || '본사';
+          const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode || '';
           const k = bName + '||' + d.ProductName;
           
           if (!pMap[k]) {
@@ -1345,7 +1360,7 @@
           
           let tooltip = sortedOpts.slice(0, 5).map((o, i) => `${i+1}위: ${cleanOptionString(o[0], item.p)} (${o[1]}개)`).join('\n');
 
-          const storeBrandStr = `${item.store} ${item.b}`;
+          const storeBrandStr = item.store ? `${item.store} ${item.b}` : item.b;
 
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
