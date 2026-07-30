@@ -262,19 +262,19 @@
         <div id="tab2" class="tab-content space-y-6 hidden h-full">
           <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
             <!-- Left Card: Top 50 Brand Ranking Table -->
-            <div class="w-full lg:w-72 xl:w-80 flex-shrink-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
+            <div class="w-full lg:w-80 xl:w-96 flex-shrink-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
               <div class="flex items-center gap-2 mb-4">
                 <i class="fa-solid fa-award text-amber-500 text-base"></i>
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">브랜드별 매출 순위 Top 50</h3>
               </div>
-              <div class="data-table-container flex-1 overflow-x-auto">
-                <table id="brandRankTable" class="w-full text-xs">
+              <div class="data-table-container flex-1 overflow-x-hidden">
+                <table id="brandRankTable" class="w-full table-fixed text-xs">
                   <thead>
                     <tr>
-                      <th class="w-10 text-center py-2.5 px-1">순위</th>
-                      <th class="text-center py-2.5 px-2">브랜드명</th>
-                      <th class="w-24 text-center py-2.5 px-1.5">순매출액</th>
-                      <th class="w-16 text-center py-2.5 px-1.5">판매량</th>
+                      <th class="w-9 text-center py-2.5 px-0.5">순위</th>
+                      <th class="text-left py-2.5 px-1.5">브랜드명</th>
+                      <th class="w-24 text-right py-2.5 px-1">순매출액</th>
+                      <th class="w-16 text-right py-2.5 px-1">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="brandRankTbody"></tbody>
@@ -394,8 +394,8 @@
   <script>
     const rangeSizeRegex = /[SMLXLXXL3XL]+|[0-9]{2,3}/g;
     const shoeSizeRegex = /2[2-9]0|3[0-2]0/g;
-    const clothSizeRegex = /XS|S|M|L|XL|XXL|FREE/gi;
-    const koreanColorRegex = /블랙|화이트|네이비|그레이|베이지|레드|블루|그린|옐로우|핑크|퍼플|브라운|카키|아이보리|와인/g;
+    const clothSizeRegex = /\b(XS|S|M|L|XL|XXL|3XL|FREE|85|90|95|100|105|110|115|120)\b/gi;
+    const colorRegex = /유광블랙|무광블랙|블랙|화이트|네이비|그레이|베이지|레드|블루|그린|옐로우|핑크|퍼플|브라운|카키|아이보리|와인|\b(BK|WH|NV|GR|RD|BL|BE|GY|IV)\b/gi;
 
     const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -415,17 +415,128 @@
       return num.toLocaleString();
     }
 
+    /**
+     * 4단계 우선순위 계층형 옵션 파싱 (cleanOptionString) - 정밀 엣지케이스 완전 해결
+     */
     function cleanOptionString(opt, prod) {
-      let sOpt = String(opt || '').trim();
-      let sProd = String(prod || '').trim();
-      let target = (sOpt && sOpt !== '기본' && sOpt.length > 0) ? sOpt : sProd;
+      const extractOptionTokens = (rawStr, isProd = false) => {
+        if (!rawStr) return null;
+        let s = String(rawStr).trim();
+        if (!s || s === '기본' || s === '단품' || s === 'NONE' || s === 'null' || s === 'undefined' || s === '-') return null;
 
-      let colors = target.match(koreanColorRegex) || [];
-      let sizes = target.match(clothSizeRegex) || target.match(shoeSizeRegex) || target.match(rangeSizeRegex) || [];
+        // 1. Remove parenthesized model/serial codes like (SL0WSCFM063) or [BA07010027] (alphanumeric >= 5 chars with digits)
+        s = s.replace(/[\(\[\{][A-Za-z0-9_-]{5,}[\)\]\}]/g, ' ');
 
-      let combined = [...new Set([...colors, ...sizes])].join(' ');
-      if (combined.length > 0) return combined;
-      return sOpt.length > 15 ? sOpt.substring(0, 15) + '..' : (sOpt || '기본');
+        // 2. Remove noisy prefixes and labels
+        s = s.replace(/색상\s*[:\s]*|사이즈\s*[:\s]*|컬러\s*[:\s]*|옵션\s*[:\s]*|COLOR\s*[:\s]*|SIZE\s*[:\s]*/gi, ' ');
+        s = s.replace(/[\/|_:]/g, ' ');
+
+        // 3. Normalize spaced color names
+        s = s.replace(/유광\s*블랙/g, '유광블랙').replace(/무광\s*블랙/g, '무광블랙');
+        s = s.replace(/유광\s*화이트/g, '유광화이트').replace(/무광\s*화이트/g, '무광화이트');
+
+        // 4. Normalize size units like 275-280mm -> 275-280
+        s = s.replace(/(\d{2,3}(?:[-~]\d{2,3})?)\s*mm/gi, '$1');
+
+        // If parsing product name (isProd = true), strip brand prefix to prevent false color matching (e.g. 블랙야크)
+        if (isProd) {
+          s = s.replace(/^([가-힣a-zA-Z0-9]+야크|[가-힣a-zA-Z0-9]+밀레|[가-힣a-zA-Z0-9]+스포)/g, '');
+        }
+
+        // --- Color Extraction ---
+        const koreanColors = [
+          '유광블랙', '무광블랙', '유광화이트', '무광화이트', '블랙', '화이트', '네이비', '그레이', '베이지', 
+          '레드', '블루', '그린', '옐로우', '핑크', '퍼플', '브라운', '카키', '아이보리', '와인', '오트밀', 
+          '차콜', '다크그레이', '라이트그레이', '스카이블루', '민트', '라벤더', '오렌지', '골드', '실버', 
+          '소라', '인디핑크', '크림', '머스타드', '카멜', '올리브', '샌드', '연보라', '연청', '중청', '진청', '흑청'
+        ];
+
+        let foundColors = [];
+
+        // Search Korean colors
+        for (const c of koreanColors) {
+          if (s.includes(c)) {
+            foundColors.push(c);
+          }
+        }
+
+        // Search English / Code colors (standalone 2-5 capital letters)
+        const codeMatches = s.match(/\b(DKTP|DU|BK|WH|NV|GY|RD|BL|BE|IV|PK|CH|CC|NY|KA|LGY|DGY|SBL|MNT|CR|OR|WT|SE|DN|CG)\b/gi);
+        if (codeMatches) {
+          codeMatches.forEach(cm => foundColors.push(cm.toUpperCase()));
+        }
+
+        // Check for parens colors like C(그레이)
+        const parenColorMatches = s.match(/[A-Z0-9]*\(([가-힣]+)\)/g);
+        if (parenColorMatches) {
+          parenColorMatches.forEach(pcm => {
+            const inner = pcm.match(/\(([가-힣]+)\)/);
+            if (inner && inner[1]) foundColors.push(inner[1]);
+          });
+        }
+
+        // --- Size Extraction ---
+        let foundSizes = [];
+
+        // Size with parens like 88(34), 85(28), 100(34)
+        const parenSizeMatches = s.match(/\b\d{2,3}\(\d{2}\)/g);
+        if (parenSizeMatches) {
+          parenSizeMatches.forEach(psm => foundSizes.push(psm));
+        }
+
+        // Size ranges like 275-280, 240~245
+        const rangeSizeMatches = s.match(/\b(2[2-9]0|3[0-2]0)[-~](2[2-9]0|3[0-2]0)\b/g);
+        if (rangeSizeMatches) {
+          rangeSizeMatches.forEach(rsm => foundSizes.push(rsm));
+        }
+
+        // Standalone shoe sizes: 220-320
+        const shoeSizeMatches = s.match(/\b(2[2-9][05]|3[0-2]0)\b/g);
+        if (shoeSizeMatches) {
+          shoeSizeMatches.forEach(ssm => {
+            if (!foundSizes.some(fs => fs.includes(ssm))) {
+              foundSizes.push(ssm);
+            }
+          });
+        }
+
+        // Standalone clothing sizes
+        const clothNumMatches = s.match(/\b(85|90|95|100|105|110|115|120|085|090|095|088|44|55|66|77|88|25|26|27|28|29|30|31|32|33|34|36|38)\b/g);
+        if (clothNumMatches) {
+          clothNumMatches.forEach(cnm => {
+            if (!foundSizes.some(fs => fs.includes(cnm))) {
+              foundSizes.push(cnm);
+            }
+          });
+        }
+
+        // Alpha clothing sizes: XS, S, M, L, XL, 2XL, 3XL, XXL, XXXL, FREE
+        const alphaSizeMatches = s.match(/\b(XS|S|M|L|XL|2XL|3XL|XXL|XXXL|FREE)\b/gi);
+        if (alphaSizeMatches) {
+          alphaSizeMatches.forEach(asm => foundSizes.push(asm.toUpperCase()));
+        }
+
+        // Deduplicate
+        const uniqueColors = [...new Set(foundColors)];
+        const uniqueSizes = [...new Set(foundSizes)];
+
+        if (uniqueColors.length > 0 || uniqueSizes.length > 0) {
+          return [...uniqueColors, ...uniqueSizes].join(' ');
+        }
+
+        return null;
+      };
+
+      // 우선순위 1 & 2: '외부몰 옵션명' 직접 확인 및 유효 색상/사이즈 추출
+      let resultFromOpt = extractOptionTokens(opt, false);
+      if (resultFromOpt) return resultFromOpt;
+
+      // 우선순위 3: '외부몰 옵션명'에 유효 정보가 없는 경우 '외부몰 상품명' 참조
+      let resultFromProd = extractOptionTokens(prod, true);
+      if (resultFromProd) return resultFromProd;
+
+      // 우선순위 4: 유효 색상/사이즈를 찾을 수 없는 경우 '단품' 처리
+      return '단품';
     }
 
     function toggleTheme() { document.documentElement.classList.toggle('dark'); }
@@ -689,17 +800,32 @@
         let headerRowIdx = -1;
         let hMap = { date: -1, revenue: -1, quantity: -1, brand: -1, product: -1, option: -1, channel: -1, store: -1 };
 
+        // 우선순위에 따른 컬럼 정밀 탐색 엔진
+        const findBestCol = (cells, priorities, excludes) => {
+          // 1. 완벽히 일치하는 열 우선 탐색 ('브랜드내역', '외부몰상품명' 등)
+          for (const p of priorities) {
+            const idx = cells.findIndex(h => h === p);
+            if (idx !== -1) return idx;
+          }
+          // 2. 일치하지 않을 경우 포함된 단어로 탐색하되 '코드', '번호' 등은 철저히 배제
+          for (const p of priorities) {
+            const idx = cells.findIndex(h => {
+              if (!h.includes(p)) return false;
+              if (excludes && excludes.some(ex => h.includes(ex))) return false;
+              return true;
+            });
+            if (idx !== -1) return idx;
+          }
+          return -1;
+        };
+
         for (let r = 0; r < Math.min(rows.length, 25); r++) {
           if (!rows[r] || !Array.isArray(rows[r])) continue;
           const rowCells = rows[r].map(c => (c !== null && c !== undefined) ? String(c).replace(/\s/g,'').toLowerCase() : '');
           
-          const dIdx = rowCells.findIndex(h => h.includes('결제일자') || h.includes('출고확정일') || h.includes('확정일') || h.includes('출고일자') || h.includes('일자') || h.includes('날짜') || h.includes('date'));
-          const rIdx = rowCells.findIndex(h => h.includes('총판매액') || h.includes('결제금액') || h.includes('매출액') || h.includes('판매금액') || (h.includes('매출') && !h.includes('수량')) || (h.includes('금액') && !h.includes('수량')) || h.includes('revenue'));
-          
-          const qIdx = rowCells.findIndex(h => {
-            if (h.includes('번호') || h.includes('코드') || h.includes('id') || h.includes('no')) return false;
-            return h.includes('오더수량') || h.includes('주문수량') || h.includes('실주문수량') || h.includes('실주문') || h.includes('수량') || h.includes('qty') || h.includes('quantity');
-          });
+          const dIdx = findBestCol(rowCells, ['결제일자', '출고확정일', '확정일', '출고일자', '일자', '날짜', 'date'], []);
+          const rIdx = findBestCol(rowCells, ['총판매액', '결제금액', '매출액', '판매금액', '실결제금액', '매출', '금액', 'amount', 'revenue'], ['수량', '할인', '배송', '단가', '포인트']);
+          const qIdx = findBestCol(rowCells, ['오더수량', '주문수량', '실주문수량', '실주문', '수량', 'qty', 'quantity'], ['번호', '코드', 'id', 'no', '매출', '금액', '단가']);
 
           if (dIdx !== -1 && (rIdx !== -1 || qIdx !== -1)) {
             headerRowIdx = r;
@@ -707,29 +833,12 @@
             hMap.revenue = rIdx;
             hMap.quantity = qIdx;
             
-            // Priority Brand Matching ('브랜드 내역' 1st)
-            const b1 = rowCells.findIndex(h => h === '브랜드내역');
-            const b2 = rowCells.findIndex(h => h === '브랜드명' || h === '브랜드');
-            if (b1 !== -1) hMap.brand = b1;
-            else if (b2 !== -1) hMap.brand = b2;
-            else hMap.brand = rowCells.findIndex(h => (h.includes('브랜드내역') || h.includes('브랜드명') || h.includes('브랜드') || h.includes('brand')) && !h.includes('코드') && !h.includes('code'));
-
-            // Priority Product Name Matching ('외부몰 상품명' 1st)
-            const p1 = rowCells.findIndex(h => h === '외부몰상품명');
-            const p2 = rowCells.findIndex(h => h === '상품명' || h === '품명');
-            if (p1 !== -1) hMap.product = p1;
-            else if (p2 !== -1) hMap.product = p2;
-            else hMap.product = rowCells.findIndex(h => (h.includes('외부몰상품명') || h.includes('상품명') || h.includes('품명') || h.includes('product')) && !h.includes('코드') && !h.includes('code'));
-
-            // Priority Option Matching ('외부몰 옵션명' 1st)
-            const o1 = rowCells.findIndex(h => h === '외부몰옵션명');
-            const o2 = rowCells.findIndex(h => h === '단품명' || h === '옵션명' || h === '옵션');
-            if (o1 !== -1) hMap.option = o1;
-            else if (o2 !== -1) hMap.option = o2;
-            else hMap.option = rowCells.findIndex(h => (h.includes('외부몰옵션명') || h.includes('단품명') || h.includes('옵션명') || h.includes('옵션') || h.includes('option')) && !h.includes('코드'));
-
-            hMap.channel = rowCells.findIndex(h => (h.includes('채널명') || h.includes('유통채널') || h.includes('채널') || h.includes('channel')) && !h.includes('코드'));
-            hMap.store = rowCells.findIndex(h => h.includes('플랜트') || h.includes('점포') || h.includes('지점') || h.includes('매장') || h.includes('store'));
+            // 사용자 요청 완벽 반영: '브랜드내역', '외부몰상품명', '외부몰옵션명' 1순위 매칭 및 코드(ID) 철저 배제
+            hMap.brand = findBestCol(rowCells, ['브랜드내역', '브랜드명', '브랜드', 'brand'], ['코드', 'code', 'id', '번호', 'cd']);
+            hMap.product = findBestCol(rowCells, ['외부몰상품명', '상품명', '품명', '상품', 'product'], ['코드', 'code', 'id', '번호', 'cd', '옵션']);
+            hMap.option = findBestCol(rowCells, ['외부몰옵션명', '단품명', '옵션명', '옵션', 'option'], ['코드', 'code', 'id', '번호', 'cd']);
+            hMap.channel = findBestCol(rowCells, ['채널명', '유통채널', '판매처', '채널', 'channel'], ['코드', 'code', 'id', '번호']);
+            hMap.store = findBestCol(rowCells, ['플랜트', '점포', '지점', '매장', 'store'], ['코드', 'code', 'id', '번호']);
             break;
           }
         }
@@ -751,11 +860,13 @@
            if (!dateStr || (revenue === 0 && quantity === 0)) continue;
 
            let brand = String(v(hMap.brand) || '').trim();
-           if (!brand || brand === 'null' || brand === 'undefined' || brand.startsWith('@')) {
+           // @5B@ 등 기계적인 코드가 들어왔을 경우 방어
+           if (!brand || brand === 'null' || brand === 'undefined' || brand.startsWith('@') || /^@[a-zA-Z0-9]+@$/.test(brand)) {
              brand = '기타 브랜드';
            }
            let product = String(v(hMap.product) || '').trim();
-           if (!product || product === 'null' || product === 'undefined' || product.startsWith('@')) {
+           // 동일하게 상품명에 들어온 기계 코드 방어
+           if (!product || product === 'null' || product === 'undefined' || product.startsWith('@') || /^@[a-zA-Z0-9]+@$/.test(product)) {
              product = '기타 상품';
            }
 
@@ -1183,10 +1294,10 @@
       } else {
         brandTbody.innerHTML = bList.map((item, idx) => `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <td class="font-bold text-slate-500 text-center py-2 px-1">${idx + 1}</td>
-            <td class="font-semibold text-slate-800 dark:text-slate-200 text-left px-2 truncate max-w-[120px]" title="${esc(item.name)}">${esc(item.name)}</td>
-            <td class="font-bold text-brand-600 dark:text-brand-400 text-right px-1.5">${item.rev.toLocaleString()}원</td>
-            <td class="font-medium text-emerald-600 dark:text-emerald-400 text-right px-1.5">${item.qty.toLocaleString()}개</td>
+            <td class="font-bold text-slate-500 text-center py-2 px-0.5">${idx + 1}</td>
+            <td class="font-semibold text-slate-800 dark:text-slate-200 text-left px-1.5 truncate" title="${esc(item.name)}">${esc(item.name)}</td>
+            <td class="font-bold text-brand-600 dark:text-brand-400 text-right px-1 whitespace-nowrap">${item.rev.toLocaleString()}원</td>
+            <td class="font-medium text-emerald-600 dark:text-emerald-400 text-right px-1 whitespace-nowrap">${item.qty.toLocaleString()}개</td>
           </tr>
         `).join('');
       }
