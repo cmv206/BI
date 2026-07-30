@@ -275,7 +275,7 @@
                 <i class="fa-solid fa-award text-amber-500 text-base"></i>
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">브랜드별 매출 순위 Top 50</h3>
               </div>
-              <div class="data-table-container flex-1 overflow-x-hidden">
+              <div class="data-table-container flex-1 overflow-x-auto">
                 <table id="brandRankTable" class="w-full table-fixed text-[13px]">
                   <thead>
                     <tr>
@@ -1218,10 +1218,10 @@
       } else {
         brandTbody.innerHTML = bList.map((item, idx) => `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <td class="font-medium text-slate-500 text-center py-[11px]">${idx + 1}</td>
-            <td class="font-semibold text-slate-700 dark:text-slate-300 text-center px-1 truncate py-[11px]" title="${esc(item.name)}">${esc(item.name)}</td>
-            <td class="font-bold text-brand-600 dark:text-blue-400 text-right px-4 whitespace-nowrap py-[11px]">${item.rev.toLocaleString()}원</td>
-            <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-4 whitespace-nowrap py-[11px]">${item.qty.toLocaleString()}개</td>
+            <td class="font-medium text-slate-500 text-center py-[9.5px]">${idx + 1}</td>
+            <td class="font-semibold text-slate-700 dark:text-slate-300 text-center px-1 truncate py-[9.5px]" title="${esc(item.name)}">${esc(item.name)}</td>
+            <td class="font-bold text-brand-600 dark:text-blue-400 text-right px-4 whitespace-nowrap py-[9.5px]">${item.rev.toLocaleString()}원</td>
+            <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-4 whitespace-nowrap py-[9.5px]">${item.qty.toLocaleString()}개</td>
           </tr>
         `).join('');
       }
@@ -1247,15 +1247,15 @@
 
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <td class="font-bold text-brand-600 dark:text-blue-400 text-center py-2 cursor-pointer hover:underline hover:text-brand-500" onclick="goToTrendForecast('${esc(item.p)}')" title="클릭 시 52주 트렌드 & 재고 예측 이동">${idx + 1}</td>
-              <td class="text-left px-2 truncate py-2" title="${esc(item.p)}">
+              <td class="font-bold text-brand-600 dark:text-blue-400 text-center py-[9.5px] cursor-pointer hover:underline hover:text-brand-500" onclick="goToTrendForecast('${esc(item.p)}')" title="클릭 시 52주 트렌드 & 재고 예측 이동">${idx + 1}</td>
+              <td class="text-left px-2 truncate py-[9.5px]" title="${esc(item.p)}">
                 <span class="font-medium text-slate-800 dark:text-slate-200">${esc(item.p)}</span>
               </td>
-              <td class="text-right px-2 text-slate-600 dark:text-slate-400 font-medium py-2 whitespace-nowrap">@ ${avgPrice.toLocaleString()}원</td>
-              <td class="text-center px-2 text-slate-500 dark:text-slate-400 truncate py-2" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
-              <td class="text-center text-slate-600 dark:text-slate-300 truncate cursor-help px-2 py-2" title="${esc(tooltip)}">${esc(topOptClean)}</td>
-              <td class="font-bold text-slate-900 dark:text-white text-right px-2 py-2 whitespace-nowrap">${item.rev.toLocaleString()}원</td>
-              <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-2 py-2 whitespace-nowrap">${item.qty.toLocaleString()}개</td>
+              <td class="text-right px-2 text-slate-600 dark:text-slate-400 font-medium py-[9.5px] whitespace-nowrap">@ ${avgPrice.toLocaleString()}원</td>
+              <td class="text-center px-2 text-slate-500 dark:text-slate-400 truncate py-[9.5px]" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
+              <td class="text-center text-slate-600 dark:text-slate-300 truncate cursor-help px-2 py-[9.5px]" title="${esc(tooltip)}">${esc(topOptClean)}</td>
+              <td class="font-bold text-slate-900 dark:text-white text-right px-2 py-[9.5px] whitespace-nowrap">${item.rev.toLocaleString()}원</td>
+              <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-2 py-[9.5px] whitespace-nowrap">${item.qty.toLocaleString()}개</td>
             </tr>
           `;
         }).join('');
