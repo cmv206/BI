@@ -82,7 +82,6 @@
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 h-screen flex flex-col transition-colors duration-300">
 
-  <!-- Header Navigation -->
   <header class="flex-shrink-0 z-40 glass-panel shadow-sm relative">
     <div class="px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -130,7 +129,6 @@
     </div>
   </div>
 
-  <!-- Streaming Chunk: Rendering Sidebar and Filter Controls... -->
   <div class="flex-1 flex overflow-hidden relative">
     <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full overflow-y-auto transition-all duration-300 z-30 absolute md:relative -translate-x-full md:translate-x-0">
       <div class="p-5 space-y-6">
@@ -192,7 +190,6 @@
       </div>
     </aside>
 
-    <!-- Main Content Area -->
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
       <div class="px-6 pt-3 pb-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <!-- Top Navigation Bar -->
@@ -518,10 +515,10 @@
     }
 
     let db = null;
-    const DB_NAME = 'O2O_Enterprise_DB_v9'; 
+    const DB_NAME = 'O2O_Enterprise_DB_v10'; 
     const STORE_NAME = 'sales_data';
     
-    // Complete Store Code to Korean Name Mapping
+    // Complete Store Code to Korean Name Mapping (42 지점)
     const STORE_MAPPING = { 
       7204: '중계점', 7206: '안양점', 7209: '분당점', 7214: '해운대점', 7215: '천호2점', 
       7216: '부평점', 7217: '불광점', 7219: '고잔점', 8201: '일산점', 8202: '야탑점', 
@@ -592,9 +589,6 @@
       });
     }
 
-    /**
-     * STREAMING_CHUNK:Implementing Data Anomalies Cleaning and Filtering Logic...
-     */
     function cleanDataAnomalies(records) {
       if (!records || !records.length) return [];
       
@@ -672,9 +666,6 @@
       tabRenderState = { tab1: false, tab2: false, tab3: false, tab4: false };
     }
 
-    /**
-     * STREAMING_CHUNK:Populating filter options for Channels, Stores, and Brands...
-     */
     function populateFilterOptions() {
       const channelSelect = document.getElementById('filterChannel');
       const storeSelect = document.getElementById('filterStore');
@@ -817,9 +808,6 @@
       return isNeg ? -parsed : parsed;
     };
 
-    /**
-     * STREAMING_CHUNK:Parsing Korean Local Date strings without UTC shift...
-     */
     const parseDateStrHelper = (cell) => {
       if (cell === null || cell === undefined || cell === '') return null;
       
@@ -854,7 +842,6 @@
         return `${y}-${m}-${d}`;
       }
 
-      // Local date parsing without UTC conversion offset
       const parts = s.split(/[-/.\s]/).filter(Boolean);
       if (parts.length >= 3) {
         const y = parts[0];
@@ -866,9 +853,6 @@
       return null;
     };
 
-    /**
-     * STREAMING_CHUNK:Implementing Excel File Parsing with 플랜트(R100) -> 플랜트 Priority Fallback...
-     */
     async function parseFileAsync(fileBuffer, applyIqr) {
       try {
         if (typeof XLSX === 'undefined') return [];
@@ -911,6 +895,7 @@
           return -1;
         };
 
+        // 1. Dynamic Multi-Index Scan: Scan header row and independently store storeR100 and storePlant column indices
         for (let r = 0; r < Math.min(rows.length, 25); r++) {
           if (!rows[r] || !Array.isArray(rows[r])) continue;
           const rowCells = rows[r].map(c => (c !== null && c !== undefined) ? String(c) : '');
@@ -930,9 +915,21 @@
             hMap.option = findBestCol(rowCells, ['외부몰옵션명', '단품명', '옵션명', '옵션', 'option'], ['코드', 'code', 'id', '번호', 'cd']);
             hMap.channel = findBestCol(rowCells, ['채널명', '유통채널', '판매처', '채널', 'channel'], ['코드', 'code', 'id', '번호']);
             
-            // Explicit header matching: Priority 1: 플랜트(R100) -> Priority 2: 플랜트
-            hMap.storeR100 = findBestCol(rowCells, ['플랜트(r100)', '플랜트r100'], []);
-            hMap.storePlant = findBestCol(rowCells, ['플랜트'], []);
+            // Dynamic Multi-Index Scan: Store storeR100 and storePlant separately
+            let r100Idx = -1;
+            let plantIdx = -1;
+
+            for (let c = 0; c < rowCells.length; c++) {
+              const norm = cleanHeader(rowCells[c]);
+              if (norm.includes('플랜트r100') || norm.includes('플랜트(r100)') || norm.includes('r100')) {
+                if (r100Idx === -1) r100Idx = c;
+              } else if (norm === '플랜트') {
+                if (plantIdx === -1) plantIdx = c;
+              }
+            }
+
+            hMap.storeR100 = r100Idx;
+            hMap.storePlant = plantIdx;
             break;
           }
         }
@@ -969,13 +966,14 @@
            const option = String(v(hMap.option) || '기본');
            const channel = String(v(hMap.channel) || '본사채널');
            
-           // Row-level priority: Check storeR100 first; if empty/null, fallback to storePlant
+           // 2. Row-by-Row Fallback logic: Priority 1: storeR100 -> Priority 2: storePlant
            let storeVal = null;
            if (hMap.storeR100 !== -1) {
              const rawR100 = v(hMap.storeR100);
              if (rawR100 !== null && rawR100 !== undefined) {
-               const sStr = String(rawR100).trim();
-               if (sStr !== '' && sStr.toLowerCase() !== 'null' && sStr !== '-') {
+               let sStr = String(rawR100).trim();
+               if (sStr.endsWith('.0')) sStr = sStr.slice(0, -2);
+               if (sStr !== '' && sStr.toLowerCase() !== 'null' && sStr.toLowerCase() !== 'nan' && sStr !== '-') {
                  storeVal = sStr;
                }
              }
@@ -983,18 +981,15 @@
            if (!storeVal && hMap.storePlant !== -1) {
              const rawPlant = v(hMap.storePlant);
              if (rawPlant !== null && rawPlant !== undefined) {
-               const sStr = String(rawPlant).trim();
-               if (sStr !== '' && sStr.toLowerCase() !== 'null' && sStr !== '-') {
+               let sStr = String(rawPlant).trim();
+               if (sStr.endsWith('.0')) sStr = sStr.slice(0, -2);
+               if (sStr !== '' && sStr.toLowerCase() !== 'null' && sStr.toLowerCase() !== 'nan' && sStr !== '-') {
                  storeVal = sStr;
                }
              }
            }
 
-           let store = '';
-           if (storeVal !== null && storeVal !== undefined) {
-             store = String(storeVal).trim();
-             if (store.endsWith('.0')) store = store.slice(0, -2);
-           }
+           let store = storeVal || '';
 
            const isRefund = (revenue < 0 || quantity < 0);
            const unitPrice = (!isRefund && quantity > 0) ? (revenue / quantity) : 0;
@@ -1131,9 +1126,6 @@
       }
     }
 
-    /**
-     * STREAMING_CHUNK:Rendering Tab 1 Executive Summary Dashboard and Plotly charts...
-     */
     function renderTab1() {
       let netSales = 0, totalQty = 0, refundAmt = 0;
       const chanMap = {}, monthMap = {};
@@ -1292,9 +1284,6 @@
       }
     }
 
-    /**
-     * STREAMING_CHUNK:Implementing Cross-tab Product Synchronization Navigation...
-     */
     function goToTrendForecast(prodName) {
       const select3 = document.getElementById('trendProdSelect');
       if (select3) {
@@ -1348,9 +1337,6 @@
       }
     }
 
-    /**
-     * STREAMING_CHUNK:Rendering Tab 2 Top 100 Best Product Ranking with 지점명+브랜드명 Combination...
-     */
     function renderTab2() {
       const pMap = {}, bMap = {};
       
@@ -1364,8 +1350,8 @@
           bMap[bName].rev += d.Revenue;
           bMap[bName].qty += d.Quantity;
 
+          // 3. 지점명 매핑 및 지점명 + 브랜드명 결합 (e.g. "강남점 스케쳐스", "구미점 폴햄")
           let storeName = getStoreName(d.StoreCode);
-          // Combine Store Name + Brand Name, e.g. "강남점 스케쳐스", "구미점 폴햄"
           const fullStoreStr = storeName ? `${storeName} ${bName}` : bName;
           
           // Grouping strictly by [Store(Branch+Brand) + Product]
@@ -1446,9 +1432,6 @@
       document.getElementById('priceProdSelect').innerHTML = html; 
     }
 
-    /**
-     * STREAMING_CHUNK:Calculating Week strings with local date logic...
-     */
     function getWeekString(dateStr) {
        if (!dateStr || typeof dateStr !== 'string') return '기타 주차';
        const parts = dateStr.split('-');
@@ -1461,9 +1444,6 @@
        return `${y}년 ${parseInt(m)}월 ${wNum}주차`;
     }
 
-    /**
-     * STREAMING_CHUNK:Rendering Tab 3 52-Week Trend Forecast with AI Stock recommendation...
-     */
     function renderTab3() {
       const prodSelect = document.getElementById('trendProdSelect');
       if (!prodSelect) return;
@@ -1592,9 +1572,6 @@
       }
     }
 
-    /**
-     * STREAMING_CHUNK:Rendering Tab 4 Price Elasticity Analysis and Optimal Price Chart...
-     */
     function renderTab4() {
       const prodSelect = document.getElementById('priceProdSelect');
       if (!prodSelect) return;
@@ -1685,19 +1662,12 @@
             yaxis: {
               tickformat: ',d',
               hoverformat: ',d'
-            },
-            shapes: [
-              { type: 'line', y0: bpVol, y1: bpVol, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#10b981', dash: 'dash', width: 2 } },
-              { type: 'line', y0: bpRev, y1: bpRev, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#f59e0b', dash: 'dot', width: 2 } }
-            ]
+            }
           }, { displayModeBar: false, responsive: true });
         } catch (e) { console.error("Plotly Tab4 Error:", e); }
       }
     }
 
-    /**
-     * STREAMING_CHUNK:Handling Tab Switching and Initializing App on Window Load...
-     */
     async function switchTab(t, btn) {
       activeTabId = t;
       document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
