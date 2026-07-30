@@ -11,8 +11,12 @@
   
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-    body { font-family: 'Inter', sans-serif; overflow: hidden; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; letter-spacing: -0.015em; }
     
+    /* Scrollbar behavior */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -22,20 +26,20 @@
       overflow-y: auto; 
       border-radius: 0.75rem; 
       border: 1px solid #e2e8f0; 
-      height: calc(100vh - 210px);
+      height: calc(100vh - 218px);
       margin-bottom: 0; 
     }
     .dark .data-table-container { border-color: #334155; }
     table { width: 100%; border-collapse: collapse; }
     th { 
-      background: #f8fafc; padding: 10px 6px; font-size: 0.75rem; font-weight: 600; 
+      background: #f8fafc; padding: 10px 8px; font-size: 0.75rem; font-weight: 600; 
       color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; 
       white-space: nowrap; position: sticky; top: 0; z-index: 10; 
-      text-align: center;
+      text-align: center; tracking: 0.02em;
     }
     .dark th { background: #1e293b; color: #94a3b8; border-color: #334155; }
     td { 
-      padding: 8px 6px; font-size: 0.8125rem; color: #334155; 
+      padding: 9px 8px; font-size: 0.8125rem; color: #334155; 
       border-bottom: 1px solid #f1f5f9; white-space: nowrap; 
     }
     .dark td { color: #cbd5e1; border-color: #1e293b; }
@@ -48,19 +52,24 @@
     .stat-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 12px; padding: 18px 16px; }
     .stat-card:hover { transform: translateY(-2px); }
     
-    /* Top Bar Navigation Tab Styling */
-    .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; }
+    /* Perfect Index Folder Tab Styling */
+    .tab-btn { 
+      transition: all 0.15s ease-in-out; 
+      border-bottom: 2px solid transparent; 
+      border-top-left-radius: 0.5rem; 
+      border-top-right-radius: 0.5rem; 
+      position: relative; 
+      margin-bottom: -1px;
+    }
     .tab-btn.active { 
       color: #2563eb; 
       background-color: #eff6ff; 
       border-bottom-color: #2563eb; 
-      font-weight: 700; 
-      border-top-left-radius: 0.5rem; 
-      border-top-right-radius: 0.5rem; 
+      font-weight: 600; 
     }
     .dark .tab-btn.active { 
       color: #60a5fa; 
-      background-color: rgba(30, 58, 138, 0.3); 
+      background-color: rgba(30, 58, 138, 0.35); 
       border-bottom-color: #60a5fa; 
     }
   </style>
@@ -182,28 +191,28 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b0f19]">
-      <div class="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="px-6 pt-3 pb-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <!-- Top Navigation Bar -->
-        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar" id="tabs">
-          <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+        <div class="flex items-center gap-1 overflow-x-auto hide-scrollbar" id="tabs">
+          <button onclick="switchTab('tab1', this)" class="tab-btn active px-4 py-2.5 text-sm sm:text-[14px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-chart-pie text-brand-600"></i>
             <span>종합 대시보드</span>
           </button>
-          <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+          <button onclick="switchTab('tab2', this)" class="tab-btn px-4 py-2.5 text-sm sm:text-[14px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-trophy text-amber-500"></i>
             <span>베스트 상품 & 브랜드</span>
           </button>
-          <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+          <button onclick="switchTab('tab3', this)" class="tab-btn px-4 py-2.5 text-sm sm:text-[14px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-box-archive text-emerald-500"></i>
             <span>52주 트렌드 & 재고 예측</span>
           </button>
-          <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
+          <button onclick="switchTab('tab4', this)" class="tab-btn px-4 py-2.5 text-sm sm:text-[14px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap flex items-center gap-2">
             <i class="fa-solid fa-tag text-purple-500"></i>
             <span>가격 변동 & 적정가 분석</span>
           </button>
         </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
-          분석 데이터: <span id="filteredCount" class="text-brand-600 dark:text-brand-400 font-bold">0</span>건
+        <div class="text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 mb-2">
+          분석 데이터: <span id="filteredCount" class="text-brand-600 dark:text-brand-400 font-semibold">0</span>건
         </div>
       </div>
 
@@ -221,28 +230,28 @@
         <div id="tab1" class="tab-content space-y-6">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-brand-500">
-              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 순매출</div>
-              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1" id="kpiSales">0원</div>
+              <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 순매출</div>
+              <div class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-1" id="kpiSales">0원</div>
               <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiSalesSub">최근월 실적</div>
             </div>
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-emerald-500">
-              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 판매 수량</div>
-              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1" id="kpiQty">0개</div>
+              <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">최근월 판매 수량</div>
+              <div class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-1" id="kpiQty">0개</div>
               <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiQtySub">최근월 거래량</div>
             </div>
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-blue-500">
-              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">실판매 평균 단가</div>
-              <div class="text-xl sm:text-2xl font-black text-brand-600 dark:text-blue-400 mb-1" id="kpiAov">@ 0원</div>
+              <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">실판매 평균 단가</div>
+              <div class="text-xl sm:text-2xl font-bold text-brand-600 dark:text-blue-400 mb-1" id="kpiAov">@ 0원</div>
               <div class="text-xs text-slate-500 dark:text-slate-400">총매출액 ÷ 총수량</div>
             </div>
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-indigo-500">
-              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">주간 판매 속도</div>
-              <div class="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mb-1" id="kpiWeeklySpeed">0개 / 주</div>
+              <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">주간 판매 속도</div>
+              <div class="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-1" id="kpiWeeklySpeed">0개 / 주</div>
               <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiWeeklySpeedSub">주당 평균 거래속도</div>
             </div>
             <div class="stat-card bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md border-t-2 border-t-rose-500">
-              <div class="text-[0.7rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">환불율 & 건강도</div>
-              <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-1 flex items-center justify-between" id="kpiRefund">0.0%</div>
+              <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">환불율 & 건강도</div>
+              <div class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-between" id="kpiRefund">0.0%</div>
               <div class="text-xs text-slate-500 dark:text-slate-400" id="kpiRefundSub">환불액 0원</div>
             </div>
           </div>
@@ -293,11 +302,11 @@
                     <tr>
                       <th class="w-12 text-center py-2.5">순위</th>
                       <th class="text-center py-2.5">상품명</th>
-                      <th class="w-28 text-center py-2.5 px-2">평균단가</th>
-                      <th class="w-36 text-center py-2.5 px-2">매장</th>
-                      <th class="w-32 text-center py-2.5 px-2">주요 옵션</th>
-                      <th class="w-32 text-center py-2.5 px-2">매출액</th>
-                      <th class="w-20 text-center py-2.5 px-2">판매량</th>
+                      <th class="w-24 text-center py-2.5 px-2">평균단가</th>
+                      <th class="w-32 text-center py-2.5 px-2">매장</th>
+                      <th class="w-24 text-center py-2.5 px-2">주요 옵션</th>
+                      <th class="w-28 text-center py-2.5 px-2">매출액</th>
+                      <th class="w-16 text-center py-2.5 px-2">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="bestTbody"></tbody>
@@ -1232,7 +1241,7 @@
           const topOptClean = cleanOptionString(topOptRaw, item.p);
           
           // Format multiline tooltip for top 5 options
-          let tooltip = sortedOpts.slice(0, 5).map((o, i) => `${i+1}위: ${cleanOptionString(o[0], item.p)} (${o[1]}개)`).join('&#10;');
+          let tooltip = sortedOpts.slice(0, 5).map((o, i) => `${i+1}위: ${cleanOptionString(o[0], item.p)} (${o[1]}개)`).join('\n');
 
           const storeBrandStr = `${item.store} ${item.b}`;
 
@@ -1505,7 +1514,7 @@
       activeTabId = t;
       document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
       document.querySelectorAll('.tab-btn').forEach(e => {
-        e.classList.remove('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-bold', 'text-brand-600', 'dark:text-brand-400');
+        e.classList.remove('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-semibold', 'text-brand-600', 'dark:text-brand-400');
         e.classList.add('text-slate-600', 'dark:text-slate-300', 'font-medium');
       });
       
@@ -1514,7 +1523,7 @@
 
       const targetBtn = btn || (window.event ? window.event.currentTarget : null);
       if (targetBtn) {
-        targetBtn.classList.add('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-bold', 'text-brand-600', 'dark:text-brand-400');
+        targetBtn.classList.add('active', 'bg-brand-50', 'dark:bg-brand-950/40', 'border-b-2', 'border-brand-600', 'dark:border-brand-400', 'font-semibold', 'text-brand-600', 'dark:text-brand-400');
         targetBtn.classList.remove('text-slate-600', 'dark:text-slate-300', 'font-medium');
       }
 
