@@ -318,9 +318,19 @@
 
       <div id="tab3" class="tab-content space-y-6 hidden">
         <div class="glass-panel p-5 rounded-xl">
-            <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 차주(다음 주) 권장 재고 예측</h3>
-            <p class="text-xs text-slate-500 mb-4">주차별 미세 변동과 계절성, 모멘텀 알고리즘을 정밀 추적하여 다가오는 차주 최적 재고량을 제안합니다.</p>
-            <select id="trendProdSelect" onchange="renderTab3()" class="w-full max-w-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
+            <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 차주(다음 주) 권장 재고 예측</h3>
+                <p class="text-xs text-slate-500">주차별 미세 변동과 계절성, 모멘텀 알고리즘을 정밀 추적하여 다가오는 차주 최적 재고량을 제안합니다.</p>
+              </div>
+              <div class="flex flex-col sm:flex-row items-center gap-2.5 flex-shrink-0">
+                <select id="trendProdSelect" onchange="renderTab3()" class="w-full sm:w-80 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-2"></select>
+                <button onclick="goToPriceAnalysis()" class="w-full sm:w-auto px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-lg shadow-sm whitespace-nowrap transition-colors flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-tag"></i>
+                  <span>적정가 분석 보기</span>
+                </button>
+              </div>
+            </div>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div class="md:col-span-1 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
@@ -359,9 +369,15 @@
 
         <div id="tab4" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
-            <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 경제학적 최적 가격 (Optimal Price) 분석</h3>
-            <p class="text-xs text-slate-500 mb-4">가격 탄력성(Elasticity) 및 수요 곡선 회귀 분석을 통해 매출을 극대화하는 경제학/마케팅 최적가를 제안합니다.</p>
-            <select id="priceProdSelect" onchange="renderTab4()" class="w-full max-w-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
+            <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 class="text-sm font-bold mb-1">🏷️ 가격 변동 및 경제학적 최적 가격 (Optimal Price) 분석</h3>
+                <p class="text-xs text-slate-500">가격 탄력성(Elasticity) 및 수요 곡선 회귀 분석을 통해 매출을 극대화하는 경제학/마케팅 최적가를 제안합니다.</p>
+              </div>
+              <div class="flex-shrink-0">
+                <select id="priceProdSelect" onchange="renderTab4()" class="w-full sm:w-80 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-2"></select>
+              </div>
+            </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-emerald-500">
@@ -469,6 +485,17 @@
       } else {
         sb.classList.add('-translate-x-full', 'md:-ml-72');
       }
+      
+      const resizeCharts = () => {
+        window.dispatchEvent(new Event('resize'));
+        ['chartDaily', 'chartChannel', 'chartTrend', 'chartPrice'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && window.Plotly && el.data) Plotly.Plots.resize(el);
+        });
+      };
+      // 애니메이션 중간과 끝에 강제 리사이즈를 발생시켜 차트를 정확히 반응시킵니다.
+      setTimeout(resizeCharts, 150);
+      setTimeout(resizeCharts, 310);
     }
 
     const clearModal = document.getElementById('clearModal');
@@ -1170,20 +1197,54 @@
      * Helper function to jump to Tab 3 for a specific product
      */
     function goToTrendForecast(prodName) {
-      const selectEl = document.getElementById('trendProdSelect');
-      if (selectEl) {
-        for (let i = 0; i < selectEl.options.length; i++) {
-          if (selectEl.options[i].value === prodName) {
-            selectEl.selectedIndex = i;
+      const select3 = document.getElementById('trendProdSelect');
+      if (select3) {
+        for (let i = 0; i < select3.options.length; i++) {
+          if (select3.options[i].value === prodName) {
+            select3.selectedIndex = i;
             break;
           }
         }
       }
+
+      const select4 = document.getElementById('priceProdSelect');
+      if (select4) {
+        for (let i = 0; i < select4.options.length; i++) {
+          if (select4.options[i].value === prodName) {
+            select4.selectedIndex = i;
+            break;
+          }
+        }
+      }
+
       const tabsContainer = document.getElementById('tabs');
       if (tabsContainer) {
         const tab3Btn = tabsContainer.children[2];
         if (tab3Btn) {
           switchTab('tab3', tab3Btn);
+        }
+      }
+    }
+
+    function goToPriceAnalysis() {
+      const currentProd = document.getElementById('trendProdSelect')?.value;
+      if (!currentProd) return;
+
+      const priceSelect = document.getElementById('priceProdSelect');
+      if (priceSelect) {
+        for (let i = 0; i < priceSelect.options.length; i++) {
+          if (priceSelect.options[i].value === currentProd) {
+            priceSelect.selectedIndex = i;
+            break;
+          }
+        }
+      }
+
+      const tabsContainer = document.getElementById('tabs');
+      if (tabsContainer) {
+        const tab4Btn = tabsContainer.children[3];
+        if (tab4Btn) {
+          switchTab('tab4', tab4Btn);
         }
       }
     }
@@ -1507,14 +1568,14 @@
             marker: { size: qtys, sizemode: 'area', sizeref: 2, sizemin: 4, color: '#3b82f6', opacity: 0.6 }
           }], {
             margin: { t: 20, l: 60, r: 20, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: fontCol },
+            xaxis: { type: 'date', tickformat: '%Y년 %m월', automargin: true },
             yaxis: {
               tickformat: ',d',
               hoverformat: ',d'
             },
             shapes: [
               { type: 'line', y0: bpVol, y1: bpVol, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#10b981', dash: 'dash', width: 2 } },
-              { type: 'line', y0: bpRev, y1: bpRev, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#f59e0b', dash: 'dot', width: 2 } },
-              { type: 'line', y0: optPrice, y1: optPrice, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#3b82f6', width: 2.5 } }
+              { type: 'line', y0: bpRev, y1: bpRev, x0: dates[0] || 0, x1: dates[dates.length-1] || 1, line: { color: '#f59e0b', dash: 'dot', width: 2 } }
             ]
           }, { displayModeBar: false, responsive: true });
         } catch (e) { console.error("Plotly Tab4 Error:", e); }
