@@ -52,7 +52,7 @@
     .stat-card { transition: transform 0.2s, box-shadow 0.2s; border-radius: 12px; padding: 18px 16px; }
     .stat-card:hover { transform: translateY(-2px); }
     
-    /* Perfect Index Folder Tab Styling */
+    /* Index Tab Styling */
     .tab-btn { 
       transition: all 0.15s ease-in-out; 
       border-bottom: 2px solid transparent; 
@@ -268,7 +268,6 @@
           </div>
         </div>
 
-        <!-- Tab 2: 베스트 상품 & 브랜드 -->
         <div id="tab2" class="tab-content space-y-6 hidden h-full">
           <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
             <!-- Left Card: Top 50 Brand Ranking Table -->
@@ -318,7 +317,6 @@
           </div>
         </div>
 
-        <!-- Tab 3: 52주 트렌드 & 재고 예측 -->
         <div id="tab3" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -370,7 +368,6 @@
           </div>
         </div>
 
-        <!-- Tab 4: 가격 변동 & 적정가 분석 -->
         <div id="tab4" class="tab-content space-y-6 hidden">
           <div class="glass-panel p-5 rounded-xl">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -518,6 +515,7 @@
     const DB_NAME = 'O2O_Enterprise_DB_v9'; 
     const STORE_NAME = 'sales_data';
     
+    // Complete Store Code to Korean Name Mapping
     const STORE_MAPPING = { 
       7204: '중계점', 7206: '안양점', 7209: '분당점', 7214: '해운대점', 7215: '천호2점', 
       7216: '부평점', 7217: '불광점', 7219: '고잔점', 8201: '일산점', 8202: '야탑점', 
@@ -668,7 +666,7 @@
           let cleanCode = String(d.StoreCode || '').replace(/\.0$/, '').trim();
           if (cleanCode) {
             const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode;
-            if (storeName) stores.add(storeName);
+            if (storeName && storeName.toLowerCase() !== 'r100') stores.add(storeName);
           }
         }
         if (d.Brand && d.Brand !== '기타 브랜드' && d.Brand !== '미지정' && d.Brand !== 'null' && d.Brand !== 'undefined') {
@@ -853,7 +851,7 @@
         if (!rows || rows.length < 2) return [];
 
         let headerRowIdx = -1;
-        let hMap = { date: -1, revenue: -1, quantity: -1, brand: -1, product: -1, option: -1, channel: -1, store: -1 };
+        let hMap = { date: -1, revenue: -1, quantity: -1, brand: -1, product: -1, option: -1, channel: -1, storeR100: -1, storePlant: -1 };
 
         const cleanHeader = (str) => {
           if (str === null || str === undefined) return '';
@@ -896,8 +894,11 @@
             hMap.product = findBestCol(rowCells, ['외부몰상품명', '상품명', '품명', '상품', 'product'], ['코드', 'code', 'id', '번호', 'cd', '옵션']);
             hMap.option = findBestCol(rowCells, ['외부몰옵션명', '단품명', '옵션명', '옵션', 'option'], ['코드', 'code', 'id', '번호', 'cd']);
             hMap.channel = findBestCol(rowCells, ['채널명', '유통채널', '판매처', '채널', 'channel'], ['코드', 'code', 'id', '번호']);
+            
+            // Priority 1: 플랜트(R100) column
             hMap.storeR100 = findBestCol(rowCells, ['플랜트(r100)', '플랜트r100', 'r100'], []);
-            hMap.storePlant = findBestCol(rowCells, ['플랜트', '점포코드', '출고점포', '출고지점', '점포', '지점', '매장', 'store'], []);
+            // Priority 2: 플랜트 column (excluding r100)
+            hMap.storePlant = findBestCol(rowCells, ['플랜트', '점포코드', '출고점포코드', '출고점포', '출고지점', '점포', '지점', '매장', 'store'], ['r100']);
             break;
           }
         }
@@ -934,17 +935,24 @@
            const option = String(v(hMap.option) || '기본');
            const channel = String(v(hMap.channel) || '본사채널');
            
+           // Row-level priority: Check storeR100 first; if empty or null, fallback to storePlant
            let storeVal = null;
            if (hMap.storeR100 !== -1) {
              const rawR100 = v(hMap.storeR100);
-             if (rawR100 !== null && rawR100 !== undefined && String(rawR100).trim() !== '') {
-               storeVal = rawR100;
+             if (rawR100 !== null && rawR100 !== undefined) {
+               const sStr = String(rawR100).trim();
+               if (sStr !== '' && sStr.toLowerCase() !== 'null' && sStr.toLowerCase() !== 'r100' && sStr !== '-') {
+                 storeVal = sStr;
+               }
              }
            }
            if (!storeVal && hMap.storePlant !== -1) {
              const rawPlant = v(hMap.storePlant);
-             if (rawPlant !== null && rawPlant !== undefined && String(rawPlant).trim() !== '') {
-               storeVal = rawPlant;
+             if (rawPlant !== null && rawPlant !== undefined) {
+               const sStr = String(rawPlant).trim();
+               if (sStr !== '' && sStr.toLowerCase() !== 'null' && sStr.toLowerCase() !== 'r100' && sStr !== '-') {
+                 storeVal = sStr;
+               }
              }
            }
 
@@ -1314,8 +1322,7 @@
           bMap[bName].rev += d.Revenue;
           bMap[bName].qty += d.Quantity;
 
-          let cleanCode = String(d.StoreCode || '').replace(/\.0$/, '').trim();
-          const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || (cleanCode && cleanCode.toLowerCase() !== 'r100' ? cleanCode : '');
+          let storeName = getStoreName(d.StoreCode);
           const fullStoreStr = storeName ? `${storeName} ${bName}` : bName;
           
           // Grouping strictly by [Store(Branch+Brand) + Product]
@@ -1433,9 +1440,7 @@
          pwMap[wStr] = pwMap[wStr] || { q:0, stores:{}, channels:{} };
          pwMap[wStr].q += d.Quantity;
 
-         let cleanCode = String(d.StoreCode || '').replace(/\.0$/, '').trim();
-         const storeName = STORE_MAPPING[cleanCode] || STORE_MAPPING[Number(cleanCode)] || cleanCode || '본사';
-
+         let storeName = getStoreName(d.StoreCode) || '본사';
          pwMap[wStr].stores[storeName] = (pwMap[wStr].stores[storeName] || 0) + d.Quantity;
          pwMap[wStr].channels[d.Channel] = (pwMap[wStr].channels[d.Channel] || 0) + d.Quantity;
       });
