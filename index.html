@@ -270,48 +270,47 @@
         <div id="tab2" class="tab-content space-y-6 hidden h-full">
           <div class="flex flex-col lg:flex-row gap-6 h-full pb-4">
             <!-- Left Card: Top 50 Brand Ranking Table -->
-            <div class="w-full lg:w-[28rem] xl:w-[32rem] flex-shrink-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
-              <div class="flex items-center gap-2 mb-4">
-                <i class="fa-solid fa-award text-amber-500 text-base"></i>
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white">브랜드별 매출 순위 Top 50</h3>
-              </div>
-              <div class="data-table-container flex-1 overflow-x-auto">
-                <table id="brandRankTable" class="w-full table-fixed text-[13px]">
-                  <thead>
-                    <tr>
-                      <th class="w-12 text-center py-2.5">순위</th>
-                      <th class="text-center py-2.5">브랜드명</th>
-                      <th class="w-32 text-center py-2.5 px-4">매출액</th>
-                      <th class="w-24 text-center py-2.5 px-4">판매량</th>
-                    </tr>
-                  </thead>
-                  <tbody id="brandRankTbody"></tbody>
-                </table>
-              </div>
+          <div class="w-full lg:w-[28rem] xl:w-[32rem] flex-shrink-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
+            <div class="flex items-center gap-2 mb-4">
+              <i class="fa-solid fa-award text-amber-500 text-base"></i>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">브랜드별 매출 순위 Top 50</h3>
             </div>
+            <div class="data-table-container flex-1 overflow-x-auto">
+              <table id="brandRankTable" class="w-full table-fixed text-[13px]">
+                <thead>
+                  <tr>
+                    <th class="w-12 text-center py-2.5">순위</th>
+                    <th class="text-center py-2.5">브랜드</th>
+                    <th class="w-32 text-center py-2.5 px-4">매출액</th>
+                    <th class="w-24 text-center py-2.5 px-4">판매량</th>
+                  </tr>
+                </thead>
+                <tbody id="brandRankTbody"></tbody>
+              </table>
+            </div>
+          </div>
 
-            <!-- Right Card: Top 100 Best Product Ranking Table -->
-            <div class="flex-1 min-w-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
-              <div class="flex items-center gap-2 mb-4">
-                <i class="fa-solid fa-box-open text-brand-500 text-base"></i>
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white">베스트 상품 순위 Top 100</h3>
-              </div>
-              <div class="data-table-container flex-1 overflow-x-auto">
-                <table id="bestTable" class="w-full table-fixed text-[13px]">
-                  <thead>
-                    <tr>
-                      <th class="w-12 text-center py-2.5">순위</th>
-                      <th class="text-center py-2.5">상품명</th>
-                      <th class="w-24 text-center py-2.5 px-2">평균단가</th>
-                      <th class="w-32 text-center py-2.5 px-2">매장</th>
-                      <th class="w-24 text-center py-2.5 px-2">주요 옵션</th>
-                      <th class="w-28 text-center py-2.5 px-2">매출액</th>
-                      <th class="w-20 text-center py-2.5 px-2">판매량</th>
-                    </tr>
-                  </thead>
-                  <tbody id="bestTbody"></tbody>
-                </table>
-              </div>
+          <!-- Right Card: Top 100 Best Product Ranking Table -->
+          <div class="flex-1 min-w-0 glass-panel p-4 sm:p-5 rounded-2xl flex flex-col shadow-sm max-w-full">
+            <div class="flex items-center gap-2 mb-4">
+              <i class="fa-solid fa-box-open text-brand-500 text-base"></i>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">베스트 상품 순위 Top 100</h3>
+            </div>
+            <div class="data-table-container flex-1 overflow-x-auto">
+              <table id="bestTable" class="w-full table-fixed text-[13px]">
+                <thead>
+                  <tr>
+                    <th class="w-12 text-center py-2.5">순위</th>
+                    <th class="text-center py-2.5">상품명</th>
+                    <th class="w-24 text-center py-2.5 px-2">평균단가</th>
+                    <th class="w-32 text-center py-2.5 px-2">매장</th>
+                    <th class="w-24 text-center py-2.5 px-2">주요 옵션</th>
+                    <th class="w-28 text-center py-2.5 px-2">매출액</th>
+                    <th class="w-20 text-center py-2.5 px-2">판매량</th>
+                  </tr>
+                </thead>
+                <tbody id="bestTbody"></tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1219,8 +1218,8 @@
         brandTbody.innerHTML = bList.map((item, idx) => `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
             <td class="font-medium text-slate-500 text-center py-[9.5px]">${idx + 1}</td>
-            <td class="font-semibold text-slate-700 dark:text-slate-300 text-center px-1 truncate py-[9.5px]" title="${esc(item.name)}">${esc(item.name)}</td>
-            <td class="font-bold text-brand-600 dark:text-blue-400 text-right px-4 whitespace-nowrap py-[9.5px]">${item.rev.toLocaleString()}원</td>
+            <td class="font-semibold text-slate-700 dark:text-slate-300 text-left px-1 truncate py-[9.5px]" title="${esc(item.name)}">${esc(item.name)}</td>
+            <td class="font-bold text-brand-600 dark:text-blue-400 text-right px-2 whitespace-nowrap py-[9.5px]">${item.rev.toLocaleString()}원</td>
             <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-4 whitespace-nowrap py-[9.5px]">${item.qty.toLocaleString()}개</td>
           </tr>
         `).join('');
