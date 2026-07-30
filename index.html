@@ -301,12 +301,12 @@
                 <thead>
                   <tr>
                     <th class="w-12 text-center py-2.5">순위</th>
-                    <th class="text-center py-2.5">상품명</th>
-                    <th class="w-24 text-center py-2.5 px-2">평균단가</th>
-                    <th class="w-32 text-center py-2.5 px-2">매장</th>
+                    <th class="text-left py-2.5 px-2">상품명</th>
+                    <th class="w-24 text-right py-2.5 px-2">평균단가</th>
+                    <th class="w-32 text-left py-2.5 px-2">매장</th>
                     <th class="w-24 text-center py-2.5 px-2">주요 옵션</th>
-                    <th class="w-28 text-center py-2.5 px-2">매출액</th>
-                    <th class="w-20 text-center py-2.5 px-2">판매량</th>
+                    <th class="w-28 text-right py-2.5 px-2">매출액</th>
+                    <th class="w-20 text-right py-2.5 px-2">판매량</th>
                   </tr>
                 </thead>
                 <tbody id="bestTbody"></tbody>
@@ -314,9 +314,10 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <div id="tab3" class="tab-content space-y-6 hidden">
-          <div class="glass-panel p-5 rounded-xl">
+      <div id="tab3" class="tab-content space-y-6 hidden">
+        <div class="glass-panel p-5 rounded-xl">
             <h3 class="text-sm font-bold mb-1">📦 52주 트렌드 및 AI 차주(다음 주) 권장 재고 예측</h3>
             <p class="text-xs text-slate-500 mb-4">주차별 미세 변동과 계절성, 모멘텀 알고리즘을 정밀 추적하여 다가오는 차주 최적 재고량을 제안합니다.</p>
             <select id="trendProdSelect" onchange="renderTab3()" class="w-full max-w-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 mb-6"></select>
@@ -427,6 +428,9 @@
      */
     function cleanOptionString(opt, prod) {
       let sOpt = String(opt || '').trim();
+      // 큰따옴표("), 작은따옴표('), 특수 따옴표(" ”) 모두 제거
+      sOpt = sOpt.replace(/["'”“`]/g, '').trim();
+
       if (!sOpt || sOpt === '기본' || sOpt === '단품' || sOpt === 'null' || sOpt === 'undefined' || sOpt === '-') return '단품';
 
       // 1. 불필요한 접두어 제거
