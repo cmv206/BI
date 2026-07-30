@@ -1218,10 +1218,10 @@
       } else {
         brandTbody.innerHTML = bList.map((item, idx) => `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <td class="font-medium text-slate-500 text-center py-2">${idx + 1}</td>
-            <td class="font-semibold text-slate-700 dark:text-slate-300 text-center px-1 truncate py-2" title="${esc(item.name)}">${esc(item.name)}</td>
-            <td class="font-bold text-brand-600 dark:text-blue-400 text-right px-4 whitespace-nowrap py-2">${item.rev.toLocaleString()}원</td>
-            <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-4 whitespace-nowrap py-2">${item.qty.toLocaleString()}개</td>
+            <td class="font-medium text-slate-500 text-center py-[11px]">${idx + 1}</td>
+            <td class="font-semibold text-slate-700 dark:text-slate-300 text-center px-1 truncate py-[11px]" title="${esc(item.name)}">${esc(item.name)}</td>
+            <td class="font-bold text-brand-600 dark:text-blue-400 text-right px-4 whitespace-nowrap py-[11px]">${item.rev.toLocaleString()}원</td>
+            <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-4 whitespace-nowrap py-[11px]">${item.qty.toLocaleString()}개</td>
           </tr>
         `).join('');
       }
