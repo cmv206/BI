@@ -268,13 +268,13 @@
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">브랜드별 매출 순위 Top 50</h3>
               </div>
               <div class="data-table-container flex-1 overflow-x-hidden">
-                <table id="brandRankTable" class="w-full table-fixed text-xs">
+                <table id="brandRankTable" class="w-full table-fixed text-[13px]">
                   <thead>
                     <tr>
-                      <th class="w-12 text-center py-2.5">순위</th>
-                      <th class="text-center py-2.5">브랜드명</th>
-                      <th class="w-28 text-center py-2.5 px-3">순매출액</th>
-                      <th class="w-24 text-center py-2.5 px-3">판매량</th>
+                      <th class="w-14 text-center py-3">순위</th>
+                      <th class="text-center py-3">브랜드명</th>
+                      <th class="w-32 text-center py-3 px-4">순매출액</th>
+                      <th class="w-24 text-center py-3 px-4">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="brandRankTbody"></tbody>
@@ -289,16 +289,16 @@
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">베스트 상품 순위 Top 100</h3>
               </div>
               <div class="data-table-container flex-1 overflow-x-auto">
-                <table id="bestTable" class="w-full table-fixed text-xs">
+                <table id="bestTable" class="w-full table-fixed text-[13px]">
                   <thead>
                     <tr>
-                      <th class="w-12 text-center py-2.5">순위</th>
-                      <th class="text-center py-2.5">상품명</th>
-                      <th class="w-28 text-center py-2.5 px-3">평균단가</th>
-                      <th class="w-32 text-center py-2.5">매장</th>
-                      <th class="w-32 text-center py-2.5">주요 옵션</th>
-                      <th class="w-28 text-center py-2.5 px-3">매출액</th>
-                      <th class="w-24 text-center py-2.5 px-3">판매량</th>
+                      <th class="w-12 text-center py-3">순위</th>
+                      <th class="text-center py-3">상품명</th>
+                      <th class="w-32 text-center py-3 px-4">평균단가</th>
+                      <th class="w-36 text-center py-3">매장</th>
+                      <th class="w-32 text-center py-3">주요 옵션</th>
+                      <th class="w-32 text-center py-3 px-4">매출액</th>
+                      <th class="w-24 text-center py-3 px-4">판매량</th>
                     </tr>
                   </thead>
                   <tbody id="bestTbody"></tbody>
@@ -1211,10 +1211,10 @@
       } else {
         brandTbody.innerHTML = bList.map((item, idx) => `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <td class="font-bold text-slate-500 text-center py-2.5">${idx + 1}</td>
-            <td class="font-semibold text-slate-800 dark:text-slate-200 text-center px-1 truncate" title="${esc(item.name)}">${esc(item.name)}</td>
-            <td class="font-bold text-brand-600 dark:text-brand-400 text-right px-3 whitespace-nowrap">${item.rev.toLocaleString()}원</td>
-            <td class="font-medium text-emerald-600 dark:text-emerald-400 text-right px-3 whitespace-nowrap">${item.qty.toLocaleString()}개</td>
+            <td class="font-medium text-slate-500 text-center py-3.5">${idx + 1}</td>
+            <td class="font-semibold text-slate-700 dark:text-slate-300 text-center px-1 truncate" title="${esc(item.name)}">${esc(item.name)}</td>
+            <td class="font-bold text-brand-600 dark:text-blue-400 text-right px-4 whitespace-nowrap">${item.rev.toLocaleString()}원</td>
+            <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-4 whitespace-nowrap">${item.qty.toLocaleString()}개</td>
           </tr>
         `).join('');
       }
@@ -1243,15 +1243,15 @@
 
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <td class="font-bold text-slate-500 text-center py-2.5">${idx + 1}</td>
-              <td class="text-left px-2 truncate" title="${esc(item.p)}">
-                <span class="font-bold text-slate-900 dark:text-white">${esc(item.p)}</span>
+              <td class="font-medium text-slate-500 text-center py-3.5">${idx + 1}</td>
+              <td class="text-left px-3 truncate" title="${esc(item.p)}">
+                <span class="font-medium text-slate-800 dark:text-slate-200">${esc(item.p)}</span>
               </td>
-              <td class="text-right px-3 text-slate-600 dark:text-slate-300 font-medium">@ ${avgPrice.toLocaleString()}원</td>
-              <td class="text-center px-2 text-slate-500 dark:text-slate-400 text-xs truncate" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
-              <td class="text-center text-slate-600 dark:text-slate-300 text-xs truncate cursor-help px-2" title="${esc(tooltip)}">${esc(topOptClean)}</td>
-              <td class="font-bold text-slate-900 dark:text-white text-right px-3">${item.rev.toLocaleString()}원</td>
-              <td class="font-bold text-emerald-600 dark:text-emerald-400 text-right px-3">${item.qty.toLocaleString()}개</td>
+              <td class="text-right px-4 text-slate-600 dark:text-slate-400 font-medium">@ ${avgPrice.toLocaleString()}원</td>
+              <td class="text-center px-2 text-slate-500 dark:text-slate-400 truncate" title="${esc(storeBrandStr)}">${esc(storeBrandStr)}</td>
+              <td class="text-center text-slate-600 dark:text-slate-300 truncate cursor-help px-2" title="${esc(tooltip)}">${esc(topOptClean)}</td>
+              <td class="font-bold text-slate-900 dark:text-white text-right px-4">${item.rev.toLocaleString()}원</td>
+              <td class="font-bold text-emerald-500 dark:text-emerald-400 text-right px-4">${item.qty.toLocaleString()}개</td>
             </tr>
           `;
         }).join('');
