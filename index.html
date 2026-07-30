@@ -853,18 +853,18 @@
         const findBestCol = (cells, priorities, excludes) => {
           for (const p of priorities) {
             const normP = cleanHeader(p);
-            const idx = cells.findIndex(h => cleanHeader(h) === normP);
-            if (idx !== -1) return idx;
-          }
-          for (const p of priorities) {
-            const normP = cleanHeader(p);
-            const idx = cells.findIndex(h => {
+            // 1. Exact match for current priority item
+            const exactIdx = cells.findIndex(h => cleanHeader(h) === normP);
+            if (exactIdx !== -1) return exactIdx;
+
+            // 2. Substring match for current priority item
+            const subIdx = cells.findIndex(h => {
               const normH = cleanHeader(h);
               if (!normH.includes(normP)) return false;
               if (excludes && excludes.some(ex => normH.includes(cleanHeader(ex)))) return false;
               return true;
             });
-            if (idx !== -1) return idx;
+            if (subIdx !== -1) return subIdx;
           }
           return -1;
         };
