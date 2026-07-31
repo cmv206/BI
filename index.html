@@ -157,11 +157,14 @@
           </div>
           
           <div class="space-y-1.5">
-            <label class="text-[11px] font-semibold flex items-center gap-1.5"><i class="fa-regular fa-calendar"></i> 전체 기간 (비우면 전체 조회)</label>
-            <div class="flex items-center gap-2">
-              <input type="date" id="filterStartDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none">
-              <span class="text-xs">~</span>
-              <input type="date" id="filterEndDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none">
+            <label class="text-[11px] font-semibold flex items-center gap-1.5"><i class="fa-regular fa-calendar"></i> 분석 기간 (주차 단위)</label>
+            <div class="flex flex-col gap-2">
+              <select id="filterStartWeek" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none">
+                <option value="">시작 주차 (전체)</option>
+              </select>
+              <select id="filterEndWeek" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded-lg px-2 py-1.5 focus:outline-none">
+                <option value="">종료 주차 (전체)</option>
+              </select>
             </div>
           </div>
           <div class="space-y-1.5">
@@ -328,9 +331,8 @@
               </div>
               <div class="flex flex-col sm:flex-row items-center gap-2.5 flex-shrink-0">
                 <select id="trendProdSelect" onchange="renderTab3()" class="w-full sm:w-[28rem] md:w-[36rem] lg:w-[48rem] xl:w-[56rem] max-w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-2 truncate"></select>
-                <button onclick="goToPriceAnalysis()" class="w-full sm:w-auto px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-lg shadow-sm whitespace-nowrap transition-colors flex items-center justify-center gap-1.5">
+                <button onclick="goToPriceAnalysis()" title="적정가 분석 보기" class="p-2.5 bg-brand-600 hover:bg-brand-500 text-white text-sm rounded-lg shadow-sm transition-colors flex items-center justify-center flex-shrink-0">
                   <i class="fa-solid fa-tag"></i>
-                  <span>적정가 분석 보기</span>
                 </button>
               </div>
             </div>
@@ -387,17 +389,17 @@
               <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-emerald-500">
                 <div class="text-xs font-bold text-slate-500 mb-1">볼륨 피크 (최대 수량 가격대)</div>
                 <div class="text-xl font-bold text-emerald-600 dark:text-emerald-400" id="ssVol">0원</div>
-                <div class="text-[10px] text-slate-400 mt-1">최대 판매량 형성 가격</div>
+                <div class="text-[10px] text-slate-400 mt-1 space-y-0.5" id="ssVolSub">최대 판매량 형성 가격</div>
               </div>
               <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-amber-500">
                 <div class="text-xs font-bold text-slate-500 mb-1">매출 피크 (최대 매출 가격대)</div>
                 <div class="text-xl font-bold text-amber-600 dark:text-amber-400" id="ssRev">0원</div>
-                <div class="text-[10px] text-slate-400 mt-1">실제 최고 매출액 실적 가격</div>
+                <div class="text-[10px] text-slate-400 mt-1 space-y-0.5" id="ssRevSub">실제 최고 매출액 실적 가격</div>
               </div>
               <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-brand-500 bg-brand-50/20 dark:bg-brand-900/10">
                 <div class="text-xs font-bold text-brand-600 dark:text-brand-400 mb-1">🎯 AI 마케팅 최적 가격 (Optimal P*)</div>
                 <div class="text-xl font-bold text-brand-600 dark:text-brand-400" id="ssOpt">0원</div>
-                <div class="text-[10px] text-brand-500 mt-1">수요곡선 회귀분석 극대화 도출가</div>
+                <div class="text-[10px] text-brand-500 mt-1 space-y-0.5" id="ssOptSub">수요곡선 회귀분석 극대화 도출가</div>
               </div>
             </div>
 
@@ -515,7 +517,7 @@
     }
 
     let db = null;
-    const DB_NAME = 'O2O_Enterprise_DB_v10'; 
+    const DB_NAME = 'O2O_Enterprise_DB_v11'; 
     const STORE_NAME = 'sales_data';
     
     // Complete Store Code to Korean Name Mapping (42 지점)
@@ -539,18 +541,15 @@
       let s = String(codeOrName).replace(/\.0$/, '').trim();
       if (!s || s.toLowerCase() === 'r100' || s.toLowerCase() === 'null' || s === '-') return '';
 
-      // 1. Direct match in STORE_MAPPING
       if (STORE_MAPPING[s]) return STORE_MAPPING[s];
       const num = Number(s);
       if (!isNaN(num) && STORE_MAPPING[num]) return STORE_MAPPING[num];
 
-      // 2. Search for 4-digit store code in the string
       const digitMatch = s.match(/\b(7\d{3}|8\d{3})\b/) || s.match(/\d{4}/);
       if (digitMatch && STORE_MAPPING[Number(digitMatch[0])]) {
         return STORE_MAPPING[Number(digitMatch[0])];
       }
 
-      // 3. Search for known Korean store name inside the string
       const allNames = Object.values(STORE_MAPPING);
       for (const name of allNames) {
         if (s.includes(name)) return name;
@@ -662,11 +661,56 @@
     let activeTabId = 'tab1';
     let tabRenderState = { tab1: false, tab2: false, tab3: false, tab4: false };
 
+    function getWeekData(dateStr) {
+        if (!dateStr || typeof dateStr !== 'string') return null;
+        const parts = dateStr.split('-');
+        if (parts.length < 3) return null;
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+        if (isNaN(d.getTime())) return null;
+        
+        const day = d.getDay();
+        const diffToMon = d.getDate() - day + (day === 0 ? -6 : 1);
+        const mon = new Date(d.getTime());
+        mon.setDate(diffToMon);
+        
+        const sun = new Date(mon.getTime());
+        sun.setDate(mon.getDate() + 6);
+        
+        const mY = mon.getFullYear();
+        const mM = mon.getMonth() + 1;
+        
+        const firstDayOfMonth = new Date(mY, mM - 1, 1);
+        const firstDayWeekday = firstDayOfMonth.getDay() === 0 ? 7 : firstDayOfMonth.getDay(); 
+        const offset = mon.getDate() + firstDayWeekday - 1;
+        let wNum = Math.ceil(offset / 7);
+        if(wNum === 0) wNum = 1;
+        
+        const monStr = `${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
+        const sunStr = `${sun.getFullYear()}-${String(sun.getMonth()+1).padStart(2,'0')}-${String(sun.getDate()).padStart(2,'0')}`;
+        const monFmt = `${String(mon.getMonth()+1).padStart(2,'0')}.${String(mon.getDate()).padStart(2,'0')}`;
+        const sunFmt = `${String(sun.getMonth()+1).padStart(2,'0')}.${String(sun.getDate()).padStart(2,'0')}`;
+        
+        return {
+            id: monStr,
+            label: `${mY}년 ${mM}월 ${wNum}주차`,
+            fullLabel: `${mY}년 ${mM}월 ${wNum}주차 (${monFmt}~${sunFmt})`,
+            start: monStr,
+            end: sunStr
+        };
+    }
+
+    function getWeekString(dateStr) {
+        const data = getWeekData(dateStr);
+        return data ? data.label : (typeof dateStr === 'string' ? dateStr : '기타 주차');
+    }
+
     function invalidateTabRenderStates() {
       tabRenderState = { tab1: false, tab2: false, tab3: false, tab4: false };
     }
 
     function populateFilterOptions() {
+      const startWeekSelect = document.getElementById('filterStartWeek');
+      const endWeekSelect = document.getElementById('filterEndWeek');
       const channelSelect = document.getElementById('filterChannel');
       const storeSelect = document.getElementById('filterStore');
       const brandSelect = document.getElementById('filterBrand');
@@ -677,12 +721,17 @@
       const currentStore = storeSelect.value || 'ALL';
       const currentBrand = brandSelect.value || 'ALL';
 
+      const weeksMap = new Map();
       const channels = new Set();
       const stores = new Set();
       const brands = new Set();
 
       for (let i = 0; i < globalData.length; i++) {
         const d = globalData[i];
+        
+        const wData = getWeekData(d.Date);
+        if(wData) weeksMap.set(wData.id, wData);
+
         if (d.Channel) channels.add(d.Channel);
         if (d.StoreCode) {
           const storeName = getStoreName(d.StoreCode);
@@ -692,6 +741,20 @@
           let cleanBrand = String(d.Brand).replace(/@5B@|@5D@|\[|\]/gi, '').trim();
           if (cleanBrand) brands.add(cleanBrand);
         }
+      }
+
+      if (startWeekSelect && endWeekSelect) {
+          const currentStart = startWeekSelect.value;
+          const currentEnd = endWeekSelect.value;
+          
+          const sortedWeeks = Array.from(weeksMap.values()).sort((a,b) => a.id.localeCompare(b.id));
+          const weekOpts = sortedWeeks.map(w => `<option value="${w.id}">${w.fullLabel}</option>`).join('');
+          
+          startWeekSelect.innerHTML = '<option value="">시작 주차 (전체)</option>' + weekOpts;
+          endWeekSelect.innerHTML = '<option value="">종료 주차 (전체)</option>' + weekOpts;
+          
+          if(weeksMap.has(currentStart)) startWeekSelect.value = currentStart;
+          if(weeksMap.has(currentEnd)) endWeekSelect.value = currentEnd;
       }
 
       const sortedChannels = Array.from(channels).sort();
@@ -715,19 +778,30 @@
     }
 
     async function applyFilters() {
-      const startDate = document.getElementById('filterStartDate')?.value || '';
-      const endDate = document.getElementById('filterEndDate')?.value || '';
+      const startWeekId = document.getElementById('filterStartWeek')?.value || '';
+      const endWeekId = document.getElementById('filterEndWeek')?.value || '';
       const channel = document.getElementById('filterChannel')?.value || 'ALL';
       const store = document.getElementById('filterStore')?.value || 'ALL';
       const brand = document.getElementById('filterBrand')?.value || 'ALL';
+
+      let startFilterDate = '';
+      let endFilterDate = '';
+      if (startWeekId) {
+          const wData = getWeekData(startWeekId);
+          if(wData) startFilterDate = wData.start;
+      }
+      if (endWeekId) {
+          const wData = getWeekData(endWeekId);
+          if(wData) endFilterDate = wData.end;
+      }
 
       fd = globalData.filter(d => {
         if (!d) return false;
 
         // Date filter
         const dtStr = String(d.Date || '').substring(0, 10);
-        if (startDate && dtStr < startDate) return false;
-        if (endDate && dtStr > endDate) return false;
+        if (startFilterDate && dtStr < startFilterDate) return false;
+        if (endFilterDate && dtStr > endFilterDate) return false;
 
         // Channel filter
         if (channel !== 'ALL' && d.Channel !== channel) return false;
@@ -765,14 +839,14 @@
     }
 
     function resetFilters() {
-      const startDateEl = document.getElementById('filterStartDate');
-      const endDateEl = document.getElementById('filterEndDate');
+      const startWeekEl = document.getElementById('filterStartWeek');
+      const endWeekEl = document.getElementById('filterEndWeek');
       const channelEl = document.getElementById('filterChannel');
       const storeEl = document.getElementById('filterStore');
       const brandEl = document.getElementById('filterBrand');
 
-      if (startDateEl) startDateEl.value = '';
-      if (endDateEl) endDateEl.value = '';
+      if (startWeekEl) startWeekEl.value = '';
+      if (endWeekEl) endWeekEl.value = '';
       if (channelEl) channelEl.value = 'ALL';
       if (storeEl) storeEl.value = 'ALL';
       if (brandEl) brandEl.value = 'ALL';
@@ -1078,8 +1152,8 @@
         globalData.sort((a, b) => String(a.Date || '').localeCompare(String(b.Date || '')));
 
         document.getElementById('dbCount').textContent = globalData.length.toLocaleString() + " 건";
-        document.getElementById('filterStartDate').value = '';
-        document.getElementById('filterEndDate').value = '';
+        if (document.getElementById('filterStartWeek')) document.getElementById('filterStartWeek').value = '';
+        if (document.getElementById('filterEndWeek')) document.getElementById('filterEndWeek').value = '';
 
         populateFilterOptions();
         await yieldToMain();
@@ -1431,18 +1505,6 @@
       document.getElementById('priceProdSelect').innerHTML = html; 
     }
 
-    function getWeekString(dateStr) {
-       if (!dateStr || typeof dateStr !== 'string') return '기타 주차';
-       const parts = dateStr.split('-');
-       if (parts.length < 3) return dateStr;
-       const y = parts[0], m = parts[1], d = parts[2];
-       const date = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
-       if (isNaN(date.getTime())) return dateStr;
-       const fDay = new Date(parseInt(y), parseInt(m)-1, 1).getDay();
-       const wNum = Math.ceil((date.getDate() + fDay) / 7);
-       return `${y}년 ${parseInt(m)}월 ${wNum}주차`;
-    }
-
     function renderTab3() {
       const prodSelect = document.getElementById('trendProdSelect');
       if (!prodSelect) return;
@@ -1581,11 +1643,14 @@
       pd.sort((a,b) => String(a.Date || '').localeCompare(String(b.Date || '')));
       
       let vMax = 0, rMax = 0, bpVol = 0, bpRev = 0;
+      let sumTotalQ = 0, sumTotalR = 0;
       const pGroup = {};
       pd.forEach(d => {
         pGroup[d.UnitPrice] = pGroup[d.UnitPrice] || { q:0, r:0 };
         pGroup[d.UnitPrice].q += d.Quantity;
         pGroup[d.UnitPrice].r += d.Revenue;
+        sumTotalQ += d.Quantity;
+        sumTotalR += d.Revenue;
       });
 
       const priceKeys = Object.keys(pGroup).map(Number).sort((a,b)=>a-b);
@@ -1594,8 +1659,19 @@
         if(pGroup[p].r > rMax) { rMax = pGroup[p].r; bpRev = p; }
       });
 
+      const sortedRevKeys = [...priceKeys].sort((a,b) => pGroup[b].r - pGroup[a].r);
+      let revCompareText = '';
+      if (sortedRevKeys.length > 1) {
+          const secondR = pGroup[sortedRevKeys[1]].r;
+          if (secondR > 0) {
+              const diffPct = (((pGroup[bpRev].r - secondR) / secondR) * 100).toFixed(1);
+              revCompareText = `<br><span class="text-amber-500 dark:text-amber-400 font-semibold">(2위 가격대 대비 매출 +${diffPct}%)</span>`;
+          }
+      }
+
       let optPrice = bpRev; 
       let elasticity = 1.0;
+      let optReason = '';
       
       if (priceKeys.length >= 2) {
         let sumP = 0, sumQ = 0, sumP2 = 0, sumPQ = 0, n = priceKeys.length;
@@ -1621,9 +1697,35 @@
         optPrice = bpRev;
       }
 
+      if (elasticity > 1.1) {
+          optReason = `<b>탄력적 수요 (ε=${elasticity.toFixed(2)})</b>: 가격에 민감하게 반응하므로, 이 최적가 부근에서 가격 방어보다는 소폭 할인을 통한 <b>매출액 극대화</b>가 유리합니다.`;
+      } else if (elasticity < 0.9) {
+          optReason = `<b>비탄력적 수요 (ε=${elasticity.toFixed(2)})</b>: 가격 인하보다 브랜드 가치를 유지하는 현재가 방어가 유리하며, 도출된 최적가가 기준선입니다.`;
+      } else {
+          optReason = `<b>단위 탄력적 수요 (ε=${elasticity.toFixed(2)})</b>: 가격과 수요가 정비례하여 균형을 이루는 경제학적 최적 수익 도출가입니다.`;
+      }
+
       document.getElementById('ssVol').textContent = Number(bpVol).toLocaleString() + '원';
       document.getElementById('ssRev').textContent = Number(bpRev).toLocaleString() + '원';
       document.getElementById('ssOpt').textContent = Number(optPrice).toLocaleString() + '원';
+
+      const volPct = sumTotalQ > 0 ? ((pGroup[bpVol].q / sumTotalQ) * 100).toFixed(1) : 0;
+      document.getElementById('ssVolSub').innerHTML = `
+        <div class="font-medium text-slate-500">총 <b>${pGroup[bpVol].q.toLocaleString()}개</b> 판매됨</div>
+        <div class="text-emerald-500 font-semibold">(전체 판매량의 ${volPct}%)</div>
+      `;
+      
+      const revPct = sumTotalR > 0 ? ((pGroup[bpRev].r / sumTotalR) * 100).toFixed(1) : 0;
+      document.getElementById('ssRevSub').innerHTML = `
+        <div class="font-medium text-slate-500">총 <b>${Math.round(pGroup[bpRev].r).toLocaleString()}원</b> 매출</div>
+        <div class="text-amber-500 font-semibold">(전체 매출의 ${revPct}%)${revCompareText}</div>
+      `;
+
+      document.getElementById('ssOptSub').innerHTML = `
+        <div class="leading-relaxed mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          ${optReason}
+        </div>
+      `;
 
       const tagEl = document.getElementById('elasticityTag');
       const descEl = document.getElementById('elasticityDesc');
